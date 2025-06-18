@@ -1,18 +1,18 @@
 using DifferentialEquations
 using LinearAlgebra
 
-tspan = (0.0, 10.0)
-nsteps = 50
-tlist = LinRange(tspan..., nsteps + 1)
+include("tt_aca.jl")
 
 function decay!(du, u, p, t)
     λ = p[1]
     du[1] = -λ * u[1]
 end
 
-function posterior(x0, λ)
+function V(r, tspan, dt)
+    x0 = r[1]
+    λ = r[2]
     prob = ODEProblem(decay!, [x0], tspan, [λ])
-    sol = solve(prob, Tsit5(), saveat=(tspan[2]-tspan[1])/nsteps)
+    sol = solve(prob, Tsit5(), saveat=dt)
     obs = sol[1, :]
 
     s2 = 0.1
@@ -21,49 +21,151 @@ function posterior(x0, λ)
     sigma[1, 1] = 1.0
     sigma[2, 2] = 0.04
     diff = [u[1], p[1]] - mu
-    result = -1 / 2 * dot(diff, inv(sigma) * diff)
+    result = 1 / 2 * dot(diff, inv(sigma) * diff)
     for i in eachindex(data)
-        result -= 1 / 2 * log(2 * pi * s2) + (data[i] - obs[i]) ^ 2 / (2 * s2)
+        result += 1 / 2 * log(2 * pi * s2) + (data[i] - obs[i]) ^ 2 / (2 * s2)
     end
-    return exp(result)
+    return result
 end
 
-function ttcross_exp()
+function aca_exp()
+    tspan = (0.0, 10.0)
+    nsteps = 50
+    dt = (tspan[2]-tspan[1])/nsteps
+    tlist = LinRange(tspan..., nsteps + 1)
     x0_true = 7.5
     λ_true = 0.5
 
-    prob = ODEProblem(decay!, [x0_true], tspan, [λ_true])
-    sol = solve(prob, Tsit5(), saveat=(tspan[2]-tspan[1])/nsteps)
+    truedata = zeros(nsteps + 1)
+    data = zeros(nsteps + 1)
 
-    data = sol[1, :]
-    data += sqrt(0.1) * randn(length(data))
+    if mpi_rank == 0
+        prob = ODEProblem(decay!, [x0_true], tspan, [λ_true])
+        sol = solve(prob, Tsit5(), saveat=dt)
 
-    open("exp_data.txt", "w") do file
-        for i in 1:nsteps+1
-            write(file, "$(tlist[i]) $(sol[1, i]) $(data[i])\n")
-        end
+        truedata = sol[1, :]
+        data = deepcopy(truedata)
+        data += sqrt(0.1) * randn(length(data))
     end
 
-    bins = 50
-    x0_dom = [5.0, 10.0]
-    λ_dom = [0.1, 1.0]
-    x0_vals = [x0_dom[1] + (x0_dom[2] - x0_dom[1]) * (i - 1) / bins for i in 1:bins+1]
-    λ_vals = [λ_dom[1] + (λ_dom[2] - λ_dom[1]) * (i - 1) / bins for i in 1:bins+1]
-    density = zeros(bins + 1, bins + 1)
-    for i in 1:bins+1
-        println(i)
-        for j in 1:bins+1
-            density[j, i] = posterior([x0_vals[i]], [λ_vals[j]])
-        end
-    end
+    MPI.Bcast!(truedata, 0, mpi_comm)
+    MPI.Bcast!(data, 0, mpi_comm)
 
-    open("exp_density_true.txt", "w") do file
-        for i in 1:bins+1
-            for j in 1:bins+1
-                write(file, "$(x0_vals[i]) $(λ_vals[j]) $(density[j, i])\n")
+    posterior(x0, λ) = exp(-V([x0, λ], tspan, dt))
+
+    if mpi_rank == 0
+        open("exp_data.txt", "w") do file
+            for i in 1:nsteps+1
+                write(file, "$(tlist[i]) $(truedata[i]) $(data[i])\n")
             end
         end
     end
 
-    
+    nbins = 100
+    x0_dom = (5.0, 10.0)
+    λ_dom = (0.1, 1.0)
+    x0_vals = LinRange(x0_dom..., bins + 1)
+    λ_vals = LinRange(λ_dom..., bins + 1)
+
+    local_n = div(nbins ^ 2, mpi_size)
+    local_start = mpi_rank * local_n + 1
+
+    local_dens = zeros(local_n)
+
+    for local_ij in 1:local_n
+        ij = local_start + local_ij - 1
+        x = x0_vals[div(ij - 1, nbins) + 1]
+        y = λ_vals[rem(ij - 1, nbins) + 1]
+        dens[local_ij] = posterior(x, y)
+    end
+
+    global_dens = MPI.Gather(local_dens, 0, mpi_comm)
+
+    if mpi_rank == 0
+        dens = vcat([global_dens; zeros(rem(nbins ^ 2, mpi_size))]...)
+        for ij in mpi_size*local_n+1:nbins^2
+            x = x0_vals[div(ij - 1, nbins) + 1]
+            y = λ_vals[rem(ij - 1, nbins) + 1]
+            dens[ij] = posterior(x, y)
+        end
+
+        open("exp_density_true.txt", "w") do file
+            for ij in 1:nbins^2
+                i = div(ij - 1, nbins) + 1
+                j = rem(ij - 1, nbins) + 1
+                write(file, "$(x0_vals[i]) $(λ_vals[j]) $(density[ij])\n")
+            end
+        end
+    end
+
+    F = ResFunc(posterior, (x0_dom, λ_dom), cutoff)
+
+    if mpi_rank == 0
+        println("Starting TT-cross ACA...")
+    end
+
+    IJ = continuous_aca(F, fill(maxr, d - 1), n_chains, n_samples, jump_width, mpi_comm)
+
+    norm = 0.0
+    normbuf = [0.0]
+
+    if mpi_rank == 0
+        println(IJ)
+        norm = compute_norm(F)
+        normbuf = [norm]
+        println("norm = $norm")
+    end
+
+    MPI.Bcast!(normbuf, 0, mpi_comm)
+    norm = normbuf[]
+
+    local_dens = zeros(local_n)
+
+    for local_ij in 1:local_n
+        ij = local_start + local_ij - 1
+        x = x0_vals[div(ij - 1, nbins) + 1]
+        y = λ_vals[rem(ij - 1, nbins) + 1]
+        dens[local_ij] = compute_marginal12(F, x, y) / norm
+    end
+
+    global_dens = MPI.Gather(local_dens, 0, mpi_comm)
+
+    if mpi_rank == 0
+        dens = vcat([global_dens; zeros(rem(nbins ^ 2, mpi_size))]...)
+        for ij in mpi_size*local_n+1:nbins^2
+            x = x0_vals[div(ij - 1, nbins) + 1]
+            y = λ_vals[rem(ij - 1, nbins) + 1]
+            dens[ij] = compute_marginal12(F, x, y) / norm
+        end
+
+        open("exp_density_aca.txt", "w") do file
+            for ij in 1:nbins^2
+                i = div(ij - 1, nbins) + 1
+                j = rem(ij - 1, nbins) + 1
+                write(file, "$(x0_vals[i]) $(λ_vals[j]) $(density[ij])\n")
+            end
+        end
+    end
 end
+
+MPI.Init()
+mpi_comm = MPI.COMM_WORLD
+mpi_rank = MPI.Comm_rank(mpi_comm)
+mpi_size = MPI.Comm_size(mpi_comm)
+
+d = 2
+maxr = 50
+n_chains = 100
+n_samples = 1000
+jump_width = 0.01
+cutoff = 1.0e-6
+
+start_time = time()
+aca_exp()
+end_time = time()
+elapsed_time = end_time - start_time
+if mpi_rank == 0
+    println("Elapsed time: $elapsed_time seconds")
+end
+
+MPI.Finalize()
