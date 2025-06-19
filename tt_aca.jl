@@ -430,3 +430,91 @@ function compute_var(F::ResFunc{T, N}, norm::T, mu::Vector{T}) where {T, N}
     end
     return [var[pos] / norm[] for pos in 1:order]
 end
+
+# Draws a single iid sample from the normalized TT-represented distribution F
+function sample_from_tt(F::ResFunc{T, N}, normconst::T) where {T, N}
+    order = F.ndims
+    npivots = [length(F.I[i]) for i in 2:order]
+    sample = Vector{T}(undef, order)
+
+    # Initial marginal over x₁
+    weights1 = zeros(npivots[1])
+    for j in 1:npivots[1]
+        f(x) = F.f((x, F.J[2][j]...)...)
+        weights1[j] = quadgk(f, F.domain[1]...)[1]
+    end
+    weights1 ./= normconst  # Normalize to get p(x₁)
+
+    # Construct interpolant or CDF over x₁ domain using weights1
+    function cdf1(x)
+        cdfval = 0.0
+        for j in 1:npivots[1]
+            f(x_) = F.f((x_, F.J[2][j]...)...)
+            val, _ = quadgk(f, F.domain[1][1], x)
+            cdfval += val
+        end
+        return cdfval / normconst
+    end
+
+    # Inverse CDF sampling for x₁ via binary search
+    u = rand()
+    a, b = F.domain[1]
+    for _ in 1:50  # binary search loop
+        mid = (a + b) / 2
+        if cdf1(mid) < u
+            a = mid
+        else
+            b = mid
+        end
+    end
+    sample[1] = (a + b) / 2
+    cond_weight = weights1
+
+    # Recursively sample x₂ through x_d conditionally
+    for i in 2:order
+        ni_prev = i == 2 ? 1 : npivots[i - 2]
+        ni = npivots[i - 1]
+        cond = zeros(ni)
+        for j in 1:ni
+            if i < order
+                f(x) = F.f((sample[1:i-1]..., x, F.J[i+1][j]...)...)
+            else
+                f(x) = F.f((sample[1:i-1]..., x)...)
+            end
+            cond[j] = quadgk(f, F.domain[i]...)[1]
+        end
+        cond ./= sum(cond)
+
+        # Conditional CDF
+        function cdfi(x)
+            cdfval = 0.0
+            for j in 1:ni
+                if i < order
+                    f(x_) = F.f((sample[1:i-1]..., x_, F.J[i+1][j]...)...)
+                else
+                    f(x_) = F.f((sample[1:i-1]..., x_)...)
+                end
+                val, _ = quadgk(f, F.domain[i][1], x)
+                cdfval += val
+            end
+            return cdfval / sum(cond)
+        end
+
+        # Inverse CDF for current dimension
+        u = rand()
+        rel_tol = 1e-4
+        a, b = F.domain[i]
+        abs_tol = rel_tol * abs(b)
+        while b - a > abs_tol
+            mid = (a + b) / 2
+            if cdfi(mid) < u
+                a = mid
+            else
+                b = mid
+            end
+        end
+        sample[i] = (a + b) / 2
+    end
+
+    return sample
+end

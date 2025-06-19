@@ -153,6 +153,16 @@ function aca_exp()
                 write(file, "$(x0_vals[i]) $(λ_vals[j]) $(density[ij])\n")
             end
         end
+
+        println("Collecting sample 1...")
+        sample = sample_from_tt(F, norm)
+        println(sample)
+        println("Collecting sample 2...")
+        sample = sample_from_tt(F, norm)
+        println(sample)
+        println("Collecting sample 3...")
+        sample = sample_from_tt(F, norm)
+        println(sample)
     end
 end
 
