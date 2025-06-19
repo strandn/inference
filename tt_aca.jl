@@ -495,7 +495,7 @@ function sample_from_tt(F::ResFunc{T, N}, norm::T) where {T, N}
             AIJ = zeros(npivots[order - 1], npivots[order - 1])
             for j in 1:npivots[order - 1]
                 for k in 1:npivots[order - 1]
-                    AIJ[j, k] = F.f((F.I[order + 1][j]..., F.J[order + 1][k]...)...)
+                    AIJ[j, k] = F.f((F.I[order][j]..., F.J[order][k]...)...)
                 end
             end
             Renv = inv(AIJ)
