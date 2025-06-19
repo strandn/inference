@@ -20,7 +20,7 @@ function V(r, tspan, dt)
     sigma = zeros(2, 2)
     sigma[1, 1] = 1.0
     sigma[2, 2] = 0.04
-    diff = [u[1], p[1]] - mu
+    diff = [x0, λ] - mu
     result = 1 / 2 * dot(diff, inv(sigma) * diff)
     for i in eachindex(data)
         result += 1 / 2 * log(2 * pi * s2) + (data[i] - obs[i]) ^ 2 / (2 * s2)
