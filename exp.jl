@@ -29,6 +29,10 @@ function V(r, tspan, dt)
 end
 
 function aca_exp()
+    if mpi_rank == 0
+        println("Generating data...")
+    end
+
     tspan = (0.0, 10.0)
     nsteps = 50
     dt = (tspan[2]-tspan[1])/nsteps
@@ -59,6 +63,10 @@ function aca_exp()
                 write(file, "$(tlist[i]) $(truedata[i]) $(data[i])\n")
             end
         end
+    end
+
+    if mpi_rank == 0
+        println("Computing true density...")
     end
 
     nbins = 100
