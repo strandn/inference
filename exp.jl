@@ -8,7 +8,7 @@ function decay!(du, u, p, t)
     du[1] = -λ * u[1]
 end
 
-function V(r, tspan, dt)
+function V(r, tspan, dt, data)
     x0 = r[1]
     λ = r[2]
     prob = ODEProblem(decay!, [x0], tspan, [λ])
@@ -55,7 +55,7 @@ function aca_exp()
     MPI.Bcast!(truedata, 0, mpi_comm)
     MPI.Bcast!(data, 0, mpi_comm)
 
-    posterior(x0, λ) = exp(-V([x0, λ], tspan, dt))
+    posterior(x0, λ) = exp(-V([x0, λ], tspan, dt, data))
 
     if mpi_rank == 0
         open("exp_data.txt", "w") do file
