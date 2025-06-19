@@ -1,3 +1,4 @@
 qsubmit.sh
 *.out
 *.err
+*.nb
