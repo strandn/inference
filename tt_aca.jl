@@ -431,7 +431,7 @@ function compute_var(F::ResFunc{T, N}, norm::T, mu::Vector{T}) where {T, N}
     return [var[pos] / norm[] for pos in 1:order]
 end
 
-function eval(F::ResFunc{T, N}, x1::T, x2::T) where {T, N}
+function compute_12(F::ResFunc{T, N}, x1::T, x2::T) where {T, N}
     npivots = [length(F.I[2])]
     result = zeros(1, npivots[1])
     for j in 1:npivots[1]

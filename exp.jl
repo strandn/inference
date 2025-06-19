@@ -133,7 +133,7 @@ function aca_exp()
         ij = local_start + local_ij - 1
         x = x0_vals[div(ij - 1, nbins) + 1]
         y = λ_vals[rem(ij - 1, nbins) + 1]
-        local_dens[local_ij] = eval(F, x, y) / norm
+        local_dens[local_ij] = compute_12(F, x, y) / norm
     end
 
     global_dens = MPI.Gather(local_dens, 0, mpi_comm)
@@ -143,7 +143,7 @@ function aca_exp()
         for ij in mpi_size*local_n+1:nbins^2
             x = x0_vals[div(ij - 1, nbins) + 1]
             y = λ_vals[rem(ij - 1, nbins) + 1]
-            dens[ij] = eval(F, x, y) / norm
+            dens[ij] = compute_12(F, x, y) / norm
         end
 
         open("exp_density_aca.txt", "w") do file
