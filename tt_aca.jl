@@ -453,7 +453,7 @@ function sample_from_tt(F::ResFunc{T, N}, normconst::T) where {T, N}
     # Sample x₁ using binary search
     u = rand()
     a, b = F.domain[1]
-    abs_tol = rel_tol * abs(b)
+    abs_tol = rel_tol * abs(b - a)
     while b - a > abs_tol
         mid = (a + b) / 2
         if cdf1(mid) < u
@@ -497,7 +497,7 @@ function sample_from_tt(F::ResFunc{T, N}, normconst::T) where {T, N}
         # Inverse CDF sampling
         u = rand()
         a, b = F.domain[i]
-        abs_tol = rel_tol * abs(b)
+        abs_tol = rel_tol * abs(b - a)
         while b - a > abs_tol
             mid = (a + b) / 2
             if cdfi(mid) < u
