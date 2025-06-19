@@ -72,8 +72,8 @@ function aca_exp()
     nbins = 100
     x0_dom = (5.0, 10.0)
     λ_dom = (0.1, 1.0)
-    x0_vals = LinRange(x0_dom..., bins + 1)
-    λ_vals = LinRange(λ_dom..., bins + 1)
+    x0_vals = LinRange(x0_dom..., nbins + 1)
+    λ_vals = LinRange(λ_dom..., nbins + 1)
 
     local_n = div(nbins ^ 2, mpi_size)
     local_start = mpi_rank * local_n + 1
