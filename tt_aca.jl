@@ -6,7 +6,7 @@ using MPI
 # Struct holding metadata used for ACA calculations
 mutable struct ResFunc{T, N}
     # Function to be approximated
-    
+    f
     # Number of dimensions
     ndims::Int64
     # Position of the current unfolding (ranges from 0 to ndims - 1)
