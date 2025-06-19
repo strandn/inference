@@ -176,7 +176,7 @@ maxr = 50
 n_chains = 50
 n_samples = 100
 jump_width = 0.01
-cutoff = 1.0e-6
+cutoff = 1.0e-3
 
 start_time = time()
 aca_exp()

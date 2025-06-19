@@ -506,7 +506,7 @@ function sample_from_tt(F::ResFunc{T, N}, normconst::T) where {T, N}
 
         # Inverse CDF for current dimension
         u = rand()
-        rel_tol = 1e-4
+        rel_tol = 1.0e-3
         a, b = F.domain[i]
         abs_tol = rel_tol * abs(b)
         while b - a > abs_tol
