@@ -431,6 +431,27 @@ function compute_var(F::ResFunc{T, N}, norm::T, mu::Vector{T}) where {T, N}
     return [var[pos] / norm[] for pos in 1:order]
 end
 
+function eval(F::ResFunc{T, N}, x1::T, x2::T) where {T, N}
+    npivots = [length(F.I[2])]
+    result = zeros(1, npivots[1])
+    for j in 1:npivots[1]
+        result[j] = F.f((x1, F.J[2][j]...)...)
+    end
+    AIJ = zeros(npivots[1], npivots[1])
+    for j in 1:npivots[1]
+        for k in 1:npivots[1]
+            AIJ[j, k] = F.f((F.I[2][j]..., F.J[2][k]...)...)
+        end
+    end
+    result *= inv(AIJ)
+    R = zeros(npivots[1])
+    for j in 1:npivots[1]
+        R[j] = F.f((F.I[2][j]..., x2)...)
+    end
+    result *= R
+    return result[]
+end
+
 # Draws a single iid sample from the normalized TT-represented distribution F
 function sample_from_tt(F::ResFunc{T, N}, norm::T) where {T, N}
     order = F.ndims
