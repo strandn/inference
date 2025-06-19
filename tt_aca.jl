@@ -492,9 +492,9 @@ function sample_from_tt(F::ResFunc{T, N}, norm::T) where {T, N}
             end
         end
         if count != order
-            AIJ = zeros(npivots[order], npivots[order])
-            for j in 1:npivots[order]
-                for k in 1:npivots[order]
+            AIJ = zeros(npivots[order - 1], npivots[order - 1])
+            for j in 1:npivots[order - 1]
+                for k in 1:npivots[order - 1]
                     AIJ[j, k] = F.f((F.I[order + 1][j]..., F.J[order + 1][k]...)...)
                 end
             end
