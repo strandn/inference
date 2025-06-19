@@ -449,7 +449,7 @@ function sample_from_tt(F::ResFunc{T, N}, normconst::T) where {T, N}
     function cdf1(x)
         cdfval = 0.0
         for j in 1:npivots[1]
-            f(x_) = F.f((x_, F.J[2][j]...)...)
+            f(x) = F.f((x, F.J[2][j]...)...)
             val, _ = quadgk(f, F.domain[1][1], x)
             cdfval += val
         end
@@ -491,10 +491,12 @@ function sample_from_tt(F::ResFunc{T, N}, normconst::T) where {T, N}
         function cdfi(x)
             cdfval = 0.0
             for j in 1:ni
-                if i < order
-                    f(x_) = F.f((sample[1:i-1]..., x_, F.J[i+1][j]...)...)
-                else
-                    f(x_) = F.f((sample[1:i-1]..., x_)...)
+                function f(x)
+                    if i < order
+                        return F.f((sample[1:i-1]..., x, F.J[i+1][j]...)...)
+                    else
+                        return F.f((sample[1:i-1]..., x)...)
+                    end
                 end
                 val, _ = quadgk(f, F.domain[i][1], x)
                 cdfval += val
