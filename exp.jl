@@ -133,7 +133,7 @@ function aca_exp()
         ij = local_start + local_ij - 1
         x = x0_vals[div(ij - 1, nbins) + 1]
         y = λ_vals[rem(ij - 1, nbins) + 1]
-        dens[local_ij] = compute_marginal12(F, x, y) / norm
+        local_dens[local_ij] = compute_marginal12(F, x, y) / norm
     end
 
     global_dens = MPI.Gather(local_dens, 0, mpi_comm)

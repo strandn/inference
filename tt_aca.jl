@@ -432,82 +432,112 @@ function compute_var(F::ResFunc{T, N}, norm::T, mu::Vector{T}) where {T, N}
 end
 
 # Draws a single iid sample from the normalized TT-represented distribution F
-function sample_from_tt(F::ResFunc{T, N}, normconst::T) where {T, N}
+function sample_from_tt(F::ResFunc{T, N}, norm::T) where {T, N}
     order = F.ndims
     npivots = [length(F.I[i]) for i in 2:order]
     sample = Vector{T}(undef, order)
 
     rel_tol = 1.0e-3
 
-    # CDF for x₁
-    function cdf1(x)
-        cdfval = 0.0
-        for j in 1:npivots[1]
-            f = x_ -> F.f((x_, F.J[2][j]...)...)
-            val, _ = quadgk(f, F.domain[1][1], x)
-            cdfval += val
-        end
-        return cdfval / normconst
-    end
-
-    # Sample x₁ using binary search
-    u = rand()
-    a, b = F.domain[1]
-    abs_tol = rel_tol * abs(b - a)
-    while b - a > abs_tol
-        mid = (a + b) / 2
-        if cdf1(mid) < u
-            a = mid
-        else
-            b = mid
-        end
-    end
-    sample[1] = (a + b) / 2
-
-    # Recursively sample x₂ through x_d conditionally
-    for i in 2:order
-        ni = npivots[i - 1]
-        cond = zeros(ni)
-
-        for j in 1:ni
-            f = if i < order
-                x -> F.f((sample[1:i-1]..., x, F.J[i+1][j]...)...)
-            else
-                x -> F.f((sample[1:i-1]..., x)...)
+    for count in 1:order
+        Lenv = undef
+        Renv = undef
+        if count != 1
+            Lenv = zeros(1, npivots[1])
+            for j in 1:npivots[1]
+                Lenv[j] = F.f((sample[1], F.J[2][j]...)...)
             end
-            cond[j] = quadgk(f, F.domain[i]...)[1]
-        end
-        cond ./= sum(cond)
-
-        # CDF for xᵢ given x₁:ᵢ₋₁
-        function cdfi(x)
-            cdfval = 0.0
-            for j in 1:ni
-                fcond = if i < order
-                    x_ -> F.f((sample[1:i-1]..., x_, F.J[i+1][j]...)...)
-                else
-                    x_ -> F.f((sample[1:i-1]..., x_)...)
+            AIJ = zeros(npivots[1], npivots[1])
+            for j in 1:npivots[1]
+                for k in 1:npivots[1]
+                    AIJ[j, k] = F.f((F.I[2][j]..., F.J[2][k]...)...)
                 end
-                val, _ = quadgk(fcond, F.domain[i][1], x)
-                cdfval += val
             end
-            return cdfval / sum(cond)
+            Lenv *= inv(AIJ)
+            for i in 2:count-1
+                Lenvi = zeros(npivots[i - 1], npivots[i])
+                for j in 1:npivots[i - 1]
+                    for k in 1:npivots[i]
+                        Lenvi[j, k] = F.f((F.I[i][j]..., sample[i], F.J[i + 1][k]...)...)
+                    end
+                end
+                AIJ = zeros(npivots[i], npivots[i])
+                for j in 1:npivots[i]
+                    for k in 1:npivots[i]
+                        AIJ[j, k] = F.f((F.I[i + 1][j]..., F.J[i + 1][k]...)...)
+                    end
+                end
+                Lenv *= Lenvi * inv(AIJ)
+            end
         end
-
-        # Inverse CDF sampling
+        if count != order
+            AIJ = zeros(npivots[order], npivots[order])
+            for j in 1:npivots[order]
+                for k in 1:npivots[order]
+                    AIJ[j, k] = F.f((F.I[order + 1][j]..., F.J[order + 1][k]...)...)
+                end
+            end
+            Renv = inv(AIJ)
+            R = zeros(npivots[order - 1])
+            for j in 1:npivots[order - 1]
+                f(x) = F.f((F.I[order][j]..., x)...)
+                R[j] = quadgk(f, F.domain[order]...)[1]
+            end
+            Renv *= R
+            for i in order-1:-1:count+1
+                Renvi = zeros(npivots[i - 1], npivots[i])
+                for j in 1:npivots[i - 1]
+                    for k in 1:npivots[i]
+                        f(x) = F.f((F.I[i][j]..., x, F.J[i + 1][k]...)...)
+                        Renvi[j, k] = quadgk(f, F.domain[i]...)[1]
+                    end
+                end
+                AIJ = zeros(npivots[i], npivots[i])
+                for j in 1:npivots[i]
+                    for k in 1:npivots[i]
+                        AIJ[j, k] = F.f((F.I[i + 1][j]..., F.J[i + 1][k]...)...)
+                    end
+                end
+                Renv = Renvi * inv(AIJ) * Renv
+            end
+        end
         u = rand()
-        a, b = F.domain[i]
+        a, b = F.domain[count]
         abs_tol = rel_tol * abs(b - a)
         while b - a > abs_tol
             mid = (a + b) / 2
-            if cdfi(mid) < u
+            cdfi = undef
+            if count == 1
+                cdfi = zeros(1, npivots[1])
+                for j in 1:npivots[1]
+                    f(x) = F.f((x, F.J[2][j]...)...)
+                    cdfi[j] = quadgk(f, F.domain[1][1], mid)[1]
+                end
+                cdfi *= Renv
+            elseif count == order
+                cdfi = zeros(npivots[order - 1])
+                for j in 1:npivots[order - 1]
+                    f(x) = F.f((F.I[order][j]..., x)...)
+                    cdfi[j] = quadgk(f, F.domain[order][1], mid)[1]
+                end
+                cdfi = Lenv * cdfi
+            else
+                cdfi = zeros((npivots[count - 1], npivots[count]))
+                for j in 1:npivots[count - 1]
+                    for k in 1:npivots[count]
+                        f(x) = F.f((F.I[count][j]..., x, F.J[count + 1][k]...)...)
+                        cdfi[j, k] = quadgk(f, F.domain[count][1], mid)[1]
+                    end
+                end
+                cdfi = Lenv * cdfi * Renv
+            end
+            if cdfi[] / norm < u
                 a = mid
             else
                 b = mid
             end
         end
-        sample[i] = (a + b) / 2
+        sample[count] = (a + b) / 2
     end
-
     return sample
 end
