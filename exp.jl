@@ -84,7 +84,7 @@ function aca_exp()
         ij = local_start + local_ij - 1
         x = x0_vals[div(ij - 1, nbins) + 1]
         y = λ_vals[rem(ij - 1, nbins) + 1]
-        dens[local_ij] = posterior(x, y)
+        local_dens[local_ij] = posterior(x, y)
     end
 
     global_dens = MPI.Gather(local_dens, 0, mpi_comm)
@@ -101,7 +101,7 @@ function aca_exp()
             for ij in 1:nbins^2
                 i = div(ij - 1, nbins) + 1
                 j = rem(ij - 1, nbins) + 1
-                write(file, "$(x0_vals[i]) $(λ_vals[j]) $(density[ij])\n")
+                write(file, "$(x0_vals[i]) $(λ_vals[j]) $(dens[ij])\n")
             end
         end
     end
@@ -150,7 +150,7 @@ function aca_exp()
             for ij in 1:nbins^2
                 i = div(ij - 1, nbins) + 1
                 j = rem(ij - 1, nbins) + 1
-                write(file, "$(x0_vals[i]) $(λ_vals[j]) $(density[ij])\n")
+                write(file, "$(x0_vals[i]) $(λ_vals[j]) $(dens[ij])\n")
             end
         end
 
