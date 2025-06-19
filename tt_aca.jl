@@ -476,10 +476,12 @@ function sample_from_tt(F::ResFunc{T, N}, normconst::T) where {T, N}
         ni = npivots[i - 1]
         cond = zeros(ni)
         for j in 1:ni
-            if i < order
-                f(x) = F.f((sample[1:i-1]..., x, F.J[i+1][j]...)...)
-            else
-                f(x) = F.f((sample[1:i-1]..., x)...)
+            function f(x)
+                if i < order
+                    return F.f((sample[1:i-1]..., x, F.J[i+1][j]...)...)
+                else
+                    return F.f((sample[1:i-1]..., x)...)
+                end
             end
             cond[j] = quadgk(f, F.domain[i]...)[1]
         end
