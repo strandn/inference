@@ -48,8 +48,8 @@ function aca_exp()
 
     F = ResFunc(posterior, (x0_dom, λ_dom), 0.0)
 
-    open("exp_IJ.txt", "r") do file
-        F.I, F.J = parse(Tuple{Vector{Vector{Vector{Float64}}}, Vector{Vector{Vector{Float64}}}}, readline(file))
+    F.I, F.J = open("exp_IJ.txt", "r") do file
+        eval(Meta.parse(readline(file)))
     end
 
     for i in 1:10
