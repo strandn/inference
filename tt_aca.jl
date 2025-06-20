@@ -522,10 +522,42 @@ function sample_from_tt(F::ResFunc{T, N}, norm::T) where {T, N}
                 Renv = Renvi * inv(AIJ) * Renv
             end
         end
-        u = rand()
+        # u = rand()
+        u = count == 1 ? 0.03127305330367547 : 0.8408600166473164
         println("u = $u")
         a, b = F.domain[count]
         abs_tol = rel_tol * abs(b - a)
+
+        xlist = LinRange(a, b, 101)
+        for mid in xlist
+            cdfi = undef
+            if count == 1
+                cdfi = zeros(1, npivots[1])
+                for j in 1:npivots[1]
+                    f(x) = F.f((x, F.J[2][j]...)...)
+                    cdfi[j] = quadgk(f, F.domain[1][1], mid)[1]
+                end
+                cdfi *= Renv
+            elseif count == order
+                cdfi = zeros(npivots[order - 1])
+                for j in 1:npivots[order - 1]
+                    f(x) = F.f((F.I[order][j]..., x)...)
+                    cdfi[j] = quadgk(f, F.domain[order][1], mid)[1]
+                end
+                cdfi = Lenv * cdfi
+            else
+                cdfi = zeros((npivots[count - 1], npivots[count]))
+                for j in 1:npivots[count - 1]
+                    for k in 1:npivots[count]
+                        f(x) = F.f((F.I[count][j]..., x, F.J[count + 1][k]...)...)
+                        cdfi[j, k] = quadgk(f, F.domain[count][1], mid)[1]
+                    end
+                end
+                cdfi = Lenv * cdfi * Renv
+            end
+            println("$mid $(cdfi[] / norm)")
+        end
+
         while b - a > abs_tol
             mid = (a + b) / 2
             cdfi = undef
