@@ -52,10 +52,10 @@ function aca_exp()
         eval(Meta.parse(readline(file)))
     end
 
-    for i in 1:10
-        println("Collecting sample $i...")
-        sample = sample_from_tt(F)
-        open("exp_samples.txt", "w") do file
+    open("exp_samples.txt", "w") do file
+        for i in 1:10
+            println("Collecting sample $i...")
+            sample = sample_from_tt(F)
             write(file, "$(sample[1]) $(sample[2])\n")
         end
     end
