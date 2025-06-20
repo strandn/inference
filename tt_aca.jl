@@ -522,7 +522,8 @@ function sample_from_tt(F::ResFunc{T, N}) where {T, N}
                 Renv = Renvi * inv(AIJ) * Renv
             end
         end
-        u = rand()
+        # u = rand()
+        u = count == 1 ? 0.03127305330367547 : 0.8408600166473164
         println("u_$count = $u")
         a, b = F.domain[count]
         abs_tol = rel_tol * abs(b - a)
