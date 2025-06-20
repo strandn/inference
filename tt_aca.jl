@@ -581,7 +581,7 @@ function sample_from_tt(F::ResFunc{T, N}, norm::T) where {T, N}
                 end
                 cdfi = Lenv * cdfi * Renv
             end
-            if cdfi[] / (norm * normi) < u
+            if cdfi[] / (norm * normi[]) < u
                 a = mid
             else
                 b = mid
