@@ -523,6 +523,7 @@ function sample_from_tt(F::ResFunc{T, N}, norm::T) where {T, N}
             end
         end
         u = rand()
+        println("u = $u")
         a, b = F.domain[count]
         abs_tol = rel_tol * abs(b - a)
         while b - a > abs_tol
