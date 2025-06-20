@@ -528,34 +528,30 @@ function sample_from_tt(F::ResFunc{T, N}, norm::T) where {T, N}
         a, b = F.domain[count]
         abs_tol = rel_tol * abs(b - a)
 
-        xlist = LinRange(a, b, 101)
-        for mid in xlist
-            cdfi = undef
-            if count == 1
-                cdfi = zeros(1, npivots[1])
-                for j in 1:npivots[1]
-                    f(x) = F.f((x, F.J[2][j]...)...)
-                    cdfi[j] = quadgk(f, F.domain[1][1], mid)[1]
-                end
-                cdfi *= Renv
-            elseif count == order
-                cdfi = zeros(npivots[order - 1])
-                for j in 1:npivots[order - 1]
-                    f(x) = F.f((F.I[order][j]..., x)...)
-                    cdfi[j] = quadgk(f, F.domain[order][1], mid)[1]
-                end
-                cdfi = Lenv * cdfi
-            else
-                cdfi = zeros((npivots[count - 1], npivots[count]))
-                for j in 1:npivots[count - 1]
-                    for k in 1:npivots[count]
-                        f(x) = F.f((F.I[count][j]..., x, F.J[count + 1][k]...)...)
-                        cdfi[j, k] = quadgk(f, F.domain[count][1], mid)[1]
-                    end
-                end
-                cdfi = Lenv * cdfi * Renv
+        normi = undef
+        if count == 1
+            normi = zeros(1, npivots[1])
+            for j in 1:npivots[1]
+                f(x) = F.f((x, F.J[2][j]...)...)
+                normi[j] = quadgk(f, F.domain[1]...)[1]
             end
-            println("$mid $(cdfi[] / norm)")
+            normi *= Renv
+        elseif count == order
+            normi = zeros(npivots[order - 1])
+            for j in 1:npivots[order - 1]
+                f(x) = F.f((F.I[order][j]..., x)...)
+                normi[j] = quadgk(f, F.domain[order]...)[1]
+            end
+            normi = Lenv * normi
+        else
+            normi = zeros((npivots[count - 1], npivots[count]))
+            for j in 1:npivots[count - 1]
+                for k in 1:npivots[count]
+                    f(x) = F.f((F.I[count][j]..., x, F.J[count + 1][k]...)...)
+                    normi[j, k] = quadgk(f, F.domain[count][1]...)[1]
+                end
+            end
+            normi = Lenv * normi * Renv
         end
 
         while b - a > abs_tol
@@ -585,7 +581,7 @@ function sample_from_tt(F::ResFunc{T, N}, norm::T) where {T, N}
                 end
                 cdfi = Lenv * cdfi * Renv
             end
-            if cdfi[] / norm < u
+            if cdfi[] / (norm * normi) < u
                 a = mid
             else
                 b = mid
