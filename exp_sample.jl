@@ -46,49 +46,23 @@ function aca_exp()
     x0_dom = (5.0, 10.0)
     λ_dom = (0.1, 1.0)
 
-    F = ResFunc(posterior, (x0_dom, λ_dom), cutoff)
+    F = ResFunc(posterior, (x0_dom, λ_dom), 0.0)
 
-    F.I, F.J = ([[Float64[]], [[7.624630710003532], [7.452575277253249], [7.809898861921559], [7.3198778503006565], [7.951530384483066], [7.6972670020390535], [7.179410261654521], [8.10889391020572]]], [[Float64[]], [[0.5122457164564077], [0.4940020831714453], [0.5315903582618265], [0.4802146772761345], [0.5455731301572813], [0.5042776126156895], [0.46663661695798025], [0.5596315436060152]]])
-
-    norm = 0.0
-    normbuf = [0.0]
-
-    if mpi_rank == 0
-        norm = compute_norm(F)
-        normbuf = [norm]
-        println("norm = $norm")
+    open("exp_IJ.txt", "r") do file
+        F.I, F.J = parse(Tuple{Vector{Vector{Vector{Float64}}}, Vector{Vector{Vector{Float64}}}}, readline(file))
     end
 
-    MPI.Bcast!(normbuf, 0, mpi_comm)
-    norm = normbuf[]
-
-    if mpi_rank == 0
-        for i in 1:10
-            println("Collecting sample $i...")
-            sample = sample_from_tt(F)
-            println(sample)
+    for i in 1:10
+        println("Collecting sample $i...")
+        sample = sample_from_tt(F)
+        open("exp_samples.txt", "w") do file
+            write(file, "$(sample[1]) $(sample[2])\n")
         end
     end
 end
-
-MPI.Init()
-mpi_comm = MPI.COMM_WORLD
-mpi_rank = MPI.Comm_rank(mpi_comm)
-mpi_size = MPI.Comm_size(mpi_comm)
-
-d = 2
-maxr = 50
-n_chains = 50
-n_samples = 100
-jump_width = 0.01
-cutoff = 1.0e-3
 
 start_time = time()
 aca_exp()
 end_time = time()
 elapsed_time = end_time - start_time
-if mpi_rank == 0
-    println("Elapsed time: $elapsed_time seconds")
-end
-
-MPI.Finalize()
+println("Elapsed time: $elapsed_time seconds")

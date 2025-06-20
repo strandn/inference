@@ -118,7 +118,9 @@ function aca_exp()
     normbuf = [0.0]
 
     if mpi_rank == 0
-        println(IJ)
+        open("exp_IJ.txt", "w") do file
+            write(file, "$IJ\n")
+        end
         norm = compute_norm(F)
         normbuf = [norm]
         println("norm = $norm")
@@ -152,12 +154,6 @@ function aca_exp()
                 j = rem(ij - 1, nbins) + 1
                 write(file, "$(x0_vals[i]) $(λ_vals[j]) $(dens[ij])\n")
             end
-        end
-
-        for i in 1:10
-            println("Collecting sample $i...")
-            sample = sample_from_tt(F)
-            println(sample)
         end
     end
 end
