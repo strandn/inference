@@ -1,6 +1,8 @@
 using DifferentialEquations
 using LinearAlgebra
 
+include("tt_aca.jl")
+
 function damped_oscillator!(du, u, p, t)
     x, v = u
     ω, γ = p
