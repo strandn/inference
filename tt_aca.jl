@@ -453,7 +453,7 @@ function compute_12(F::ResFunc{T, N}, x1::T, x2::T) where {T, N}
 end
 
 # Draws a single iid sample from the normalized TT-represented distribution F
-function sample_from_tt(F::ResFunc{T, N}, norm::T) where {T, N}
+function sample_from_tt(F::ResFunc{T, N}) where {T, N}
     order = F.ndims
     npivots = [length(F.I[i]) for i in 2:order]
     sample = Vector{T}(undef, order)
@@ -553,6 +553,36 @@ function sample_from_tt(F::ResFunc{T, N}, norm::T) where {T, N}
             normi = Lenv * normi * Renv
         end
 
+        xlist = LinRange(a, b, 101)
+        for mid in xlist
+            cdfi = undef
+            if count == 1
+                cdfi = zeros(1, npivots[1])
+                for j in 1:npivots[1]
+                    f(x) = F.f((x, F.J[2][j]...)...)
+                    cdfi[j] = quadgk(f, F.domain[1][1], mid)[1]
+                end
+                cdfi *= Renv
+            elseif count == order
+                cdfi = zeros(npivots[order - 1])
+                for j in 1:npivots[order - 1]
+                    f(x) = F.f((F.I[order][j]..., x)...)
+                    cdfi[j] = quadgk(f, F.domain[order][1], mid)[1]
+                end
+                cdfi = Lenv * cdfi
+            else
+                cdfi = zeros((npivots[count - 1], npivots[count]))
+                for j in 1:npivots[count - 1]
+                    for k in 1:npivots[count]
+                        f(x) = F.f((F.I[count][j]..., x, F.J[count + 1][k]...)...)
+                        cdfi[j, k] = quadgk(f, F.domain[count][1], mid)[1]
+                    end
+                end
+                cdfi = Lenv * cdfi * Renv
+            end
+            println("$mid $(cdfi[] / normi[])")
+        end
+
         while b - a > abs_tol
             mid = (a + b) / 2
             cdfi = undef
@@ -580,7 +610,7 @@ function sample_from_tt(F::ResFunc{T, N}, norm::T) where {T, N}
                 end
                 cdfi = Lenv * cdfi * Renv
             end
-            if cdfi[] / (norm * normi[]) < u
+            if cdfi[] / normi[] < u
                 a = mid
             else
                 b = mid

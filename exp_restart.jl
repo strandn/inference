@@ -64,13 +64,13 @@ function aca_exp()
 
     if mpi_rank == 0
         println("Collecting sample 1...")
-        sample = sample_from_tt(F, norm)
+        sample = sample_from_tt(F)
         println(sample)
         println("Collecting sample 2...")
-        sample = sample_from_tt(F, norm)
+        sample = sample_from_tt(F)
         println(sample)
         println("Collecting sample 3...")
-        sample = sample_from_tt(F, norm)
+        sample = sample_from_tt(F)
         println(sample)
     end
 end
