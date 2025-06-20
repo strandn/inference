@@ -125,7 +125,7 @@ jump_width = 0.01
 cutoff = 1.0e-3
 
 start_time = time()
-aca_exp()
+aca_damped()
 end_time = time()
 elapsed_time = end_time - start_time
 if mpi_rank == 0
