@@ -35,7 +35,7 @@ function aca_exp()
 
     tspan = (0.0, 10.0)
     nsteps = 50
-    dt = (tspan[2]-tspan[1])/nsteps
+    dt = (tspan[2] - tspan[1]) / nsteps
     tlist = LinRange(tspan..., nsteps + 1)
     x0_true = 7.5
     λ_true = 0.5

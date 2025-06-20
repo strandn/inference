@@ -29,6 +29,20 @@ function V(r, tspan, dt, data)
 end
 
 function aca_exp()
+    tspan = (0.0, 10.0)
+    nsteps = 50
+    dt = (tspan[2] - tspan[1]) / nsteps
+
+    data = []
+    open("exp_data.txt", "r") do file
+        for line in eachline(file)
+            cols = split(line)
+            push!(data, parse(Float64, cols[3]))
+        end
+    end
+
+    posterior(x0, λ) = exp(-V([x0, λ], tspan, dt, data))
+
     F = ResFunc(posterior, (x0_dom, λ_dom), cutoff)
 
     F.I, F.J = ([[Float64[]], [[7.624630710003532], [7.452575277253249], [7.809898861921559], [7.3198778503006565], [7.951530384483066], [7.6972670020390535], [7.179410261654521], [8.10889391020572]]], [[Float64[]], [[0.5122457164564077], [0.4940020831714453], [0.5315903582618265], [0.4802146772761345], [0.5455731301572813], [0.5042776126156895], [0.46663661695798025], [0.5596315436060152]]])
