@@ -54,7 +54,6 @@ function aca_exp()
     normbuf = [0.0]
 
     if mpi_rank == 0
-        println(IJ)
         norm = compute_norm(F)
         normbuf = [norm]
         println("norm = $norm")
