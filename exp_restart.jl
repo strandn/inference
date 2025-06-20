@@ -63,15 +63,11 @@ function aca_exp()
     norm = normbuf[]
 
     if mpi_rank == 0
-        println("Collecting sample 1...")
-        sample = sample_from_tt(F)
-        println(sample)
-        println("Collecting sample 2...")
-        sample = sample_from_tt(F)
-        println(sample)
-        println("Collecting sample 3...")
-        sample = sample_from_tt(F)
-        println(sample)
+        for i in 1:10
+            println("Collecting sample $i...")
+            sample = sample_from_tt(F)
+            println(sample)
+        end
     end
 end
 
