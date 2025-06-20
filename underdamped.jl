@@ -53,7 +53,7 @@ function aca_damped()
     data_v = zeros(nsteps + 1)
 
     if mpi_rank == 0
-        prob = ODEProblem(decay!, [x0_true, v0_true], tspan, [ω_true, γ_true])
+        prob = ODEProblem(damped_oscillator!, [x0_true, v0_true], tspan, [ω_true, γ_true])
         sol = solve(prob, Tsit5(), saveat=dt)
 
         truedata_x = sol[1, :]
