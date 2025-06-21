@@ -20,7 +20,7 @@ function V(r, tspan, dt, data_x, data_v)
     obs_x = sol[1, :]
     obs_v = sol[2, :]
 
-    s2 = 0.1
+    s2 = 0.2
     mu = [5.0, 5.0, 0.7, 0.7]
     sigma = zeros(4, 4)
     sigma[1, 1] = sigma[2, 2] = sigma[3, 3] = 0.2
@@ -38,7 +38,7 @@ function aca_damped()
         println("Generating data...")
     end
 
-    tspan = (0.0, 20.0)
+    tspan = (0.0, 30.0)
     nsteps = 50
     dt = (tspan[2] - tspan[1]) / nsteps
     tlist = LinRange(tspan..., nsteps + 1)
