@@ -21,7 +21,7 @@ function V(r, tspan, dt, data_x, data_v)
     obs_v = sol[2, :]
 
     s2 = 0.1
-    mu = [1.0, 1.0, 0.7, 0.7]
+    mu = [5.0, 5.0, 0.7, 0.7]
     sigma = zeros(4, 4)
     sigma[1, 1] = sigma[2, 2] = sigma[3, 3] = 0.2
     sigma[4, 4] = 0.1
@@ -38,12 +38,12 @@ function aca_damped()
         println("Generating data...")
     end
 
-    tspan = (0.0, 10.0)
+    tspan = (0.0, 20.0)
     nsteps = 50
     dt = (tspan[2] - tspan[1]) / nsteps
     tlist = LinRange(tspan..., nsteps + 1)
-    x0_true = 1.5
-    v0_true = 0.5
+    x0_true = 7.5
+    v0_true = 2.5
     ω_true = 1.0
     γ_true = 0.4
 
@@ -83,8 +83,8 @@ function aca_damped()
         println("Computing true density...")
     end
 
-    x0_dom = (0.5, 2.5)
-    v0_dom = (0.1, 1.0)
+    x0_dom = (2.5, 12.5)
+    v0_dom = (0.5, 5.0)
     ω_dom = (0.5, 2.0)
     γ_dom = (0.1, 1.0)
 
