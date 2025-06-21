@@ -23,7 +23,7 @@ function V(r, tspan, dt, data_x, data_v)
     s2 = 0.2
     mu = [5.0, 5.0, 0.7, 0.7]
     sigma = zeros(4, 4)
-    sigma[1, 1] = sigma[2, 2] = sigma[3, 3] = 0.2
+    sigma[1, 1] = sigma[2, 2] = sigma[3, 3] = 1.0
     sigma[4, 4] = 0.1
     diff = [x0, v0, ω, γ] - mu
     result = 1 / 2 * dot(diff, inv(sigma) * diff)
@@ -60,8 +60,8 @@ function aca_damped()
         truedata_v = sol[2, :]
         data_x = deepcopy(truedata_x)
         data_v = deepcopy(truedata_v)
-        data_x += sqrt(0.1) * randn(length(data_x))
-        data_v += sqrt(0.1) * randn(length(data_v))
+        data_x += sqrt(0.2) * randn(length(data_x))
+        data_v += sqrt(0.2) * randn(length(data_v))
     end
 
     MPI.Bcast!(truedata_x, 0, mpi_comm)
