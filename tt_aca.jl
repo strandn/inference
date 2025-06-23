@@ -138,6 +138,7 @@ function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, 
             elseif res_new > F.resfirst[i]
                 F.resfirst[i] = res_new
                 updateresfirst = true
+            end
             if updateresfirst
                 F.offset = logmin
                 F.resfirst[i] = res_new = abs(F(xy...))
