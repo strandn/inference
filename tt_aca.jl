@@ -48,7 +48,7 @@ function (F::ResFunc{T, N})(elements::T...) where {T, N}
                 new[idx] = expnegf(F, (row..., col...)...)
             else
                 # new[idx] = old[idx[1] + 1, idx[2] + 1] - old[idx[1] + 1, 1] * old[1, idx[2] + 1] / old[1, 1]
-                new[idx] = exp(-old[idx[1] + 1, idx[2] + 1]) * (1.0 - exp(old[idx[1] + 1, idx[2] + 1] - old[idx[1] + 1, 1] - old[1, idx[2] + 1] + old[1, 1]))
+                new[idx] = exp(F.offset - old[idx[1] + 1, idx[2] + 1]) * (1.0 - exp(old[idx[1] + 1, idx[2] + 1] - old[idx[1] + 1, 1] - old[1, idx[2] + 1] + old[1, 1]))
             end
         end
         old = deepcopy(new)
@@ -132,29 +132,22 @@ function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, 
             res_new = reslist[idx]
             logmin = minimum(loglist)
             updateresfirst = false
-            done = false
             if isempty(F.I[i + 1])
                 push!(F.resfirst, res_new)
                 updateresfirst = true
             elseif res_new > F.resfirst[i]
                 F.resfirst[i] = res_new
                 updateresfirst = true
-            elseif res_new / F.resfirst[i] < F.cutoff
-                done = true
-            end
-            if F.offset == 0.0 || logmin < F.offset
+            if updateresfirst
                 F.offset = logmin
-                res_new = F(xy...)
-                if updateresfirst
-                    F.resfirst[i] = res_new
-                end
+                F.resfirst[i] = res_new = abs(F(xy...))
             end
-            if done
+            if res_new / F.resfirst[i] < F.cutoff
                 break
             end
             updateIJ(F, xy)
             if mpi_rank == 0
-                println("rank = $r res = $res_new xy = $xy offset = $(F.offset)")
+                println("rank = $r res/resfirst = $(res_new / F.resfirst[i]) xy = $xy offset = $(F.offset)")
                 flush(stdout)
             end
         end
