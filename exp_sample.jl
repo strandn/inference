@@ -41,12 +41,12 @@ function aca_exp()
         end
     end
 
-    posterior(x0, λ) = exp(-V([x0, λ], tspan, dt, data))
+    neglogposterior(x0, λ) = V([x0, λ], tspan, dt, data)
 
     x0_dom = (5.0, 10.0)
     λ_dom = (0.1, 1.0)
 
-    F = ResFunc(posterior, (x0_dom, λ_dom), 0.0)
+    F = ResFunc(neglogposterior, (x0_dom, λ_dom), 0.0)
 
     F.I, F.J = open("exp_IJ.txt", "r") do file
         eval(Meta.parse(readline(file)))
