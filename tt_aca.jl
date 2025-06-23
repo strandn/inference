@@ -30,7 +30,7 @@ mutable struct ResFunc{T, N}
 end
 
 function expnegf(F::ResFunc{T, N}, elements::T...) where {T, N}
-    return exp(F.offset - F.f(elements))
+    return exp(F.offset - F.f(elements...))
 end
 
 # Evaluates the residual in the current iteration (determined by the number of pivots found so far)
