@@ -130,7 +130,7 @@ function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, 
             idx = argmax(reslist)
             xy = xylist[idx]
             res_new = reslist[idx]
-            logmin = min(loglist)
+            logmin = minimum(loglist)
             updateresfirst = false
             done = false
             if isempty(F.I[i + 1])
