@@ -76,36 +76,36 @@ function aca_exp()
     x0_vals = LinRange(x0_dom..., nbins + 1)
     λ_vals = LinRange(λ_dom..., nbins + 1)
 
-    local_n = div(nbins ^ 2, mpi_size)
-    local_start = mpi_rank * local_n + 1
+    # local_n = div(nbins ^ 2, mpi_size)
+    # local_start = mpi_rank * local_n + 1
 
-    local_dens = zeros(local_n)
+    # local_dens = zeros(local_n)
 
-    for local_ij in 1:local_n
-        ij = local_start + local_ij - 1
-        x = x0_vals[div(ij - 1, nbins) + 1]
-        y = λ_vals[rem(ij - 1, nbins) + 1]
-        local_dens[local_ij] = exp(-neglogposterior(x, y))
-    end
+    # for local_ij in 1:local_n
+    #     ij = local_start + local_ij - 1
+    #     x = x0_vals[div(ij - 1, nbins) + 1]
+    #     y = λ_vals[rem(ij - 1, nbins) + 1]
+    #     local_dens[local_ij] = exp(-neglogposterior(x, y))
+    # end
 
-    global_dens = MPI.Gather(local_dens, 0, mpi_comm)
+    # global_dens = MPI.Gather(local_dens, 0, mpi_comm)
 
-    if mpi_rank == 0
-        dens = vcat([global_dens; zeros(rem(nbins ^ 2, mpi_size))]...)
-        for ij in mpi_size*local_n+1:nbins^2
-            x = x0_vals[div(ij - 1, nbins) + 1]
-            y = λ_vals[rem(ij - 1, nbins) + 1]
-            dens[ij] = exp(-neglogposterior(x, y))
-        end
+    # if mpi_rank == 0
+    #     dens = vcat([global_dens; zeros(rem(nbins ^ 2, mpi_size))]...)
+    #     for ij in mpi_size*local_n+1:nbins^2
+    #         x = x0_vals[div(ij - 1, nbins) + 1]
+    #         y = λ_vals[rem(ij - 1, nbins) + 1]
+    #         dens[ij] = exp(-neglogposterior(x, y))
+    #     end
 
-        open("exp_density_true.txt", "w") do file
-            for ij in 1:nbins^2
-                i = div(ij - 1, nbins) + 1
-                j = rem(ij - 1, nbins) + 1
-                write(file, "$(x0_vals[i]) $(λ_vals[j]) $(dens[ij])\n")
-            end
-        end
-    end
+    #     open("exp_density_true.txt", "w") do file
+    #         for ij in 1:nbins^2
+    #             i = div(ij - 1, nbins) + 1
+    #             j = rem(ij - 1, nbins) + 1
+    #             write(file, "$(x0_vals[i]) $(λ_vals[j]) $(dens[ij])\n")
+    #         end
+    #     end
+    # end
 
     F = ResFunc(neglogposterior, (x0_dom, λ_dom), cutoff)
 
@@ -167,7 +167,7 @@ mpi_size = MPI.Comm_size(mpi_comm)
 
 d = 2
 maxr = 50
-n_chains = 50
+n_chains = 1
 n_samples = 100
 jump_width = 0.01
 cutoff = 1.0e-3
