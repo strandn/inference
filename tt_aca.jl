@@ -28,6 +28,7 @@ mutable struct ResFunc{T, N}
 end
 
 function expnegf(F::ResFunc{T, N}, elements::T...) where {T, N}
+    println("$elements $(F.f(elements...)) $(exp(F.offset - F.f(elements...)))")
     return exp(F.offset - F.f(elements...))
 end
 
