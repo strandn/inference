@@ -69,7 +69,7 @@ function aca_damped()
     MPI.Bcast!(data_x, 0, mpi_comm)
     MPI.Bcast!(data_v, 0, mpi_comm)
 
-    posterior(x0, v0, ω, γ) = exp(-V([x0, v0, ω, γ], tspan, dt, data_x, data_v))
+    neglogposterior(x0, v0, ω, γ) = V([x0, v0, ω, γ], tspan, dt, data_x, data_v)
 
     if mpi_rank == 0
         open("underdamped_data.txt", "w") do file
@@ -88,7 +88,7 @@ function aca_damped()
     ω_dom = (0.5, 2.0)
     γ_dom = (0.1, 1.0)
 
-    F = ResFunc(posterior, (x0_dom, v0_dom, ω_dom, γ_dom), cutoff)
+    F = ResFunc(neglogposterior, (x0_dom, v0_dom, ω_dom, γ_dom), cutoff)
 
     if mpi_rank == 0
         println("Starting TT-cross ACA...")
