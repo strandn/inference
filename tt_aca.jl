@@ -122,18 +122,16 @@ function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, 
             idx = argmax(reslist)
             xy = xylist[idx]
             res_new = reslist[idx]
-            if isempty(F.I[i + 1])
+            if isempty(F.I[i + 1]) || F.f(xy...) < F.offset
                 F.offset = F.f(xy...)
-            end
-            if F.f(xy...) < F.offset
-                F.offset = F.f(xy...)
+                res_new = F(xy...)
             end
             if res_new < F.cutoff
                 break
             end
             updateIJ(F, xy)
             if mpi_rank == 0
-                println("rank = $r res = $res_new xy = $xy")
+                println("rank = $r res = $res_new xy = $xy offset = $(F.offset)")
                 flush(stdout)
             end
         end
