@@ -56,7 +56,7 @@ function aca_exp()
     MPI.Bcast!(truedata, 0, mpi_comm)
     MPI.Bcast!(data, 0, mpi_comm)
 
-    posterior(x0, λ) = exp(-V([x0, λ], tspan, dt, data))
+    neglogposterior(x0, λ) = V([x0, λ], tspan, dt, data)
 
     if mpi_rank == 0
         open("exp_data.txt", "w") do file
@@ -85,7 +85,7 @@ function aca_exp()
         ij = local_start + local_ij - 1
         x = x0_vals[div(ij - 1, nbins) + 1]
         y = λ_vals[rem(ij - 1, nbins) + 1]
-        local_dens[local_ij] = posterior(x, y)
+        local_dens[local_ij] = exp(-neglogposterior(x, y))
     end
 
     global_dens = MPI.Gather(local_dens, 0, mpi_comm)
@@ -95,7 +95,7 @@ function aca_exp()
         for ij in mpi_size*local_n+1:nbins^2
             x = x0_vals[div(ij - 1, nbins) + 1]
             y = λ_vals[rem(ij - 1, nbins) + 1]
-            dens[ij] = posterior(x, y)
+            dens[ij] = exp(-neglogposterior(x, y))
         end
 
         open("exp_density_true.txt", "w") do file
@@ -107,7 +107,7 @@ function aca_exp()
         end
     end
 
-    F = ResFunc(posterior, (x0_dom, λ_dom), cutoff)
+    F = ResFunc(neglogposterior, (x0_dom, λ_dom), cutoff)
 
     if mpi_rank == 0
         println("Starting TT-cross ACA...")
@@ -121,6 +121,7 @@ function aca_exp()
     if mpi_rank == 0
         open("exp_IJ.txt", "w") do file
             write(file, "$IJ\n")
+            write(file, "$(F.offset)\n")
         end
         norm = compute_norm(F)
         normbuf = [norm]
