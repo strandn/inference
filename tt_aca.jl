@@ -124,9 +124,21 @@ function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, 
             idx = argmax(reslist)
             xy = xylist[idx]
             res_new = reslist[idx]
+            if mpi_rank == 0
+                println("RESIDUAL INFO 1")
+                for x in xylist
+                    F(x...)
+                end
+            end
             if isempty(F.I[i + 1]) || F.f(xy...) < F.offset
                 F.offset = F.f(xy...)
                 res_new = F(xy...)
+            end
+            if mpi_rank == 0
+                println("RESIDUAL INFO 2")
+                for x in xylist
+                    F(x...)
+                end
             end
             if res_new < F.cutoff
                 break
