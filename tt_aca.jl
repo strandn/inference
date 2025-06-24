@@ -28,7 +28,6 @@ mutable struct ResFunc{T, N}
 end
 
 function expnegf(F::ResFunc{T, N}, elements::T...) where {T, N}
-    println("$elements $(F.offset) $(F.f(elements...)) $(exp(F.offset - F.f(elements...)))")
     return exp(F.offset - F.f(elements...))
 end
 
@@ -38,7 +37,6 @@ function (F::ResFunc{T, N})(elements::T...) where {T, N}
     (x, y) = ([elements[i] for i in 1:F.pos], [elements[i] for i in F.pos+1:F.ndims])
     k = length(F.I[F.pos + 1])
     old = new = zeros(1, 1)
-    println(elements)
     for iter in 0:k
         new = zeros(k - iter + 1, k - iter + 1)
         for idx in CartesianIndices(new)
@@ -46,7 +44,6 @@ function (F::ResFunc{T, N})(elements::T...) where {T, N}
                 row = idx[1] == k + 1 ? x : F.I[F.pos + 1][idx[1]]
                 col = idx[2] == k + 1 ? y : F.J[F.pos + 1][idx[2]]
                 new[idx] = expnegf(F, (row..., col...)...)
-                println("$idx $row $col $(F.f((row..., col...)...)) $(expnegf(F, (row..., col...)...))")
             else
                 new[idx] = old[idx[1] + 1, idx[2] + 1] - old[idx[1] + 1, 1] * old[1, idx[2] + 1] / old[1, 1]
             end
@@ -120,35 +117,25 @@ function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, 
             end
             xylist = reshape(xylist, (n_pivots, n_chains_reduced))
             reslist = reshape(reslist, (n_pivots, n_chains_reduced))
-
-            MPI.Barrier(mpi_comm)
             
             # Find position of largest residuals
             idx = argmax(reslist)
-            xy = xylist[idx]
-            res_new = reslist[idx]
-            if mpi_rank == 0
-                println("RESIDUAL INFO 1")
-                for x in xylist
-                    F(x...)
-                end
-            end
+            xy = [xylist[idx]]
+            MPI.Bcast!(xy, 0, mpi_comm)
+            res_new = [reslist[idx]]
             if isempty(F.I[i + 1]) || F.f(xy...) < F.offset
-                F.offset = F.f(xy...)
+                offset_new = [F.f(xy...)]
+                MPI.Bcast!(offset_new, 0, mpi_comm)
+                F.offset = offset_new[]
                 res_new = F(xy...)
             end
-            if mpi_rank == 0
-                println("RESIDUAL INFO 2")
-                for x in xylist
-                    F(x...)
-                end
-            end
-            if res_new < F.cutoff
+            MPI.Bcast!(res_new, 0, mpi_comm)
+            if res_new[] < F.cutoff
                 break
             end
-            updateIJ(F, xy)
+            updateIJ(F, xy[])
             if mpi_rank == 0
-                println("rank = $r res = $res_new xy = $xy offset = $(F.offset)")
+                println("rank = $r res = $(res_new[]) xy = $(xy[]) offset = $(F.offset)")
                 flush(stdout)
             end
         end
