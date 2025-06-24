@@ -37,6 +37,7 @@ function (F::ResFunc{T, N})(elements::T...) where {T, N}
     (x, y) = ([elements[i] for i in 1:F.pos], [elements[i] for i in F.pos+1:F.ndims])
     k = length(F.I[F.pos + 1])
     old = new = zeros(1, 1)
+    println(elements)
     for iter in 0:k
         new = zeros(k - iter + 1, k - iter + 1)
         for idx in CartesianIndices(new)
