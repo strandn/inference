@@ -48,6 +48,7 @@ function (F::ResFunc{T, N})(elements::T...) where {T, N}
                 new[idx] = old[idx[1] + 1, idx[2] + 1] - old[idx[1] + 1, 1] * old[1, idx[2] + 1] / old[1, 1]
             end
         end
+        @show new
         old = deepcopy(new)
     end
     return new[]
