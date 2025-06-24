@@ -65,13 +65,14 @@ function aca_exp()
         end
     end
 
+    x0_dom = (5.0, 10.0)
+    λ_dom = (0.1, 1.0)
+
     # if mpi_rank == 0
     #     println("Computing true density...")
     # end
-
+    
     # nbins = 100
-    # x0_dom = (5.0, 10.0)
-    # λ_dom = (0.1, 1.0)
     # x0_vals = LinRange(x0_dom..., nbins + 1)
     # λ_vals = LinRange(λ_dom..., nbins + 1)
 
