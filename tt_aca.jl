@@ -582,11 +582,12 @@ function sample_from_tt(F::ResFunc{T, N}) where {T, N}
     return sample
 end
 
-function compute_marginal(F::ResFunc{T, N}, pos::Int64) where {T, N}
+function compute_marginal(F::ResFunc{T, N}, pos::Int64, norm::T) where {T, N}
     order = F.ndims
     npivots = [length(F.I[i]) for i in 2:order]
 
     nbins = 100
+    result = zeros(nbins, nbins)
     
     Lenv = undef
     Renv = undef
@@ -654,39 +655,32 @@ function compute_marginal(F::ResFunc{T, N}, pos::Int64) where {T, N}
     xlist = LinRange(F.domain[pos]..., nbins + 1)
     ylist = LinRange(F.domain[pos + 1]..., nbins + 1)
     
-    result = undef
-    if pos == 1
-        result = zeros(1, nbins, nbins, npivots[2])
-        for j in 1:nbins
-            for k in 1:nbins
+    for j in 1:nbins
+        for k in 1:nbins
+            resulti = undef
+            if pos == 1
+                resulti = zeros(1, npivots[2])
                 for l in 1:npivots[2]
-                    result[j, k, l] = expnegf(F, (xlist[j], ylist[k], F.J[3][l]...)...)
+                    resulti[l] = expnegf(F, (xlist[j], ylist[k], F.J[3][l]...)...)
                 end
-            end
-        end
-        result *= Renv
-    elseif pos + 1 == order
-        result = zeros(npivots[order - 2], nbins, nbins)
-        for i in 1:npivots[order - 2]
-            for j in 1:nbins
-                for k in 1:nbins
-                    result[i, j, k] = expnegf(F, (F.I[order - 1][i]..., xlist[j], ylist[k])...)
+                resulti *= Renv
+            elseif pos + 1 == order
+                resulti = zeros(npivots[order - 2])
+                for i in 1:npivots[order - 2]
+                    resulti[i] = expnegf(F, (F.I[order - 1][i]..., xlist[j], ylist[k])...)
                 end
-            end
-        end
-        result = Lenv * result
-    else
-        result = zeros((npivots[pos - 1], nbins, nbins, npivots[pos + 1]))
-        for i in 1:npivots[pos - 1]
-            for j in 1:nbins
-                for k in 1:nbins
+                resulti = Lenv * resulti
+            else
+                resulti = zeros((npivots[pos - 1], npivots[pos + 1]))
+                for i in 1:npivots[pos - 1]
                     for l in 1:npivots[pos + 1]
-                        result[i, j, k, l] = expnegf(F, (F.I[count][1]..., xlist[j], ylist[k], F.J[count + 2][l]...)...)
+                        resulti[i, l] = expnegf(F, (F.I[pos][i]..., xlist[j], ylist[k], F.J[pos + 2][l]...)...)
                     end
                 end
+                resulti = Lenv * resulti * Renv
             end
+            result[j, k] = resulti[] / norm
         end
-        result = Lenv * result * Renv
     end
     return result
 end
