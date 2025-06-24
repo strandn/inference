@@ -581,3 +581,72 @@ function sample_from_tt(F::ResFunc{T, N}) where {T, N}
     end
     return sample
 end
+
+function compute_marginal(F::ResFunc{T, N}, pos::Int64) where {T, N}
+    order = F.ndims
+    npivots = [length(F.I[i]) for i in 2:order]
+    
+    Lenv = undef
+    Renv = undef
+    if pos != 1
+        Lenv = zeros(1, npivots[1])
+        for j in 1:npivots[1]
+            f(x) = expnegf(F, (x, F.J[2][j]...)...)
+            Lenv[j] = quadgk(f, F.domain[1]...)[1]
+        end
+        AIJ = zeros(npivots[1], npivots[1])
+        for j in 1:npivots[1]
+            for k in 1:npivots[1]
+                AIJ[j, k] = expnegf(F, (F.I[2][j]..., F.J[2][k]...)...)
+            end
+        end
+        Lenv *= inv(AIJ)
+        for i in 2:pos-1
+            Lenvi = zeros(npivots[i - 1], npivots[i])
+            for j in 1:npivots[i - 1]
+                for k in 1:npivots[i]
+                    f(x) = expnegf(F, (F.I[i][j]..., x, F.J[i + 1][k]...)...)
+                    Lenvi[j, k] = quadgk(f, F.domain[i]...)[1]
+                end
+            end
+            AIJ = zeros(npivots[i], npivots[i])
+            for j in 1:npivots[i]
+                for k in 1:npivots[i]
+                    AIJ[j, k] = expnegf(F, (F.I[i + 1][j]..., F.J[i + 1][k]...)...)
+                end
+            end
+            Lenv *= Lenvi * inv(AIJ)
+        end
+    end
+    if pos + 1 != order
+        AIJ = zeros(npivots[order - 1], npivots[order - 1])
+        for j in 1:npivots[order - 1]
+            for k in 1:npivots[order - 1]
+                AIJ[j, k] = expnegf(F, (F.I[order][j]..., F.J[order][k]...)...)
+            end
+        end
+        Renv = inv(AIJ)
+        R = zeros(npivots[order - 1])
+        for j in 1:npivots[order - 1]
+            f(x) = expnegf(F, (F.I[order][j]..., x)...)
+            R[j] = quadgk(f, F.domain[order]...)[1]
+        end
+        Renv *= R
+        for i in order-1:-1:pos+2
+            Renvi = zeros(npivots[i - 1], npivots[i])
+            for j in 1:npivots[i - 1]
+                for k in 1:npivots[i]
+                    f(x) = expnegf(F, (F.I[i][j]..., x, F.J[i + 1][k]...)...)
+                    Renvi[j, k] = quadgk(f, F.domain[i]...)[1]
+                end
+            end
+            AIJ = zeros(npivots[i], npivots[i])
+            for j in 1:npivots[i]
+                for k in 1:npivots[i]
+                    AIJ[j, k] = expnegf(F, (F.I[i + 1][j]..., F.J[i + 1][k]...)...)
+                end
+            end
+            Renv = Renvi * inv(AIJ) * Renv
+        end
+    end
+end

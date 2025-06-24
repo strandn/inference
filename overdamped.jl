@@ -117,7 +117,7 @@ mpi_comm = MPI.COMM_WORLD
 mpi_rank = MPI.Comm_rank(mpi_comm)
 mpi_size = MPI.Comm_size(mpi_comm)
 
-d = 2
+d = 4
 maxr = 50
 # n_chains = 48
 # n_samples = 100
