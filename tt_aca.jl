@@ -47,8 +47,8 @@ function (F::ResFunc{T, N})(elements::T...) where {T, N}
                 col = idx[2] == k + 1 ? y : F.J[F.pos + 1][idx[2]]
                 new[idx] = expnegf(F, (row..., col...)...)
             else
-                # new[idx] = old[idx[1] + 1, idx[2] + 1] - old[idx[1] + 1, 1] * old[1, idx[2] + 1] / old[1, 1]
-                new[idx] = exp(F.offset - old[idx[1] + 1, idx[2] + 1]) * (1.0 - exp(old[idx[1] + 1, idx[2] + 1] - old[idx[1] + 1, 1] - old[1, idx[2] + 1] + old[1, 1]))
+                new[idx] = old[idx[1] + 1, idx[2] + 1] - old[idx[1] + 1, 1] * old[1, idx[2] + 1] / old[1, 1]
+                # new[idx] = exp(F.offset - old[idx[1] + 1, idx[2] + 1]) * (1.0 - exp(old[idx[1] + 1, idx[2] + 1] - old[idx[1] + 1, 1] - old[1, idx[2] + 1] + old[1, 1]))
             end
         end
         old = deepcopy(new)
