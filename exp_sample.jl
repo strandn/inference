@@ -48,8 +48,8 @@ function aca_exp()
 
     F = ResFunc(neglogposterior, (x0_dom, λ_dom), 0.0)
 
-    F.I, F.J = open("exp_IJ.txt", "r") do file
-        eval(Meta.parse(readline(file)))
+    open("exp_IJ.txt", "r") do file
+        F.I, F.J = eval(Meta.parse(readline(file)))
         F.offset = parse(Float64, readline(file))
     end
 
