@@ -117,20 +117,18 @@ function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, 
             
             # Find position of largest residuals
             idx = argmax(reslist)
-            xy = [xylist[idx]]
-            MPI.Bcast!(xy, 0, mpi_comm)
-            res_new = [reslist[idx]]
-            MPI.Bcast!(res_new, 0, mpi_comm)
+            xy = xylist[idx]
+            res_new = reslist[idx]
             if isempty(F.I[i + 1])
-                push!(F.resfirst, res_new[])
-            elseif res_new[] > F.resfirst[i]
-                F.resfirst[i] = res_new[]
-            elseif res_new[] / F.resfirst[i] < F.cutoff
+                push!(F.resfirst, res_new)
+            elseif res_new > F.resfirst[i]
+                F.resfirst[i] = res_new
+            elseif res_new / F.resfirst[i] < F.cutoff
                 break
             end
-            updateIJ(F, xy[])
+            updateIJ(F, xy)
             if mpi_rank == 0
-                println("rank = $r res = $(res_new[]) xy = $(xy[])")
+                println("rank = $r res = $res_new xy = $xy")
                 flush(stdout)
             end
         end
