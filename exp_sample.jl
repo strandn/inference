@@ -50,6 +50,7 @@ function aca_exp()
 
     F.I, F.J = open("exp_IJ.txt", "r") do file
         eval(Meta.parse(readline(file)))
+        F.offset = parse(Float64, readline(file))
     end
 
     open("exp_samples.txt", "w") do file
