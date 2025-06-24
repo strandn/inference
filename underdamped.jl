@@ -21,10 +21,11 @@ function V(r, tspan, dt, data_x, data_v)
     obs_v = sol[2, :]
 
     s2 = 0.15
-    mu = [5.0, 5.0, 0.7, 0.7]
+    mu = [5.0, 5.0, 1.0, 2.0]
     sigma = zeros(4, 4)
-    sigma[1, 1] = sigma[2, 2] = sigma[3, 3] = 1.0
-    sigma[4, 4] = 0.1
+    sigma[1, 1] = sigma[2, 2] = 1.0
+    sigma[3, 3] = 0.1
+    sigma[4, 4] = 2.0
     diff = [x0, v0, ω, γ] - mu
     result = 1 / 2 * dot(diff, inv(sigma) * diff)
     for i in eachindex(data_x)
@@ -86,7 +87,7 @@ function aca_damped()
     x0_dom = (2.5, 12.5)
     v0_dom = (0.5, 5.0)
     ω_dom = (0.5, 2.0)
-    γ_dom = (0.1, 1.0)
+    γ_dom = (0.1, 7.5)
 
     F = ResFunc(neglogposterior, (x0_dom, v0_dom, ω_dom, γ_dom), cutoff)
 
