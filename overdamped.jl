@@ -21,10 +21,10 @@ function V(r, tspan, dt, data_x, data_v)
     obs_v = sol[2, :]
 
     s2 = 0.2
-    mu = [5.0, 5.0, 0.7, 0.7]
+    mu = [5.0, 5.0, 2.0, 2.0]
     sigma = zeros(4, 4)
     sigma[1, 1] = sigma[2, 2] = sigma[3, 3] = 1.0
-    sigma[4, 4] = 0.1
+    sigma[4, 4] = 0.5
     diff = [x0, v0, ω, γ] - mu
     result = 1 / 2 * dot(diff, inv(sigma) * diff)
     for i in eachindex(data_x)
@@ -45,7 +45,7 @@ function aca_damped()
     x0_true = 7.5
     v0_true = 2.5
     ω_true = 1.0
-    γ_true = 0.4
+    γ_true = 3.5
 
     truedata_x = zeros(nsteps + 1)
     truedata_v = zeros(nsteps + 1)
@@ -72,7 +72,7 @@ function aca_damped()
     neglogposterior(x0, v0, ω, γ) = V([x0, v0, ω, γ], tspan, dt, data_x, data_v)
 
     if mpi_rank == 0
-        open("underdamped_data.txt", "w") do file
+        open("overdamped_data.txt", "w") do file
             for i in 1:nsteps+1
                 write(file, "$(tlist[i]) $(truedata_x[i]) $(truedata_v[i]) $(data_x[i]) $(data_v[i])\n")
             end
@@ -86,7 +86,7 @@ function aca_damped()
     x0_dom = (2.5, 12.5)
     v0_dom = (0.5, 5.0)
     ω_dom = (0.5, 2.0)
-    γ_dom = (0.1, 1.0)
+    γ_dom = (0.5, 10.0)
 
     F = ResFunc(neglogposterior, (x0_dom, v0_dom, ω_dom, γ_dom), cutoff)
 
@@ -100,7 +100,7 @@ function aca_damped()
     normbuf = [0.0]
 
     if mpi_rank == 0
-        open("underdamped_IJ.txt", "w") do file
+        open("overdamped_IJ.txt", "w") do file
             write(file, "$IJ\n")
         end
         norm = compute_norm(F)
