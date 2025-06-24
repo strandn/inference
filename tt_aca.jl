@@ -120,6 +120,8 @@ function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, 
             end
             xylist = reshape(xylist, (n_pivots, n_chains_reduced))
             reslist = reshape(reslist, (n_pivots, n_chains_reduced))
+
+            MPI.Barrier(mpi_comm)
             
             # Find position of largest residuals
             idx = argmax(reslist)
