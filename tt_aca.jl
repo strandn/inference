@@ -585,6 +585,8 @@ end
 function compute_marginal(F::ResFunc{T, N}, pos::Int64) where {T, N}
     order = F.ndims
     npivots = [length(F.I[i]) for i in 2:order]
+
+    nbins = 100
     
     Lenv = undef
     Renv = undef
@@ -649,4 +651,42 @@ function compute_marginal(F::ResFunc{T, N}, pos::Int64) where {T, N}
             Renv = Renvi * inv(AIJ) * Renv
         end
     end
+    xlist = LinRange(F.domain[pos]..., nbins + 1)
+    ylist = LinRange(F.domain[pos + 1]..., nbins + 1)
+    
+    result = undef
+    if pos == 1
+        result = zeros(1, nbins, nbins, npivots[2])
+        for j in 1:nbins
+            for k in 1:nbins
+                for l in 1:npivots[2]
+                    result[j, k, l] = expnegf(F, (xlist[j], ylist[k], F.J[3][l]...)...)
+                end
+            end
+        end
+        result *= Renv
+    elseif pos + 1 == order
+        result = zeros(npivots[order - 2], nbins, nbins)
+        for i in 1:npivots[order - 2]
+            for j in 1:nbins
+                for k in 1:nbins
+                    result[i, j, k] = expnegf(F, (F.I[order - 1][i]..., xlist[j], ylist[k])...)
+                end
+            end
+        end
+        result = Lenv * result
+    else
+        result = zeros((npivots[pos - 1], nbins, nbins, npivots[pos + 1]))
+        for i in 1:npivots[pos - 1]
+            for j in 1:nbins
+                for k in 1:nbins
+                    for l in 1:npivots[pos + 1]
+                        result[i, j, k, l] = expnegf(F, (F.I[count][1]..., xlist[j], ylist[k], F.J[count + 2][l]...)...)
+                    end
+                end
+            end
+        end
+        result = Lenv * result * Renv
+    end
+    return result
 end

@@ -122,7 +122,7 @@ maxr = 50
 # n_chains = 48
 # n_samples = 100
 n_chains = 40
-n_samples = 125
+n_samples = 200
 jump_width = 0.01
 cutoff = 1.0e-3
 
