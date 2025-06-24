@@ -45,11 +45,11 @@ function (F::ResFunc{T, N})(elements::T...) where {T, N}
                 row = idx[1] == k + 1 ? x : F.I[F.pos + 1][idx[1]]
                 col = idx[2] == k + 1 ? y : F.J[F.pos + 1][idx[2]]
                 new[idx] = expnegf(F, (row..., col...)...)
+                println("$idx $row $col $(F.f((row..., col...)...)) $(expnegf(F, (row..., col...)...))")
             else
                 new[idx] = old[idx[1] + 1, idx[2] + 1] - old[idx[1] + 1, 1] * old[1, idx[2] + 1] / old[1, 1]
             end
         end
-        @show new
         old = deepcopy(new)
     end
     return new[]
