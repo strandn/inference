@@ -123,11 +123,11 @@ function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, 
             xy = [xylist[idx]]
             MPI.Bcast!(xy, 0, mpi_comm)
             res_new = [reslist[idx]]
-            if isempty(F.I[i + 1]) || F.f(xy...) < F.offset
-                offset_new = [F.f(xy...)]
+            if isempty(F.I[i + 1]) || F.f(xy[]...) < F.offset
+                offset_new = [F.f(xy[]...)]
                 MPI.Bcast!(offset_new, 0, mpi_comm)
                 F.offset = offset_new[]
-                res_new = F(xy...)
+                res_new = F(xy[]...)
             end
             MPI.Bcast!(res_new, 0, mpi_comm)
             if res_new[] < F.cutoff
