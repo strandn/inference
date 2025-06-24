@@ -103,6 +103,7 @@ function aca_damped()
     if mpi_rank == 0
         open("overdamped_IJ.txt", "w") do file
             write(file, "$IJ\n")
+            write(file, "$(F.offset)\n")
         end
         norm = compute_norm(F)
         normbuf = [norm]
