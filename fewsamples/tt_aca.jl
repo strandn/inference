@@ -206,6 +206,7 @@ function compute_norm(F::ResFunc{T, N}) where {T, N}
     for j in 1:npivots[1]
         f(x) = expnegf(F, (x, F.J[2][j]...)...)
         norm[j] = quadgk(f, F.domain[1]...)[1]
+        println(norm[j])
     end
     AIJ = zeros(npivots[1], npivots[1])
     for j in 1:npivots[1]
@@ -213,7 +214,6 @@ function compute_norm(F::ResFunc{T, N}) where {T, N}
             AIJ[j, k] = expnegf(F, (F.I[2][j]..., F.J[2][k]...)...)
         end
     end
-    @show inv(AIJ)
     norm *= inv(AIJ)
     for i in 2:order-1
         normi = zeros((npivots[i - 1], npivots[i]))
@@ -221,6 +221,7 @@ function compute_norm(F::ResFunc{T, N}) where {T, N}
             for k in 1:npivots[i]
                 f(x) = expnegf(F, (F.I[i][j]..., x, F.J[i + 1][k]...)...)
                 normi[j, k] = quadgk(f, F.domain[i]...)[1]
+                println(normi[j, k])
             end
         end
         AIJ = zeros(npivots[i], npivots[i])
@@ -229,13 +230,13 @@ function compute_norm(F::ResFunc{T, N}) where {T, N}
                 AIJ[j, k] = expnegf(F, (F.I[i + 1][j]..., F.J[i + 1][k]...)...)
             end
         end
-        @show inv(AIJ)
         norm *= normi * inv(AIJ)
     end
     R = zeros(npivots[order - 1])
     for j in 1:npivots[order - 1]
         f(x) = expnegf(F, (F.I[order][j]..., x)...)
         R[j] = quadgk(f, F.domain[order]...)[1]
+        println(R[j])
     end
     norm *= R
     return norm[]
@@ -681,7 +682,7 @@ function compute_marginal(F::ResFunc{T, N}, pos::Int64, norm::T) where {T, N}
                 end
                 resulti = Lenv * resulti * Renv
             end
-            result[j, k] = resulti[]
+            result[j, k] = resulti[] / norm
         end
     end
     return result
