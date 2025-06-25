@@ -10,7 +10,7 @@ function damped_oscillator!(du, u, p, t)
     du[2] = -ω^2 * x - γ * v
 end
 
-function V(r, tspan, dt, data_x, data_v)
+function V(r, tspan, dt, data_x, data_v, mu, sigma)
     x0 = r[1]
     v0 = r[2]
     ω = r[3]
@@ -21,13 +21,8 @@ function V(r, tspan, dt, data_x, data_v)
     obs_v = sol[2, :]
 
     s2 = 0.15
-    mu = [5.0, 5.0, 1.0, 2.0]
-    sigma = zeros(4, 4)
-    sigma[1, 1] = sigma[2, 2] = 1.0
-    sigma[3, 3] = 0.1
-    sigma[4, 4] = 2.0
     diff = [x0, v0, ω, γ] - mu
-    result = 1 / 2 * dot(diff, inv(sigma) * diff)
+    result = 1 / 2 * dot(diff, inv(Diagonal(sigma)) * diff)
     for i in eachindex(data_x)
         result += log(2 * pi * s2) + (data_x[i] - obs_x[i]) ^ 2 / (2 * s2) + (data_v[i] - obs_v[i]) ^ 2 / (2 * s2)
     end
@@ -70,7 +65,9 @@ function aca_damped()
     MPI.Bcast!(data_x, 0, mpi_comm)
     MPI.Bcast!(data_v, 0, mpi_comm)
 
-    neglogposterior(x0, v0, ω, γ) = V([x0, v0, ω, γ], tspan, dt, data_x, data_v)
+    mu = [5.0, 5.0, 1.0, 2.0]
+    sigma = [1.0, 1.0, 0.1, 2.0]
+    neglogposterior(x0, v0, ω, γ) = V([x0, v0, ω, γ], tspan, dt, data_x, data_v, mu, sigma)
 
     if mpi_rank == 0
         open("overdamped_data.txt", "w") do file
@@ -89,7 +86,7 @@ function aca_damped()
     ω_dom = (0.5, 2.0)
     γ_dom = (0.1, 7.5)
 
-    F = ResFunc(neglogposterior, (x0_dom, v0_dom, ω_dom, γ_dom), cutoff)
+    F = ResFunc(neglogposterior, (x0_dom, v0_dom, ω_dom, γ_dom), cutoff, mu, sigma)
 
     if mpi_rank == 0
         println("Starting TT-cross ACA...")
@@ -124,7 +121,7 @@ maxr = 50
 n_chains = 48
 n_samples = 50
 jump_width = 0.1
-cutoff = 1.0e-3
+cutoff = 1.0e-2
 
 start_time = time()
 aca_damped()

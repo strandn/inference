@@ -20,10 +20,12 @@ mutable struct ResFunc{T, N}
     # Convergence threshhold (algorithm stops if the largest residual in the current iteration falls below this number)
     cutoff::T
     offset::T
+    mu::Vector{T}
+    sigma::Vector{T}
 
     # Constructor
-    function ResFunc(f, domain::NTuple{N, Tuple{T, T}}, cutoff::T) where {T, N}
-        new{T, N}(f, N, 0, domain, [[[T[]]]; [Vector{T}[] for _ in 2:N]], [[[T[]]]; [Vector{T}[] for _ in 2:N]], cutoff, 0.0)
+    function ResFunc(f, domain::NTuple{N, Tuple{T, T}}, cutoff::T, mu::Vector{T}, sigma::Vector{T}) where {T, N}
+        new{T, N}(f, N, 0, domain, [[[T[]]]; [Vector{T}[] for _ in 2:N]], [[[T[]]]; [Vector{T}[] for _ in 2:N]], cutoff, 0.0, mu, sigma)
     end
 end
 
@@ -157,12 +159,20 @@ function max_metropolis(F::ResFunc{T, N}, pivot::Vector{T}, n_samples::Int64, ju
     max_res = 0.0
     max_xy = zeros(F.ndims)
 
-    for k in 1:order
-        chain[1, k] = rand() * (ub[k] - lb[k]) + lb[k]
-    end
-    while abs(F([pivot; [chain[1, k] for k in 1:order]]...)) == 0.0
+    # for k in 1:order
+    #     chain[1, k] = rand() * (ub[k] - lb[k]) + lb[k]
+    # end
+    # while abs(F([pivot; [chain[1, k] for k in 1:order]]...)) == 0.0
+    #     for k in 1:order
+    #         chain[1, k] = rand() * (ub[k] - lb[k]) + lb[k]
+    #     end
+    # end
+    while true
         for k in 1:order
-            chain[1, k] = rand() * (ub[k] - lb[k]) + lb[k]
+            chain[1, k] = F.mu[k + F.pos - 1] + sqrt(F.sigma[k + F.pos - 1]) * randn()
+        end
+        if abs(F([pivot; chain[1, 1:order]]...)) > 0.0
+            break
         end
     end
 
