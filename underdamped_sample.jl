@@ -56,7 +56,7 @@ function aca_damped()
     ω_dom = (0.5, 2.0)
     γ_dom = (0.1, 7.5)
 
-    F = ResFunc(neglogposterior, (x0_dom, v0_dom, ω_dom, γ_dom), cutoff)
+    F = ResFunc(neglogposterior, (x0_dom, v0_dom, ω_dom, γ_dom), 0.0)
 
     open("underdamped_IJ.txt", "r") do file
         F.I, F.J = eval(Meta.parse(readline(file)))
