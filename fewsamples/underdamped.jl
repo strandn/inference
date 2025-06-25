@@ -15,6 +15,9 @@ function V(r, tspan, dt, data_x, data_v, mu, sigma)
     v0 = r[2]
     ω = r[3]
     γ = r[4]
+    if ω < 0 || γ < 0
+        return Inf
+    end
     prob = ODEProblem(damped_oscillator!, [x0, v0], tspan, [ω, γ])
     sol = solve(prob, Tsit5(), saveat=dt)
     obs_x = sol[1, :]
@@ -65,8 +68,8 @@ function aca_damped()
     MPI.Bcast!(data_x, 0, mpi_comm)
     MPI.Bcast!(data_v, 0, mpi_comm)
 
-    mu = [5.0, 5.0, 1.0, 2.0]
-    sigma = [1.0, 1.0, 0.1, 2.0]
+    mu = [5.0, 5.0, 2.0, 2.0]
+    sigma = [25.0, 25.0, 4.0, 4.0]
     neglogposterior(x0, v0, ω, γ) = V([x0, v0, ω, γ], tspan, dt, data_x, data_v, mu, sigma)
 
     if mpi_rank == 0
@@ -81,10 +84,10 @@ function aca_damped()
         println("Computing true density...")
     end
 
-    x0_dom = (2.5, 12.5)
-    v0_dom = (0.5, 5.0)
-    ω_dom = (0.5, 2.0)
-    γ_dom = (0.1, 7.5)
+    x0_dom = (1.0, 12.0)
+    v0_dom = (0.5, 10.0)
+    ω_dom = (0.3, 3.5)
+    γ_dom = (0.1, 5.0)
 
     F = ResFunc(neglogposterior, (x0_dom, v0_dom, ω_dom, γ_dom), cutoff, mu, sigma)
 

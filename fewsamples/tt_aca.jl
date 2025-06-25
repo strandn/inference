@@ -171,7 +171,7 @@ function max_metropolis(F::ResFunc{T, N}, pivot::Vector{T}, n_samples::Int64, ju
         for k in 1:order
             chain[1, k] = F.mu[k + F.pos - 1] + sqrt(F.sigma[k + F.pos - 1]) * randn()
         end
-        if abs(F([pivot; chain[1, 1:order]]...)) > 0.0
+        if expnegf(F, [pivot; chain[1, 1:order]]...) > 0.0 && abs(F([pivot; chain[1, 1:order]]...)) > 0.0
             break
         end
     end
