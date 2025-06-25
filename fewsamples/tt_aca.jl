@@ -213,6 +213,7 @@ function compute_norm(F::ResFunc{T, N}) where {T, N}
             AIJ[j, k] = expnegf(F, (F.I[2][j]..., F.J[2][k]...)...)
         end
     end
+    @show inv(AIJ)
     norm *= inv(AIJ)
     for i in 2:order-1
         normi = zeros((npivots[i - 1], npivots[i]))
@@ -228,6 +229,7 @@ function compute_norm(F::ResFunc{T, N}) where {T, N}
                 AIJ[j, k] = expnegf(F, (F.I[i + 1][j]..., F.J[i + 1][k]...)...)
             end
         end
+        @show inv(AIJ)
         norm *= normi * inv(AIJ)
     end
     R = zeros(npivots[order - 1])
@@ -679,7 +681,7 @@ function compute_marginal(F::ResFunc{T, N}, pos::Int64, norm::T) where {T, N}
                 end
                 resulti = Lenv * resulti * Renv
             end
-            result[j, k] = resulti[] / norm
+            result[j, k] = resulti[]
         end
     end
     return result
