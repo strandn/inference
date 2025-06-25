@@ -69,7 +69,7 @@ function aca_damped()
     nbins = 100
     grid = (LinRange(x0_dom..., nbins + 1), LinRange(v0_dom..., nbins + 1), LinRange(ω_dom..., nbins + 1), LinRange(γ_dom..., nbins + 1))
 
-    for count in 1:d-1
+    for count in 1:3
         dens = compute_marginal(F, count, norm)
         open("overdamped_marginal_$count.txt", "w") do file
             for i in 1:nbins
