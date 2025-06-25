@@ -74,7 +74,7 @@ function aca_damped()
         open("underdamped_marginal_$count.txt", "w") do file
             for i in 1:nbins
                 for j in 1:nbins
-                    write(file, "$(grid[count][i]) $(grid[count + 1][j]) $(dens[i][j])\n")
+                    write(file, "$(grid[count][i]) $(grid[count + 1][j]) $(dens[i, j])\n")
                 end
             end
         end
