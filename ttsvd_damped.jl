@@ -27,11 +27,6 @@ function nlp(r, tspan, nsteps, data_x, data_v, mu, sigma)
         obs_x = fill(200.0, nsteps + 1)
         obs_v = fill(200.0, nsteps + 1)
     end
-    println("$x0 $v0 $ω $γ")
-    println(obs_x)
-    println(obs_v)
-    println(data_x)
-    println(data_v)
 
     s2 = 0.15
     diff = [x0, v0, ω, γ] - mu
@@ -95,10 +90,6 @@ function ttsvd_damped()
 
     peak = argmin(nlA)
     println([grid[i][peak[i]] for i in 1:d])
-    println()
-    println(nlA[16, 6, 7, 3])
-    println()
-    println(nlA[peak])
     println()
     ranges = [c-2:c+2 for c in Tuple(peak)]
     display(nlA[ranges...])
