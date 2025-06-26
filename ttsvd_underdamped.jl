@@ -114,7 +114,6 @@ function ttsvd_damped()
     nlpsi[d] = S * V
 
     @show MPS(nlpsi)
-    println()
 
     println("Computing posterior TT...\n")
 
@@ -129,5 +128,5 @@ function ttsvd_damped()
 end
 
 d = 4
-cutoff = 1.0e-10
+cutoff = 1.0e-8
 ttsvd_damped()
