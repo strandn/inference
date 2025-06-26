@@ -67,8 +67,8 @@ function ttsvd_damped()
 
     x0_dom = (0.0, 15.0)
     v0_dom = (0.0, 15.0)
-    ω_dom = (0.1, 5.0)
-    γ_dom = (0.1, 6.0)
+    ω_dom = (-1.5, 5.5)
+    γ_dom = (0.1, 7.5)
 
     nbins = 100
     grid = (LinRange(x0_dom..., nbins + 1), LinRange(v0_dom..., nbins + 1), LinRange(ω_dom..., nbins + 1), LinRange(γ_dom..., nbins + 1))
