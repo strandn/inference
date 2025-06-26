@@ -88,7 +88,6 @@ function ttsvd_damped()
             end
         end
     end
-    nlA .-= minimum(nlA)
     A .= exp.(-nlA)
 
     psi = Vector{ITensor}(undef, d)
