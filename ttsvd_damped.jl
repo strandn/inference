@@ -10,7 +10,7 @@ function damped_oscillator!(du, u, p, t)
     du[2] = -ω ^ 2 * x - γ * v
 end
 
-function V(r, tspan, dt, data_x, data_v, mu, sigma)
+function nlp(r, tspan, dt, data_x, data_v, mu, sigma)
     x0 = r[1]
     v0 = r[2]
     ω = r[3]
@@ -59,7 +59,7 @@ function ttsvd_damped()
 
     mu = [5.0, 5.0, 2.0, 2.0]
     sigma = [25.0, 25.0, 4.0, 4.0]
-    neglogposterior(x0, v0, ω, γ) = V([x0, v0, ω, γ], tspan, dt, data_x, data_v, mu, sigma)
+    neglogposterior(x0, v0, ω, γ) = nlp([x0, v0, ω, γ], tspan, dt, data_x, data_v, mu, sigma)
 
     x0_dom = (0.0, 15.0)
     v0_dom = (0.0, 15.0)
