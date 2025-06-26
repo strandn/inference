@@ -76,8 +76,8 @@ function ttsvd_damped()
 
     println("Populating tensor...")
     
-    A = zeros(Float64, grid...)
-    nlA = zeros(Float64, grid...)
+    A = zeros(Float64, nbins, nbins, nbins, nbins)
+    nlA = zeros(Float64, nbins, nbins, nbins, nbins)
     Threads.@threads for i in 1:nbins
         for j in 1:nbins
             for k in 1:nbins
