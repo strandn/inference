@@ -10,18 +10,21 @@ function damped_oscillator!(du, u, p, t)
     du[2] = -ω ^ 2 * x - γ * v
 end
 
-function nlp(r, tspan, dt, data_x, data_v, mu, sigma)
+function nlp(r, tspan, nsteps, data_x, data_v, mu, sigma)
+    dt = (tspan[2] - tspan[1]) / nsteps
     x0 = r[1]
     v0 = r[2]
     ω = r[3]
     γ = r[4]
     prob = ODEProblem(damped_oscillator!, [x0, v0], tspan, [ω, γ])
     sol = solve(prob, Tsit5(), saveat=dt)
-    if sol.retcode != :Success
-        return 200.0
+    if sol.retcode == :Success
+        obs_x = sol[1, :]
+        obs_v = sol[2, :]
+    else
+        obs_x = fill(200.0, nsteps + 1)
+        obs_v = fill(200.0, nsteps + 1)
     end
-    obs_x = sol[1, :]
-    obs_v = sol[2, :]
 
     s2 = 0.15
     diff = [x0, v0, ω, γ] - mu
@@ -59,7 +62,7 @@ function ttsvd_damped()
 
     mu = [5.0, 5.0, 2.0, 2.0]
     sigma = [25.0, 25.0, 4.0, 4.0]
-    neglogposterior(x0, v0, ω, γ) = nlp([x0, v0, ω, γ], tspan, dt, data_x, data_v, mu, sigma)
+    neglogposterior(x0, v0, ω, γ) = nlp([x0, v0, ω, γ], tspan, nsteps, data_x, data_v, mu, sigma)
 
     x0_dom = (0.0, 15.0)
     v0_dom = (0.0, 15.0)
@@ -114,7 +117,6 @@ function ttsvd_damped()
         nlpsi[i], S, V = svd(S * V, link, sites[i]; cutoff=cutoff)
     end
     nlpsi[d] = S * V
-    println(linkinds(MPS(nlpsi)))
 
     println("Computing posterior TT...")
 
@@ -124,7 +126,12 @@ function ttsvd_damped()
         psi[i], S, V = svd(S * V, link, sites[i]; cutoff=cutoff)
     end
     psi[d] = S * V
+
+    println(linkinds(MPS(nlpsi)))
     println(linkinds(MPS(psi)))
+
+    @show MPS(nlpsi)
+    @show MPS(psi)
 end
 
 d = 4

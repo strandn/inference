@@ -10,18 +10,21 @@ function damped_oscillator!(du, u, p, t)
     du[2] = -ω ^ 2 * x - γ * v
 end
 
-function V(r, tspan, dt, data_x, data_v, mu, sigma)
+function V(r, tspan, nsteps, data_x, data_v, mu, sigma)
+    dt = (tspan[2] - tspan[1]) / nsteps
     x0 = r[1]
     v0 = r[2]
     ω = r[3]
     γ = r[4]
     prob = ODEProblem(damped_oscillator!, [x0, v0], tspan, [ω, γ])
     sol = solve(prob, Tsit5(), saveat=dt)
-    if sol.retcode != :Success
-        return 200.0
+    if sol.retcode == :Success
+        obs_x = sol[1, :]
+        obs_v = sol[2, :]
+    else
+        obs_x = fill(200.0, nsteps + 1)
+        obs_v = fill(200.0, nsteps + 1)
     end
-    obs_x = sol[1, :]
-    obs_v = sol[2, :]
 
     s2 = 0.15
     diff = [x0, v0, ω, γ] - mu
@@ -70,7 +73,7 @@ function aca_damped()
 
     mu = [5.0, 5.0, 2.0, 2.0]
     sigma = [25.0, 25.0, 4.0, 4.0]
-    neglogposterior(x0, v0, ω, γ) = V([x0, v0, ω, γ], tspan, dt, data_x, data_v, mu, sigma)
+    neglogposterior(x0, v0, ω, γ) = V([x0, v0, ω, γ], tspan, nsteps, data_x, data_v, mu, sigma)
 
     if mpi_rank == 0
         open("underdamped_data.txt", "w") do file
