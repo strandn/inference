@@ -18,7 +18,7 @@ function nlp(r, tspan, dt, data_x, data_v, mu, sigma)
     prob = ODEProblem(damped_oscillator!, [x0, v0], tspan, [ω, γ])
     sol = solve(prob, Tsit5(), saveat=dt)
     if sol.retcode != :Success
-        return 200
+        return 200.0
     end
     obs_x = sol[1, :]
     obs_v = sol[2, :]
