@@ -112,9 +112,7 @@ function ttsvd_damped()
         nlpsi[i], S, V = svd(S * V, link, sites[i]; cutoff=cutoff)
     end
     nlpsi[d] = S * V
-
     @show MPS(nlpsi)
-    println()
 
     println("Computing posterior TT...\n")
 
@@ -124,10 +122,9 @@ function ttsvd_damped()
         psi[i], S, V = svd(S * V, link, sites[i]; cutoff=cutoff)
     end
     psi[d] = S * V
-
     @show MPS(psi)
 end
 
 d = 4
-cutoff = 1.0e-10
+cutoff = 1.0e-8
 ttsvd_damped()
