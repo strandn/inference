@@ -127,11 +127,15 @@ function ttsvd_damped()
     end
     psi[d] = S * V
 
-    println(linkinds(MPS(nlpsi)))
-    println(linkinds(MPS(psi)))
-
     @show MPS(nlpsi)
     @show MPS(psi)
+
+    for i in 1:d
+        @show nlpsi[i]
+    end
+    for i in 1:d
+        @show psi[i]
+    end
 end
 
 d = 4
