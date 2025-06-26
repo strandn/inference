@@ -1,4 +1,4 @@
-qsubmit.sh
+*.sh
 *.out
 *.err
 *.nb

@@ -20,10 +20,12 @@ mutable struct ResFunc{T, N}
     # Convergence threshhold (algorithm stops if the largest residual in the current iteration falls below this number)
     cutoff::T
     offset::T
+    mu::Vector{T}
+    sigma::Vector{T}
 
     # Constructor
-    function ResFunc(f, domain::NTuple{N, Tuple{T, T}}, cutoff::T) where {T, N}
-        new{T, N}(f, N, 0, domain, [[[T[]]]; [Vector{T}[] for _ in 2:N]], [[[T[]]]; [Vector{T}[] for _ in 2:N]], cutoff, 0.0)
+    function ResFunc(f, domain::NTuple{N, Tuple{T, T}}, cutoff::T, mu::Vector{T}, sigma::Vector{T}) where {T, N}
+        new{T, N}(f, N, 0, domain, [[[T[]]]; [Vector{T}[] for _ in 2:N]], [[[T[]]]; [Vector{T}[] for _ in 2:N]], cutoff, 0.0, mu, sigma)
     end
 end
 
@@ -157,12 +159,20 @@ function max_metropolis(F::ResFunc{T, N}, pivot::Vector{T}, n_samples::Int64, ju
     max_res = 0.0
     max_xy = zeros(F.ndims)
 
-    for k in 1:order
-        chain[1, k] = rand() * (ub[k] - lb[k]) + lb[k]
-    end
-    while abs(F([pivot; [chain[1, k] for k in 1:order]]...)) == 0.0
+    # for k in 1:order
+    #     chain[1, k] = rand() * (ub[k] - lb[k]) + lb[k]
+    # end
+    # while abs(F([pivot; [chain[1, k] for k in 1:order]]...)) == 0.0
+    #     for k in 1:order
+    #         chain[1, k] = rand() * (ub[k] - lb[k]) + lb[k]
+    #     end
+    # end
+    while true
         for k in 1:order
-            chain[1, k] = rand() * (ub[k] - lb[k]) + lb[k]
+            chain[1, k] = F.mu[k + F.pos - 1] + sqrt(F.sigma[k + F.pos - 1]) * randn()
+        end
+        if expnegf(F, [pivot; chain[1, 1:order]]...) > 0.0 && abs(F([pivot; chain[1, 1:order]]...)) > 0.0
+            break
         end
     end
 
@@ -170,11 +180,11 @@ function max_metropolis(F::ResFunc{T, N}, pivot::Vector{T}, n_samples::Int64, ju
         p_new = zeros(order)
         for k in 1:order
             p_new[k] = rand(Normal(chain[i - 1, k], jump_width * (ub[k] - lb[k])))
-            if p_new[k] < lb[k]
-                p_new[k] = lb[k] + abs(p_new[k] - lb[k])
-            elseif p_new[k] > ub[k]
-                p_new[k] = ub[k] - abs(p_new[k] - ub[k])
-            end
+            # if p_new[k] < lb[k]
+            #     p_new[k] = lb[k] + abs(p_new[k] - lb[k])
+            # elseif p_new[k] > ub[k]
+            #     p_new[k] = ub[k] - abs(p_new[k] - ub[k])
+            # end
         end
 
         arg_old = [pivot; [chain[i - 1, k] for k in 1:order]]
@@ -183,7 +193,7 @@ function max_metropolis(F::ResFunc{T, N}, pivot::Vector{T}, n_samples::Int64, ju
         f_new = abs(F(arg_new...))
         acceptance_prob = min(1, f_new / f_old)
         
-        if isnan(acceptance_prob) || rand() < acceptance_prob
+        if rand() < acceptance_prob
             chain[i, :] = p_new
             if f_new > max_res
                 max_res = f_new
