@@ -69,7 +69,7 @@ function ttsvd_damped()
     nbins = 30
     grid = (LinRange(x0_dom..., nbins + 1), LinRange(v0_dom..., nbins + 1), LinRange(ω_dom..., nbins + 1), LinRange(γ_dom..., nbins + 1))
 
-    println("Populating A tensor...")
+    println("Populating tensor...")
     
     sites = siteinds(nbins, d)
     A = ITensor(Float64, sites[1], sites[2], sites[3], sites[4])
@@ -88,7 +88,20 @@ function ttsvd_damped()
             end
         end
     end
-    A .= exp.(offset .- nlA)
+
+    Threads.@threads for i in 1:nbins
+        for j in 1:nbins
+            for k in 1:nbins
+                for l in 1:nbins
+                    val = neglogposterior(grid[1][i], grid[2][j], grid[3][k], grid[4][l])
+                    A[sites[1] => i, sites[2] => j, sites[3] => k, sites[4] => l] = exp(offset - nlA[sites[1] => i, sites[2] => j, sites[3] => k, sites[4] => l])
+                    if val < offset
+                        offset = val
+                    end
+                end
+            end
+        end
+    end
 
     psi = Vector{ITensor}(undef, d)
     nlpsi = Vector{ITensor}(undef, d)
