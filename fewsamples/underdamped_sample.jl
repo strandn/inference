@@ -56,10 +56,10 @@ function aca_damped()
     sigma = [25.0, 25.0, 4.0, 4.0]
     neglogposterior(x0, v0, ω, γ) = V([x0, v0, ω, γ], tspan, nsteps, data_x, data_v, mu, sigma)
 
-    x0_dom = (2.5, 12.5)
-    v0_dom = (0.5, 5.0)
-    ω_dom = (0.5, 2.0)
-    γ_dom = (0.1, 7.5)
+    x0_dom = (0.0, 15.0)
+    v0_dom = (0.0, 15.0)
+    ω_dom = (0.1, 5.0)
+    γ_dom = (0.1, 6.0)
 
     F = ResFunc(neglogposterior, (x0_dom, v0_dom, ω_dom, γ_dom), 0.0, mu, sigma)
 
