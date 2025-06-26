@@ -110,7 +110,7 @@ function ttsvd_damped()
 
     nlpsi[1], S, V = svd(nlA, sites[1]; cutoff=cutoff)
     for i in 2:d-1
-        link = commonindex(sites[i - 1], S)
+        link = commonindex(nlpsi[i - 1], S)
         nlpsi[i], S, V = svd(S * V, link, sites[i]; cutoff=cutoff)
     end
     nlpsi[d] = S * V
@@ -120,7 +120,7 @@ function ttsvd_damped()
 
     psi[1], S, V = svd(A, sites[1]; cutoff=cutoff)
     for i in 2:d-1
-        link = commonindex(S, V)
+        link = commonindex(psi[i - 1], S)
         psi[i], S, V = svd(S * V, link, sites[i]; cutoff=cutoff)
     end
     psi[d] = S * V
