@@ -548,7 +548,7 @@ function sample_from_tt(F::ResFunc{T, N}) where {T, N}
             for j in 1:npivots[count - 1]
                 for k in 1:npivots[count]
                     f(x) = expnegf(F, (F.I[count][j]..., x, F.J[count + 1][k]...)...)
-                    normi[j, k] = quadgk(f, F.domain[count][1]...)[1]
+                    normi[j, k] = quadgk(f, F.domain[count]...)[1]
                 end
             end
             normi = Lenv * normi * Renv
