@@ -69,7 +69,7 @@ function ttsvd_damped()
     ω_dom = (0.1, 5.0)
     γ_dom = (0.1, 6.0)
 
-    nbins = 30
+    nbins = 100
     grid = (LinRange(x0_dom..., nbins + 1), LinRange(v0_dom..., nbins + 1), LinRange(ω_dom..., nbins + 1), LinRange(γ_dom..., nbins + 1))
 
     println("Populating tensor...")
