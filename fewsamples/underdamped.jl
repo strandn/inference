@@ -18,6 +18,8 @@ function V(r, tspan, nsteps, data_x, data_v, mu, sigma)
     γ = r[4]
     prob = ODEProblem(damped_oscillator!, [x0, v0], tspan, [ω, γ])
     sol = solve(prob, Tsit5(), saveat=dt)
+    obs_x = undef
+    obs_v = undef
     if sol.retcode == :Success
         obs_x = sol[1, :]
         obs_v = sol[2, :]

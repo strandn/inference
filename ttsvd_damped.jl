@@ -18,6 +18,8 @@ function nlp(r, tspan, nsteps, data_x, data_v, mu, sigma)
     γ = r[4]
     prob = ODEProblem(damped_oscillator!, [x0, v0], tspan, [ω, γ])
     sol = solve(prob, Tsit5(), saveat=dt)
+    obs_x = undef
+    obs_v = undef
     if sol.retcode == :Success
         obs_x = sol[1, :]
         obs_v = sol[2, :]
@@ -69,49 +71,37 @@ function ttsvd_damped()
     ω_dom = (0.1, 5.0)
     γ_dom = (0.1, 6.0)
 
-    nbins = 100
+    nbins = 30
     grid = (LinRange(x0_dom..., nbins + 1), LinRange(v0_dom..., nbins + 1), LinRange(ω_dom..., nbins + 1), LinRange(γ_dom..., nbins + 1))
 
     println("Populating tensor...")
     
     sites = siteinds(nbins, d)
-    A = ITensor(Float64, sites[1], sites[2], sites[3], sites[4])
-    nlA = ITensor(Float64, sites[1], sites[2], sites[3], sites[4])
-    offset = Inf
+    A = zeros(Float64, sites...)
+    nlA = zeros(Float64, sites...)
     Threads.@threads for i in 1:nbins
         for j in 1:nbins
             for k in 1:nbins
                 for l in 1:nbins
-                    val = neglogposterior(grid[1][i], grid[2][j], grid[3][k], grid[4][l])
-                    nlA[sites[1] => i, sites[2] => j, sites[3] => k, sites[4] => l] = val
-                    if val < offset
-                        offset = val
-                    end
+                    nlA[i, j, k, l] = neglogposterior(grid[1][i], grid[2][j], grid[3][k], grid[4][l])
                 end
             end
         end
     end
+    nlA .-= minimum(nlA)
+    A .= exp.(-nlA)
 
-    Threads.@threads for i in 1:nbins
-        for j in 1:nbins
-            for k in 1:nbins
-                for l in 1:nbins
-                    val = neglogposterior(grid[1][i], grid[2][j], grid[3][k], grid[4][l])
-                    A[sites[1] => i, sites[2] => j, sites[3] => k, sites[4] => l] = exp(offset - nlA[sites[1] => i, sites[2] => j, sites[3] => k, sites[4] => l])
-                    if val < offset
-                        offset = val
-                    end
-                end
-            end
-        end
-    end
+    peak = argmin(nlA)
+    ranges = [c-2:c+2 for c in Tuple(peak)]
+    display(nlA[ranges...])
+    display(A[ranges...])
 
     psi = Vector{ITensor}(undef, d)
     nlpsi = Vector{ITensor}(undef, d)
 
     println("Computing nlposterior TT...")
 
-    nlpsi[1], S, V = svd(nlA, sites[1]; cutoff=cutoff)
+    nlpsi[1], S, V = svd(ITensor(nlA, sites...), sites[1]; cutoff=cutoff)
     for i in 2:d-1
         link = commonindex(nlpsi[i - 1], S)
         nlpsi[i], S, V = svd(S * V, link, sites[i]; cutoff=cutoff)
@@ -120,7 +110,7 @@ function ttsvd_damped()
 
     println("Computing posterior TT...")
 
-    psi[1], S, V = svd(A, sites[1]; cutoff=cutoff)
+    psi[1], S, V = svd(ITensor(A, sites...), sites[1]; cutoff=cutoff)
     for i in 2:d-1
         link = commonindex(psi[i - 1], S)
         psi[i], S, V = svd(S * V, link, sites[i]; cutoff=cutoff)
