@@ -20,7 +20,7 @@ function nlp(r, tspan, nsteps, data_x, data_v, mu, sigma)
     sol = solve(prob, Tsit5(), saveat=dt)
     obs_x = undef
     obs_v = undef
-    if sol.retcode == :Success
+    if sol.retcode == SciMLBase.Success
         obs_x = sol[1, :]
         obs_v = sol[2, :]
     else
@@ -30,8 +30,8 @@ function nlp(r, tspan, nsteps, data_x, data_v, mu, sigma)
     println("$x0 $v0 $ω $γ")
     println(obs_x)
     println(obs_v)
-    println(data_ω)
-    println(data_γ)
+    println(data_x)
+    println(data_v)
 
     s2 = 0.15
     diff = [x0, v0, ω, γ] - mu
