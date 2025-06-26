@@ -20,7 +20,7 @@ function V(r, tspan, nsteps, data_x, data_v, mu, sigma)
     sol = solve(prob, Tsit5(), saveat=dt)
     obs_x = undef
     obs_v = undef
-    if sol.retcode == :Success
+    if sol.retcode == ReturnCode.Success
         obs_x = sol[1, :]
         obs_v = sol[2, :]
     else
