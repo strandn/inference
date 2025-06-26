@@ -76,9 +76,8 @@ function ttsvd_damped()
 
     println("Populating tensor...")
     
-    sites = siteinds(nbins, d)
-    A = zeros(Float64, sites...)
-    nlA = zeros(Float64, sites...)
+    A = zeros(Float64, grid...)
+    nlA = zeros(Float64, grid...)
     Threads.@threads for i in 1:nbins
         for j in 1:nbins
             for k in 1:nbins
@@ -98,6 +97,7 @@ function ttsvd_damped()
 
     psi = Vector{ITensor}(undef, d)
     nlpsi = Vector{ITensor}(undef, d)
+    sites = siteinds(nbins, d)
 
     println("Computing nlposterior TT...")
 
