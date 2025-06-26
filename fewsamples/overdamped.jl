@@ -25,7 +25,7 @@ function V(r, tspan, dt, data_x, data_v, mu, sigma)
 
     s2 = 0.15
     diff = [x0, v0, ω, γ] - mu
-    result = 1 / 2 * dot(diff, inv(Diagonal(sigma)) * diff)
+    result = 1 / 2 * sum((diff .^ 2) ./ sigma)
     for i in eachindex(data_x)
         result += log(2 * pi * s2) + (data_x[i] - obs_x[i]) ^ 2 / (2 * s2) + (data_v[i] - obs_v[i]) ^ 2 / (2 * s2)
     end
