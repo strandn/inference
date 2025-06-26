@@ -27,6 +27,11 @@ function nlp(r, tspan, nsteps, data_x, data_v, mu, sigma)
         obs_x = fill(200.0, nsteps + 1)
         obs_v = fill(200.0, nsteps + 1)
     end
+    println("$x0 $v0 $ω $γ")
+    println(obs_x)
+    println(obs_v)
+    println(data_ω)
+    println(data_γ)
 
     s2 = 0.15
     diff = [x0, v0, ω, γ] - mu
@@ -71,7 +76,7 @@ function ttsvd_damped()
     ω_dom = (0.1, 5.0)
     γ_dom = (0.1, 6.0)
 
-    nbins = 30
+    nbins = 5
     grid = (LinRange(x0_dom..., nbins + 1), LinRange(v0_dom..., nbins + 1), LinRange(ω_dom..., nbins + 1), LinRange(γ_dom..., nbins + 1))
 
     println("Populating tensor...\n")
