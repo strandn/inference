@@ -74,11 +74,16 @@ function ttsvd_damped()
     sites = siteinds(nbins, d)
     A = ITensor(Float64, sites[1], sites[2], sites[3], sites[4])
     nlA = ITensor(Float64, sites[1], sites[2], sites[3], sites[4])
+    offset = Inf
     Threads.@threads for i in 1:nbins
         for j in 1:nbins
             for k in 1:nbins
                 for l in 1:nbins
-                    nlA[sites[1] => i, sites[2] => j, sites[3] => k, sites[4] => l] = neglogposterior(grid[1][i], grid[2][j], grid[3][k], grid[4][l])
+                    val = neglogposterior(grid[1][i], grid[2][j], grid[3][k], grid[4][l])
+                    nlA[sites[1] => i, sites[2] => j, sites[3] => k, sites[4] => l] = val
+                    if val < offset
+                        offset = val
+                    end
                 end
             end
         end
