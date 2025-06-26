@@ -129,7 +129,7 @@ maxr = 50
 n_chains = 40
 n_samples = 50
 jump_width = 0.1
-cutoff = 1.0e-2
+cutoff = 1.0e-3
 
 start_time = time()
 aca_damped()
