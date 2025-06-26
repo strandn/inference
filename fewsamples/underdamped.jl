@@ -7,7 +7,7 @@ function damped_oscillator!(du, u, p, t)
     x, v = u
     ω, γ = p
     du[1] = v
-    du[2] = -ω^2 * x - γ * v
+    du[2] = -ω ^ 2 * x - γ * v
 end
 
 function V(r, tspan, dt, data_x, data_v, mu, sigma)
@@ -15,11 +15,11 @@ function V(r, tspan, dt, data_x, data_v, mu, sigma)
     v0 = r[2]
     ω = r[3]
     γ = r[4]
-    if ω < 0 || γ < 0
-        return Inf
-    end
     prob = ODEProblem(damped_oscillator!, [x0, v0], tspan, [ω, γ])
     sol = solve(prob, Tsit5(), saveat=dt)
+    if sol.retcode != :Success
+        return Inf
+    end
     obs_x = sol[1, :]
     obs_v = sol[2, :]
 
