@@ -88,7 +88,7 @@ function ttsvd_damped()
             end
         end
     end
-    A .= exp.(-nlA)
+    A .= exp.(offset - nlA)
 
     psi = Vector{ITensor}(undef, d)
     nlpsi = Vector{ITensor}(undef, d)
