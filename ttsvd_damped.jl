@@ -114,6 +114,9 @@ function ttsvd_damped()
     end
     nlpsi[d] = S * V
 
+    @show MPS(nlpsi)
+    println()
+
     println("Computing posterior TT...\n")
 
     psi[1], S, V = svd(ITensor(A, sites...), sites[1]; cutoff=cutoff)
@@ -123,18 +126,7 @@ function ttsvd_damped()
     end
     psi[d] = S * V
 
-    @show MPS(nlpsi)
-    println()
     @show MPS(psi)
-    println()
-
-    for i in 1:d
-        @show nlpsi[i]
-    end
-    println()
-    for i in 1:d
-        @show psi[i]
-    end
 end
 
 d = 4
