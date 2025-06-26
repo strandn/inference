@@ -74,7 +74,7 @@ function ttsvd_damped()
     nbins = 30
     grid = (LinRange(x0_dom..., nbins + 1), LinRange(v0_dom..., nbins + 1), LinRange(ω_dom..., nbins + 1), LinRange(γ_dom..., nbins + 1))
 
-    println("Populating tensor...")
+    println("Populating tensor...\n")
     
     A = zeros(Float64, nbins, nbins, nbins, nbins)
     nlA = zeros(Float64, nbins, nbins, nbins, nbins)
@@ -91,15 +91,19 @@ function ttsvd_damped()
     A .= exp.(-nlA)
 
     peak = argmin(nlA)
+    println([grid[i][peak[i]] for i in 1:d])
+    println()
     ranges = [c-2:c+2 for c in Tuple(peak)]
     display(nlA[ranges...])
+    println()
     display(A[ranges...])
+    println()
 
     psi = Vector{ITensor}(undef, d)
     nlpsi = Vector{ITensor}(undef, d)
     sites = siteinds(nbins, d)
 
-    println("Computing nlposterior TT...")
+    println("Computing nlposterior TT...\n")
 
     nlpsi[1], S, V = svd(ITensor(nlA, sites...), sites[1]; cutoff=cutoff)
     for i in 2:d-1
@@ -108,7 +112,7 @@ function ttsvd_damped()
     end
     nlpsi[d] = S * V
 
-    println("Computing posterior TT...")
+    println("Computing posterior TT...\n")
 
     psi[1], S, V = svd(ITensor(A, sites...), sites[1]; cutoff=cutoff)
     for i in 2:d-1
@@ -118,11 +122,14 @@ function ttsvd_damped()
     psi[d] = S * V
 
     @show MPS(nlpsi)
+    println()
     @show MPS(psi)
+    println()
 
     for i in 1:d
         @show nlpsi[i]
     end
+    println()
     for i in 1:d
         @show psi[i]
     end
