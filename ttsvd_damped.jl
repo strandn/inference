@@ -87,8 +87,6 @@ function ttsvd_damped()
             end
         end
     end
-    nlA .-= minimum(nlA)
-    A .= exp.(-nlA)
 
     peak = argmin(nlA)
     println([grid[i][peak[i]] for i in 1:d])
@@ -96,6 +94,10 @@ function ttsvd_damped()
     ranges = [c-2:c+2 for c in Tuple(peak)]
     display(nlA[ranges...])
     println()
+    
+    nlA .-= minimum(nlA)
+    A .= exp.(-nlA)
+
     display(A[ranges...])
     println()
 
