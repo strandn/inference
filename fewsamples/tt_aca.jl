@@ -180,11 +180,11 @@ function max_metropolis(F::ResFunc{T, N}, pivot::Vector{T}, n_samples::Int64, ju
         p_new = zeros(order)
         for k in 1:order
             p_new[k] = rand(Normal(chain[i - 1, k], jump_width * (ub[k] - lb[k])))
-            if p_new[k] < lb[k]
-                p_new[k] = lb[k] + abs(p_new[k] - lb[k])
-            elseif p_new[k] > ub[k]
-                p_new[k] = ub[k] - abs(p_new[k] - ub[k])
-            end
+            # if p_new[k] < lb[k]
+            #     p_new[k] = lb[k] + abs(p_new[k] - lb[k])
+            # elseif p_new[k] > ub[k]
+            #     p_new[k] = ub[k] - abs(p_new[k] - ub[k])
+            # end
         end
 
         arg_old = [pivot; [chain[i - 1, k] for k in 1:order]]
