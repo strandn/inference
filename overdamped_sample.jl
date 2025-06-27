@@ -89,7 +89,7 @@ function aca_damped()
         for i in 1:10
             println("Collecting sample $i...")
             sample = sample_from_tt(F)
-            write(file, "$(sample[1]) $(sample[2])\n")
+            write(file, "$(sample[1]) $(sample[2]) $(sample[3]) $(sample[4])\n")
         end
     end
 end
