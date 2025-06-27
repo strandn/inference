@@ -154,7 +154,10 @@ function max_metropolis(F::ResFunc{T, N}, n_samples::Int64, jump_width::Float64)
 
     while true
         for k in 1:order
-            chain[1, k] = F.mu[k] + sqrt(F.sigma[k]) * randn()
+            chain[1, k] = Inf
+            while chain[1, k] < F.domain[k][1] || chain[1, k] > F.domain[k][2]
+                chain[1, k] = F.mu[k] + sqrt(F.sigma[k]) * randn()
+            end
         end
         if expnegf(F, chain[1, 1:order]...) > 0.0 && abs(F(chain[1, 1:order]...)) > 0.0
             break
@@ -165,6 +168,11 @@ function max_metropolis(F::ResFunc{T, N}, n_samples::Int64, jump_width::Float64)
         p_new = zeros(order)
         for k in 1:order
             p_new[k] = rand(Normal(chain[i - 1, k], jump_width * (ub[k] - lb[k])))
+            if p_new[k] < lb[k]
+                p_new[k] = lb[k] + abs(p_new[k] - lb[k])
+            elseif p_new[k] > ub[k]
+                p_new[k] = ub[k] - abs(p_new[k] - ub[k])
+            end
         end
 
         arg_old = [chain[i - 1, k] for k in 1:order]
