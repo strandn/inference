@@ -38,7 +38,7 @@ function V(r, tspan, nsteps, data_x, data_v, mu, sigma)
 end
 
 function aca_damped()
-    tspan = (0.0, 20.0)
+    tspan = (0.0, 30.0)
     nsteps = 50
     dt = (tspan[2] - tspan[1]) / nsteps
 

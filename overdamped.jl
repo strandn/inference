@@ -42,7 +42,7 @@ function aca_damped()
         println("Generating data...")
     end
 
-    tspan = (0.0, 20.0)
+    tspan = (0.0, 30.0)
     nsteps = 50
     dt = (tspan[2] - tspan[1]) / nsteps
     tlist = LinRange(tspan..., nsteps + 1)
