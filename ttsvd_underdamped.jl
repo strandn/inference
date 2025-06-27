@@ -38,7 +38,7 @@ function nlp(r, tspan, nsteps, data_x, data_v, mu, sigma)
 end
 
 function ttsvd_damped()
-    tspan = (0.0, 20.0)
+    tspan = (0.0, 30.0)
     nsteps = 50
     dt = (tspan[2] - tspan[1]) / nsteps
     x0_true = 7.5
@@ -125,6 +125,45 @@ function ttsvd_damped()
     psi[d] = S * V
 
     @show MPS(psi)
+
+    ones = [ITensor(ones(nbins), sites[i]) for i in 1:d]
+    norm = psi[1] * ones[1]
+    for i in 2:d
+        norm *= psi[i] * ones[i]
+    end
+
+    for pos in 1:d-1
+        Lenv = undef
+        Renv = undef
+        if pos != 1
+            Lenv = psi[1] * ones[1]
+            for i in 2:count-1
+                Lenv *= psi[i] * ones[i]
+            end
+        end
+        if pos != d - 1
+            Renv = psi[d] * ones[d]
+            for i in d-1:count-1:-1:pos+2
+                Renv *= psi[i] * ones[i]
+            end
+        end
+        result = undef
+        if pos == 1
+            result = psi[1] * psi[2] * Renv
+        elseif pos + 1 == d
+            result = Lenv * psi[d - 1] * psi[d]
+        else
+            result = Lenv * psi[pos] * psi[pos + 1] * Renv
+        end
+        result /= norm
+        open("ttsvd_underdamped_marginal_$count.txt", "w") do file
+            for i in 1:nbins
+                for j in 1:nbins
+                    write(file, "$(grid[pos][i]) $(grid[pos + 1][j]) $(result[sites[pos] => i, sites[pos + 1] => j])\n")
+                end
+            end
+        end
+    end
 end
 
 d = 4
