@@ -126,25 +126,25 @@ function ttsvd_damped()
 
     @show MPS(psi)
 
-    ones = [ITensor(ones(nbins), sites[i]) for i in 1:d]
-    norm = psi[1] * ones[1]
+    oneslist = [ITensor(ones(nbins), sites[i]) for i in 1:d]
+    norm = psi[1] * oneslist[1]
     for i in 2:d
-        norm *= psi[i] * ones[i]
+        norm *= psi[i] * oneslist[i]
     end
 
     for pos in 1:d-1
         Lenv = undef
         Renv = undef
         if pos != 1
-            Lenv = psi[1] * ones[1]
+            Lenv = psi[1] * oneslist[1]
             for i in 2:count-1
-                Lenv *= psi[i] * ones[i]
+                Lenv *= psi[i] * oneslist[i]
             end
         end
         if pos != d - 1
-            Renv = psi[d] * ones[d]
+            Renv = psi[d] * oneslist[d]
             for i in d-1:count-1:-1:pos+2
-                Renv *= psi[i] * ones[i]
+                Renv *= psi[i] * oneslist[i]
             end
         end
         result = undef
