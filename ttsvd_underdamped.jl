@@ -137,13 +137,13 @@ function ttsvd_damped()
         Renv = undef
         if pos != 1
             Lenv = psi[1] * oneslist[1]
-            for i in 2:count-1
+            for i in 2:pos-1
                 Lenv *= psi[i] * oneslist[i]
             end
         end
         if pos != d - 1
             Renv = psi[d] * oneslist[d]
-            for i in d-1:count-1:-1:pos+2
+            for i in d-1:-1:pos+2
                 Renv *= psi[i] * oneslist[i]
             end
         end
@@ -156,7 +156,7 @@ function ttsvd_damped()
             result = Lenv * psi[pos] * psi[pos + 1] * Renv
         end
         result /= norm
-        open("ttsvd_underdamped_marginal_$count.txt", "w") do file
+        open("ttsvd_underdamped_marginal_$pos.txt", "w") do file
             for i in 1:nbins
                 for j in 1:nbins
                     write(file, "$(grid[pos][i]) $(grid[pos + 1][j]) $(result[sites[pos] => i, sites[pos + 1] => j])\n")
