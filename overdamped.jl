@@ -92,7 +92,7 @@ function aca_damped()
     x0_dom = (3.0, 12.0)
     v0_dom = (-1.0, 7.0)
     ω_dom = (0.1, 2.0)
-    γ_dom = (0.1, 7.5)
+    γ_dom = (0.1, 8.5)
 
     F = ResFunc(neglogposterior, (x0_dom, v0_dom, ω_dom, γ_dom), cutoff, mu, sigma)
 
@@ -128,8 +128,8 @@ d = 4
 maxr = 50
 n_chains = 40
 n_samples = 400
-jump_width = 0.01
-cutoff = 1.0e-3
+jump_width = 0.005
+cutoff = 1.0e-2
 
 start_time = time()
 aca_damped()
