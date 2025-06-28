@@ -59,7 +59,7 @@ function aca_damped()
     x0_dom = (3.0, 12.0)
     v0_dom = (-1.0, 7.0)
     ω_dom = (0.1, 2.0)
-    γ_dom = (0.1, 8.5)
+    γ_dom = (0.1, 7.5)
 
     F = ResFunc(neglogposterior, (x0_dom, v0_dom, ω_dom, γ_dom), 0.0, mu, sigma)
 
