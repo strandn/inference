@@ -31,10 +31,10 @@ function ttsvd_exoplanet()
     tspan = (0.0, 200.0)
     nsteps = 6
     dt = (tspan[2] - tspan[1]) / nsteps
-    v0_true = 1.0
+    v0_true = 0.0
     K_true = 10.0
-    φ0_true = 5.0
-    lnP_true = 4.2
+    φ0_true = 5.24
+    lnP_true = 4.24
 
     data = zeros(nsteps + 1)
 
