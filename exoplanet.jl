@@ -86,7 +86,7 @@ function aca_exoplanet()
     normbuf = [0.0]
 
     if mpi_rank == 0
-        open("underdamped_IJ.txt", "w") do file
+        open("exoplanet_IJ.txt", "w") do file
             write(file, "$IJ\n")
             write(file, "$(F.offset)\n")
         end
