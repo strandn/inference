@@ -150,5 +150,5 @@ function ttsvd_exoplanet()
 end
 
 d = 4
-cutoff = 1.0e-10
+cutoff = 1.0e-8
 ttsvd_exoplanet()
