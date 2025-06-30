@@ -28,40 +28,33 @@ function nlp(r, tspan, nsteps, data, mu, sigma)
 end
 
 function ttsvd_exoplanet()
-    tspan = (0.0, 30.0)
-    nsteps = 50
+    tspan = (0.0, 200.0)
+    nsteps = 6
     dt = (tspan[2] - tspan[1]) / nsteps
-    x0_true = 7.5
-    v0_true = 2.5
-    ω_true = 1.0
-    γ_true = 0.4
+    v0_true = 1.0
+    K_true = 10.0
+    φ0_true = 5.0
+    lnP_true = 4.2
 
-    truedata_x = zeros(nsteps + 1)
-    truedata_v = zeros(nsteps + 1)
-    data_x = zeros(nsteps + 1)
-    data_v = zeros(nsteps + 1)
+    data = zeros(nsteps + 1)
 
-    prob = ODEProblem(damped_oscillator!, [x0_true, v0_true], tspan, [ω_true, γ_true])
-    sol = solve(prob, Tsit5(), saveat=dt)
+    for i in 1:nsteps+1
+        t = (i - 1) * dt
+        data[i] = radialvelocity(v0_true, K_true, φ0_true, lnP_true, t)
+    end
+    data += sqrt(3.24) * randn(nsteps + 1)
 
-    truedata_x = sol[1, :]
-    truedata_v = sol[2, :]
-    data_x = deepcopy(truedata_x)
-    data_v = deepcopy(truedata_v)
-    data_x += sqrt(0.15) * randn(length(data_x))
-    data_v += sqrt(0.15) * randn(length(data_v))
+    mu = [0.0, 5.0, 3.0, 4.0]
+    sigma = [1.0, 9.0, 2.25, 0.25]
+    neglogposterior(x0, K, φ0, lnP) = V([x0, K, φ0, lnP], tspan, nsteps, data, mu, sigma)
 
-    mu = [7.0, 3.0, 1.5, 2.5]
-    sigma = [4.0, 9.0, 1.0, 16.0]
-    neglogposterior(x0, v0, ω, γ) = nlp([x0, v0, ω, γ], tspan, nsteps, data_x, data_v, mu, sigma)
-
-    x0_dom = (3.0, 12.0)
-    v0_dom = (-1.0, 7.0)
-    ω_dom = (0.1, 2.0)
-    γ_dom = (0.1, 7.5)
+    v0_dom = (-3.0, 3.0)
+    K_dom = (0.5, 14.0)
+    φ0_dom = (0.0, 2 * pi)
+    lnP_dom = (3.0, 5.0)
 
     nbins = 100
-    grid = (LinRange(x0_dom..., nbins + 1), LinRange(v0_dom..., nbins + 1), LinRange(ω_dom..., nbins + 1), LinRange(γ_dom..., nbins + 1))
+    grid = (LinRange(v0_dom..., nbins + 1), LinRange(K_dom..., nbins + 1), LinRange(φ0_dom..., nbins + 1), LinRange(lnP_dom..., nbins + 1))
 
     println("Populating tensor...\n")
     
