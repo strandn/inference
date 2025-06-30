@@ -40,26 +40,16 @@ end
 function ttsvd_damped()
     tspan = (0.0, 30.0)
     nsteps = 50
-    dt = (tspan[2] - tspan[1]) / nsteps
-    x0_true = 7.5
-    v0_true = 2.5
-    ω_true = 1.0
-    γ_true = 0.4
 
-    truedata_x = zeros(nsteps + 1)
-    truedata_v = zeros(nsteps + 1)
-    data_x = zeros(nsteps + 1)
-    data_v = zeros(nsteps + 1)
-
-    prob = ODEProblem(damped_oscillator!, [x0_true, v0_true], tspan, [ω_true, γ_true])
-    sol = solve(prob, Tsit5(), saveat=dt)
-
-    truedata_x = sol[1, :]
-    truedata_v = sol[2, :]
-    data_x = deepcopy(truedata_x)
-    data_v = deepcopy(truedata_v)
-    data_x += sqrt(0.15) * randn(length(data_x))
-    data_v += sqrt(0.15) * randn(length(data_v))
+    data_x = []
+    data_v = []
+    open("underdamped_data.txt", "r") do file
+        for line in eachline(file)
+            cols = split(line)
+            push!(data_x, parse(Float64, cols[4]))
+            push!(data_v, parse(Float64, cols[5]))
+        end
+    end
 
     mu = [7.0, 3.0, 1.5, 2.5]
     sigma = [4.0, 9.0, 1.0, 16.0]

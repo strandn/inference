@@ -40,7 +40,6 @@ end
 function aca_damped()
     tspan = (0.0, 30.0)
     nsteps = 50
-    dt = (tspan[2] - tspan[1]) / nsteps
 
     data_x = []
     data_v = []
