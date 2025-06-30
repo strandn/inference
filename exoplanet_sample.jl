@@ -29,7 +29,7 @@ end
 
 function aca_exoplanet()
     tspan = (0.0, 200.0)
-    nsteps = 6
+    nsteps = 10
 
     data = []
     open("exoplanet_data.txt", "r") do file

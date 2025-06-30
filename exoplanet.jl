@@ -33,7 +33,7 @@ function aca_exoplanet()
     end
 
     tspan = (0.0, 200.0)
-    nsteps = 6
+    nsteps = 10
     dt = (tspan[2] - tspan[1]) / nsteps
     tlist = LinRange(tspan..., nsteps + 1)
     v0_true = 1.0

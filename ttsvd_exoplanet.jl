@@ -30,19 +30,14 @@ end
 function ttsvd_exoplanet()
     tspan = (0.0, 200.0)
     nsteps = 10
-    dt = (tspan[2] - tspan[1]) / nsteps
-    v0_true = 1.0
-    K_true = 10.0
-    φ0_true = 5.0
-    lnP_true = 4.2
 
-    data = zeros(nsteps + 1)
-
-    for i in 1:nsteps+1
-        t = (i - 1) * dt
-        data[i] = radialvelocity(v0_true, K_true, φ0_true, lnP_true, t)
+    data = []
+    open("exoplanet_data.txt", "r") do file
+        for line in eachline(file)
+            cols = split(line)
+            push!(data, parse(Float64, cols[2]))
+        end
     end
-    data += sqrt(3.24) * randn(nsteps + 1)
 
     mu = [0.0, 5.0, 3.0, 4.0]
     sigma = [1.0, 9.0, 2.25, 0.25]
