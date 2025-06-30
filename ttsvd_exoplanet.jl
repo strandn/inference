@@ -139,7 +139,7 @@ function ttsvd_exoplanet()
             result = Lenv * psi[pos] * psi[pos + 1] * Renv
         end
         result /= norm
-        open("ttsvd_underdamped_marginal_$pos.txt", "w") do file
+        open("ttsvd_exoplanet_marginal_$pos.txt", "w") do file
             for i in 1:nbins
                 for j in 1:nbins
                     write(file, "$(grid[pos][i]) $(grid[pos + 1][j]) $(result[sites[pos] => i, sites[pos + 1] => j])\n")
