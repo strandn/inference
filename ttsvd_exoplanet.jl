@@ -46,7 +46,7 @@ function ttsvd_exoplanet()
 
     mu = [0.0, 5.0, 3.0, 4.0]
     sigma = [1.0, 9.0, 2.25, 0.25]
-    neglogposterior(x0, K, φ0, lnP) = V([x0, K, φ0, lnP], tspan, nsteps, data, mu, sigma)
+    neglogposterior(x0, K, φ0, lnP) = nlp([x0, K, φ0, lnP], tspan, nsteps, data, mu, sigma)
 
     v0_dom = (-3.0, 3.0)
     K_dom = (0.5, 14.0)
