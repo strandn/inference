@@ -21,7 +21,7 @@ function V(r, tspan, nsteps, data, mu, sigma)
     α3 = r[6]
     m = r[7]
     η = r[8]
-    prob = ODEProblem(damped_oscillator!, [X10, X20, X30], tspan, [α1, α2, α3, m, η])
+    prob = ODEProblem(repressilator!, [X10, X20, X30], tspan, [α1, α2, α3, m, η])
     sol = solve(prob, Tsit5(), saveat=dt)
     obs = undef
     if sol.retcode == ReturnCode.Success
