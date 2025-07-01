@@ -33,7 +33,7 @@ function V(r, tspan, nsteps, data, mu, sigma)
     s2 = 0.25
     diff = [X10, X20, X30, α1, α2, α3, m, η] - mu
     result = 1 / 2 * sum((diff .^ 2) ./ sigma)
-    for i in eachindex(data_x)
+    for i in 1:nsteps+1
         result += 1 / 2 * log(2 * pi * s2) + (data[i] - obs[i]) ^ 2 / (2 * s2)
     end
     return result
