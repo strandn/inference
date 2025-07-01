@@ -137,9 +137,9 @@ mpi_size = MPI.Comm_size(mpi_comm)
 d = 8
 maxr = 50
 n_chains = 40
-n_samples = 4000
-jump_width = 0.001
-cutoff = 1.0e-3
+n_samples = 10000
+jump_width = 1.0e-3
+cutoff = 5.0e-4
 
 start_time = time()
 aca_repressilator()
