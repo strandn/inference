@@ -137,8 +137,8 @@ mpi_size = MPI.Comm_size(mpi_comm)
 d = 8
 maxr = 50
 n_chains = 40
-n_samples = 1000
-jump_width = 0.005
+n_samples = 4000
+jump_width = 0.001
 cutoff = 1.0e-3
 
 start_time = time()
