@@ -110,7 +110,13 @@ function aca_repressilator()
         println("Starting TT-cross ACA...")
     end
 
+    start_time = time()
     IJ = continuous_aca(F, fill(maxr, d - 1), n_chains, n_samples, jump_width, mpi_comm)
+    end_time = time()
+    elapsed_time = end_time - start_time
+    if mpi_rank == 0
+        println("Elapsed time: $elapsed_time seconds")
+    end
 
     norm = 0.0
     normbuf = [0.0]
@@ -138,15 +144,9 @@ d = 8
 maxr = 50
 n_chains = 40
 n_samples = 10000
-jump_width = 1.0e-3
-cutoff = 5.0e-4
+jump_width = 5.0e-4
+cutoff = 1.0e-3
 
-start_time = time()
 aca_repressilator()
-end_time = time()
-elapsed_time = end_time - start_time
-if mpi_rank == 0
-    println("Elapsed time: $elapsed_time seconds")
-end
 
 MPI.Finalize()
