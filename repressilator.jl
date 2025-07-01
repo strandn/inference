@@ -95,10 +95,6 @@ function aca_repressilator()
         end
     end
 
-    if mpi_rank == 0
-        println("Computing true density...")
-    end
-
     X10_dom = (0.1, 6.0)
     X20_dom = (0.1, 6.0)
     X30_dom = (0.1, 6.0)
@@ -141,7 +137,7 @@ mpi_size = MPI.Comm_size(mpi_comm)
 d = 8
 maxr = 50
 n_chains = 40
-n_samples = 400
+n_samples = 1000
 jump_width = 0.01
 cutoff = 1.0e-3
 
