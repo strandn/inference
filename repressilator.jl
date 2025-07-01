@@ -22,11 +22,15 @@ function V(r, tspan, nsteps, data, mu, sigma)
     m = r[7]
     η = r[8]
     prob = ODEProblem(repressilator!, [X10, X20, X30], tspan, [α1, α2, α3, m, η])
-    sol = solve(prob, Tsit5(), saveat=dt)
     obs = undef
-    if sol.retcode == ReturnCode.Success
-        obs = sol[1, :] + sol[2, :] + sol[3, :]
-    else
+    try
+        sol = solve(prob, Tsit5(), saveat=dt)
+        if sol.retcode == ReturnCode.Success
+            obs = sol[1, :] + sol[2, :] + sol[3, :]
+        else
+            throw(ErrorException("ODE solver failed"))
+        end
+    catch e
         obs = fill(200.0, nsteps + 1)
     end
 
