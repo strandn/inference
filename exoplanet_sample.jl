@@ -73,7 +73,7 @@ function aca_exoplanet()
     end
 
     open("exoplanet_samples.txt", "w") do file
-        for i in 1:20
+        for i in 1:30
             println("Collecting sample $i...")
             sample = sample_from_tt(F)
             write(file, "$(sample[1]) $(sample[2]) $(sample[3]) $(sample[4])\n")
