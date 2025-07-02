@@ -208,7 +208,7 @@ function compute_norm(F::ResFunc{T, N}) where {T, N}
     norm = zeros(1, npivots[1])
     for j in 1:npivots[1]
         f(x) = expnegf(F, x, F.J[2][j]...)
-        norm[j] = quadgk(f, F.domain[1]...; rtol=1.0e-4, maxevals=10^5)[1]
+        norm[j] = quadgk(f, F.domain[1]...; rtol=1.0e-4, maxevals=10^6)[1]
     end
     println("i = 1\n")
     display(norm)
@@ -227,7 +227,7 @@ function compute_norm(F::ResFunc{T, N}) where {T, N}
         for j in 1:npivots[i - 1]
             for k in 1:npivots[i]
                 f(x) = expnegf(F, F.I[i][j]..., x, F.J[i + 1][k]...)
-                normi[j, k] = quadgk(f, F.domain[i]...; rtol=1.0e-4, maxevals=10^5)[1]
+                normi[j, k] = quadgk(f, F.domain[i]...; rtol=1.0e-4, maxevals=10^6)[1]
             end
         end
         println("\ni = $i\n")
@@ -252,7 +252,7 @@ function compute_norm(F::ResFunc{T, N}) where {T, N}
             print("$(f(xlist[k])), ")
         end
         println()
-        R[j] = quadgk(f, F.domain[order]...; rtol=1.0e-4, maxevals=10^5)[1]
+        R[j] = quadgk(f, F.domain[order]...; rtol=1.0e-4, maxevals=10^6)[1]
     end
     println("\ni = $order\n")
     display(R)
