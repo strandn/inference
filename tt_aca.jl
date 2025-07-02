@@ -216,7 +216,7 @@ function compute_norm(F::ResFunc{T, N}) where {T, N}
             print("$(f(xlist[k])), ")
         end
         println()
-        @time norm[j] = quadgk(f, F.domain[1]...; reltol=1.0e-3, abstol=1.0e-8, maxevals=10^4)[1]
+        @time norm[j] = quadgk(f, F.domain[1]...; rtol=1.0e-3, atol=1.0e-8, maxevals=10^4)[1]
         println(norm[j])
     end
     AIJ = zeros(npivots[1], npivots[1])
