@@ -217,6 +217,7 @@ function compute_norm(F::ResFunc{T, N}) where {T, N}
         end
         println()
         @time norm[j] = quadgk(f, F.domain[1]...)[1]
+        println(norm[j])
     end
     AIJ = zeros(npivots[1], npivots[1])
     for j in 1:npivots[1]
