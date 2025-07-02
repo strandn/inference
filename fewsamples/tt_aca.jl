@@ -83,10 +83,8 @@ function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, 
         end
         F.pos += 1
         
-        n_pivots = length(F.I[i])
         # MCMC sampling routine to be parallelized across MPI processes
-        n_chains_reduced = max(ceil(Int64, n_chains / n_pivots), ceil(Int64, mpi_size / n_pivots))
-        n_chains_total = n_pivots * n_chains_reduced
+        n_chains_total = max(n_chains, mpi_size)
         xylist = fill(Tuple(fill(0.0, order)), n_chains_total)
         reslist = fill(0.0, n_chains_total)
         res_new = 0.0
@@ -98,10 +96,8 @@ function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, 
             local_xy = fill(Tuple(fill(0.0, order)), elements_per_task)
             local_res = fill(0.0, elements_per_task)
             for k in 1:elements_per_task
-                global_idx = mpi_rank * elements_per_task + k
-                pidx = div(global_idx - 1, n_chains_reduced) + 1
                 # Run multiple Markov chains in parallel, approximate position of the largest current residual across all walkers
-                local_xy[k], local_res[k] = max_metropolis(F, F.I[i][pidx], n_samples, jump_width)
+                local_xy[k], local_res[k] = max_metropolis(F, n_samples, jump_width)
             end
             # Collect results from all processes
             xydata = MPI.Gather(local_xy, 0, mpi_comm)
@@ -113,12 +109,9 @@ function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, 
             # Rank 0 process performs any remaining tasks
             if mpi_rank == 0 && remainder > 0
                 for k in mpi_size*elements_per_task+1:n_chains_total
-                    pidx = div(k - 1, n_chains_reduced) + 1
-                    xylist[k], reslist[k] = max_metropolis(F, F.I[i][pidx], n_samples, jump_width)
+                    xylist[k], reslist[k] = max_metropolis(F, n_samples, jump_width)
                 end
             end
-            xylist = reshape(xylist, (n_pivots, n_chains_reduced))
-            reslist = reshape(reslist, (n_pivots, n_chains_reduced))
             
             # Find position of largest residuals
             idx = argmax(reslist)
@@ -148,30 +141,25 @@ end
 
 # MCMC sampler, searches function F and runs one Markov chain
 # Outputs largest residual magnitude and corresponding position
-function max_metropolis(F::ResFunc{T, N}, pivot::Vector{T}, n_samples::Int64, jump_width::Float64) where {T, N}
-    order = F.ndims - F.pos + 1
+function max_metropolis(F::ResFunc{T, N}, n_samples::Int64, jump_width::Float64) where {T, N}
+    order = F.ndims
     
-    lb = [F.domain[i][1] for i in F.pos:F.ndims]
-    ub = [F.domain[i][2] for i in F.pos:F.ndims]
+    lb = [F.domain[i][1] for i in 1:F.ndims]
+    ub = [F.domain[i][2] for i in 1:F.ndims]
 
     chain = zeros(n_samples, order)
 
     max_res = 0.0
     max_xy = zeros(F.ndims)
 
-    # for k in 1:order
-    #     chain[1, k] = rand() * (ub[k] - lb[k]) + lb[k]
-    # end
-    # while abs(F([pivot; [chain[1, k] for k in 1:order]]...)) == 0.0
-    #     for k in 1:order
-    #         chain[1, k] = rand() * (ub[k] - lb[k]) + lb[k]
-    #     end
-    # end
     while true
         for k in 1:order
-            chain[1, k] = F.mu[k + F.pos - 1] + sqrt(F.sigma[k + F.pos - 1]) * randn()
+            chain[1, k] = Inf
+            while chain[1, k] < F.domain[k][1] || chain[1, k] > F.domain[k][2]
+                chain[1, k] = F.mu[k] + sqrt(F.sigma[k]) * randn()
+            end
         end
-        if expnegf(F, [pivot; chain[1, 1:order]]...) > 0.0 && abs(F([pivot; chain[1, 1:order]]...)) > 0.0
+        if expnegf(F, chain[1, 1:order]...) > 0.0 && abs(F(chain[1, 1:order]...)) > 0.0
             break
         end
     end
@@ -180,15 +168,15 @@ function max_metropolis(F::ResFunc{T, N}, pivot::Vector{T}, n_samples::Int64, ju
         p_new = zeros(order)
         for k in 1:order
             p_new[k] = rand(Normal(chain[i - 1, k], jump_width * (ub[k] - lb[k])))
-            # if p_new[k] < lb[k]
-            #     p_new[k] = lb[k] + abs(p_new[k] - lb[k])
-            # elseif p_new[k] > ub[k]
-            #     p_new[k] = ub[k] - abs(p_new[k] - ub[k])
-            # end
+            if p_new[k] < lb[k]
+                p_new[k] = lb[k] + abs(p_new[k] - lb[k])
+            elseif p_new[k] > ub[k]
+                p_new[k] = ub[k] - abs(p_new[k] - ub[k])
+            end
         end
 
-        arg_old = [pivot; [chain[i - 1, k] for k in 1:order]]
-        arg_new = [pivot; [p_new[k] for k in 1:order]]
+        arg_old = [chain[i - 1, k] for k in 1:order]
+        arg_new = [p_new[k] for k in 1:order]
         f_old = abs(F(arg_old...))
         f_new = abs(F(arg_new...))
         acceptance_prob = min(1, f_new / f_old)
