@@ -210,6 +210,12 @@ function compute_norm(F::ResFunc{T, N}) where {T, N}
     for j in 1:npivots[1]
         println("j = $j")
         f(x) = expnegf(F, x, F.J[2][j]...)
+        nbins = 500
+        xlist = LinRange(F.domain[1]..., nbins + 1)
+        for k in 1:nbins
+            print("$(f(xlist[k])), ")
+        end
+        println()
         @time norm[j] = quadgk(f, F.domain[1]...)[1]
     end
     AIJ = zeros(npivots[1], npivots[1])
