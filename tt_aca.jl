@@ -246,6 +246,12 @@ function compute_norm(F::ResFunc{T, N}) where {T, N}
     R = zeros(npivots[order - 1])
     for j in 1:npivots[order - 1]
         f(x) = expnegf(F, F.I[order][j]..., x)
+        nbins = 500
+        xlist = LinRange(F.domain[order]..., nbins + 1)
+        for k in 1:nbins
+            print("$(f(xlist[k])), ")
+        end
+        println()
         R[j] = quadgk(f, F.domain[order]...; rtol=1.0e-4, maxevals=10^5)[1]
     end
     println("\ni = $order\n")
