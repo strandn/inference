@@ -38,9 +38,10 @@ end
 function (F::ResFunc{T, N})(elements::T...) where {T, N}
     (x, y) = ([elements[i] for i in 1:F.pos], [elements[i] for i in F.pos+1:F.ndims])
     k = length(F.I[F.pos + 1])
-    old = new = Complex.(zeros(1, 1))
+    old = undef
+    new = undef
     for iter in 0:k
-        new = zeros(k - iter + 1, k - iter + 1)
+        new = Complex.(zeros(k - iter + 1, k - iter + 1))
         for idx in CartesianIndices(new)
             if iter == 0
                 row = idx[1] == k + 1 ? x : F.I[F.pos + 1][idx[1]]
