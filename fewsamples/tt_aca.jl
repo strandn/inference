@@ -38,16 +38,18 @@ end
 function (F::ResFunc{T, N})(elements::T...) where {T, N}
     (x, y) = ([elements[i] for i in 1:F.pos], [elements[i] for i in F.pos+1:F.ndims])
     k = length(F.I[F.pos + 1])
-    old = new = zeros(1, 1)
+    old = new = Complex.(zeros(1, 1))
     for iter in 0:k
         new = zeros(k - iter + 1, k - iter + 1)
         for idx in CartesianIndices(new)
             if iter == 0
                 row = idx[1] == k + 1 ? x : F.I[F.pos + 1][idx[1]]
                 col = idx[2] == k + 1 ? y : F.J[F.pos + 1][idx[2]]
-                new[idx] = expnegf(F, (row..., col...)...)
+                new[idx] = F.f(row..., col...) - F.offset
             else
-                new[idx] = old[idx[1] + 1, idx[2] + 1] - old[idx[1] + 1, 1] * old[1, idx[2] + 1] / old[1, 1]
+                f = old[idx[1] + 1, idx[2] + 1]
+                df = f - old[idx[1] + 1, 1] - old[1, idx[2] + 1] + old[1, 1]
+                new[idx] = f - log(Complex(1.0 - real(exp(df))))
             end
         end
         old = deepcopy(new)
@@ -122,7 +124,7 @@ function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, 
                 offset_new = [F.f(xy[]...)]
                 MPI.Bcast!(offset_new, 0, mpi_comm)
                 F.offset = offset_new[]
-                res_new = [F(xy[]...)]
+                res_new = [exp(-real(F(xy[]...)))]
             end
             MPI.Bcast!(res_new, 0, mpi_comm)
             if res_new[] < F.cutoff
@@ -159,7 +161,7 @@ function max_metropolis(F::ResFunc{T, N}, n_samples::Int64, jump_width::Float64)
                 chain[1, k] = F.mu[k] + sqrt(F.sigma[k]) * randn()
             end
         end
-        if expnegf(F, chain[1, 1:order]...) > 0.0 && abs(F(chain[1, 1:order]...)) > 0.0
+        if expnegf(F, chain[1, 1:order]...) > 0.0 && exp(-real(F(chain[1, 1:order]...))) > 0.0
             break
         end
     end
@@ -177,9 +179,9 @@ function max_metropolis(F::ResFunc{T, N}, n_samples::Int64, jump_width::Float64)
 
         arg_old = [chain[i - 1, k] for k in 1:order]
         arg_new = [p_new[k] for k in 1:order]
-        f_old = abs(F(arg_old...))
-        f_new = abs(F(arg_new...))
-        acceptance_prob = min(1, f_new / f_old)
+        f_old = real(F(arg_old...))
+        f_new = real(F(arg_new...))
+        acceptance_prob = min(1, exp(f_old - f_new))
         
         if rand() < acceptance_prob
             chain[i, :] = p_new
@@ -202,13 +204,13 @@ function compute_norm(F::ResFunc{T, N}) where {T, N}
     npivots = [length(F.I[i]) for i in 2:order]
     norm = zeros(1, npivots[1])
     for j in 1:npivots[1]
-        f(x) = expnegf(F, (x, F.J[2][j]...)...)
+        f(x) = expnegf(F, x, F.J[2][j]...)
         norm[j] = quadgk(f, F.domain[1]...)[1]
     end
     AIJ = zeros(npivots[1], npivots[1])
     for j in 1:npivots[1]
         for k in 1:npivots[1]
-            AIJ[j, k] = expnegf(F, (F.I[2][j]..., F.J[2][k]...)...)
+            AIJ[j, k] = expnegf(F, F.I[2][j]..., F.J[2][k]...)
         end
     end
     norm *= inv(AIJ)
@@ -216,21 +218,21 @@ function compute_norm(F::ResFunc{T, N}) where {T, N}
         normi = zeros((npivots[i - 1], npivots[i]))
         for j in 1:npivots[i - 1]
             for k in 1:npivots[i]
-                f(x) = expnegf(F, (F.I[i][j]..., x, F.J[i + 1][k]...)...)
+                f(x) = expnegf(F, F.I[i][j]..., x, F.J[i + 1][k]...)
                 normi[j, k] = quadgk(f, F.domain[i]...)[1]
             end
         end
         AIJ = zeros(npivots[i], npivots[i])
         for j in 1:npivots[i]
             for k in 1:npivots[i]
-                AIJ[j, k] = expnegf(F, (F.I[i + 1][j]..., F.J[i + 1][k]...)...)
+                AIJ[j, k] = expnegf(F, F.I[i + 1][j]..., F.J[i + 1][k]...)
             end
         end
         norm *= normi * inv(AIJ)
     end
     R = zeros(npivots[order - 1])
     for j in 1:npivots[order - 1]
-        f(x) = expnegf(F, (F.I[order][j]..., x)...)
+        f(x) = expnegf(F, F.I[order][j]..., x)
         R[j] = quadgk(f, F.domain[order]...)[1]
     end
     norm *= R
@@ -244,12 +246,12 @@ function compute_marginal12(F::ResFunc{T, N}, x1::T, x2::T) where {T, N}
     npivots = [length(F.I[i]) for i in 2:order]
     result = zeros(1, npivots[1])
     for j in 1:npivots[1]
-        result[j] = expnegf(F, (x1, F.J[2][j]...)...)
+        result[j] = expnegf(F, x1, F.J[2][j]...)
     end
     AIJ = zeros(npivots[1], npivots[1])
     for j in 1:npivots[1]
         for k in 1:npivots[1]
-            AIJ[j, k] = expnegf(F, (F.I[2][j]..., F.J[2][k]...)...)
+            AIJ[j, k] = expnegf(F, F.I[2][j]..., F.J[2][k]...)
         end
     end
     result *= inv(AIJ)
@@ -258,9 +260,9 @@ function compute_marginal12(F::ResFunc{T, N}, x1::T, x2::T) where {T, N}
         for j in 1:npivots[i - 1]
             for k in 1:npivots[i]
                 if i == 2
-                    resulti[j, k] = expnegf(F, (F.I[i][j]..., x2, F.J[i + 1][k]...)...)
+                    resulti[j, k] = expnegf(F, F.I[i][j]..., x2, F.J[i + 1][k]...)
                 else
-                    f(x) = expnegf(F, (F.I[i][j]..., x, F.J[i + 1][k]...)...)
+                    f(x) = expnegf(F, F.I[i][j]..., x, F.J[i + 1][k]...)
                     resulti[j, k] = quadgk(f, F.domain[i]...)[1]
                 end
             end
@@ -268,14 +270,14 @@ function compute_marginal12(F::ResFunc{T, N}, x1::T, x2::T) where {T, N}
         AIJ = zeros(npivots[i], npivots[i])
         for j in 1:npivots[i]
             for k in 1:npivots[i]
-                AIJ[j, k] = expnegf(F, (F.I[i + 1][j]..., F.J[i + 1][k]...)...)
+                AIJ[j, k] = expnegf(F, F.I[i + 1][j]..., F.J[i + 1][k]...)
             end
         end
         result *= resulti * inv(AIJ)
     end
     R = zeros(npivots[order - 1])
     for j in 1:npivots[order - 1]
-        f(x) = expnegf(F, (F.I[order][j]..., x)...)
+        f(x) = expnegf(F, F.I[order][j]..., x)
         R[j] = quadgk(f, F.domain[order]...)[1]
     end
     result *= R
@@ -290,9 +292,9 @@ function compute_mu(F::ResFunc{T, N}, norm::T) where {T, N}
     for j in 1:npivots[1]
         for pos in 1:order
             f(x) = if pos == 1
-                x * expnegf(F, (x, F.J[2][j]...)...)
+                x * expnegf(F, x, F.J[2][j]...)
             else
-                expnegf(F, (x, F.J[2][j]...)...)
+                expnegf(F, x, F.J[2][j]...)
             end
             mu[pos][j] = quadgk(f, F.domain[1]...)[1]
         end
@@ -300,7 +302,7 @@ function compute_mu(F::ResFunc{T, N}, norm::T) where {T, N}
     AIJ = zeros(npivots[1], npivots[1])
     for j in 1:npivots[1]
         for k in 1:npivots[1]
-            AIJ[j, k] = expnegf(F, (F.I[2][j]..., F.J[2][k]...)...)
+            AIJ[j, k] = expnegf(F, F.I[2][j]..., F.J[2][k]...)
         end
     end
     for pos in 1:order
@@ -314,9 +316,9 @@ function compute_mu(F::ResFunc{T, N}, norm::T) where {T, N}
             for k in 1:npivots[i]
                 for pos in 1:order
                     f(x) = if pos == i
-                        x * expnegf(F, (F.I[i][j]..., x, F.J[i + 1][k]...)...)
+                        x * expnegf(F, F.I[i][j]..., x, F.J[i + 1][k]...)
                     else
-                        expnegf(F, (F.I[i][j]..., x, F.J[i + 1][k]...)...)
+                        expnegf(F, F.I[i][j]..., x, F.J[i + 1][k]...)
                     end
                     normi[pos][j, k] = quadgk(f, F.domain[i]...)[1]
                 end
@@ -325,7 +327,7 @@ function compute_mu(F::ResFunc{T, N}, norm::T) where {T, N}
         AIJ = zeros(npivots[i], npivots[i])
         for j in 1:npivots[i]
             for k in 1:npivots[i]
-                AIJ[j, k] = expnegf(F, (F.I[i + 1][j]..., F.J[i + 1][k]...)...)
+                AIJ[j, k] = expnegf(F, F.I[i + 1][j]..., F.J[i + 1][k]...)
             end
         end
         for pos in 1:order
@@ -338,9 +340,9 @@ function compute_mu(F::ResFunc{T, N}, norm::T) where {T, N}
     for j in 1:npivots[order - 1]
         for pos in 1:order
             f(x) = if pos == order
-                x * expnegf(F, (F.I[order][j]..., x)...)
+                x * expnegf(F, F.I[order][j]..., x)
             else
-                expnegf(F, (F.I[order][j]..., x)...)
+                expnegf(F, F.I[order][j]..., x)
             end
             R[pos][j] = quadgk(f, F.domain[order]...)[1]
         end
@@ -359,9 +361,9 @@ function compute_var(F::ResFunc{T, N}, norm::T, mu::Vector{T}) where {T, N}
     for j in 1:npivots[1]
         for pos in 1:order
             f(x) = if pos == 1
-                (x - mu[1]) ^ 2 * expnegf(F, (x, F.J[2][j]...)...)
+                (x - mu[1]) ^ 2 * expnegf(F, x, F.J[2][j]...)
             else
-                expnegf(F, (x, F.J[2][j]...)...)
+                expnegf(F, x, F.J[2][j]...)
             end
             var[pos][j] = quadgk(f, F.domain[1]...)[1]
         end
@@ -369,7 +371,7 @@ function compute_var(F::ResFunc{T, N}, norm::T, mu::Vector{T}) where {T, N}
     AIJ = zeros(npivots[1], npivots[1])
     for j in 1:npivots[1]
         for k in 1:npivots[1]
-            AIJ[j, k] = expnegf(F, (F.I[2][j]..., F.J[2][k]...)...)
+            AIJ[j, k] = expnegf(F, F.I[2][j]..., F.J[2][k]...)
         end
     end
     for pos in 1:order
@@ -383,9 +385,9 @@ function compute_var(F::ResFunc{T, N}, norm::T, mu::Vector{T}) where {T, N}
             for k in 1:npivots[i]
                 for pos in 1:order
                     f(x) = if pos == i
-                        (x - mu[i]) ^ 2 * expnegf(F, (F.I[i][j]..., x, F.J[i + 1][k]...)...)
+                        (x - mu[i]) ^ 2 * expnegf(F, F.I[i][j]..., x, F.J[i + 1][k]...)
                     else
-                        expnegf(F, (F.I[i][j]..., x, F.J[i + 1][k]...)...)
+                        expnegf(F, F.I[i][j]..., x, F.J[i + 1][k]...)
                     end
                     normi[pos][j, k] = quadgk(f, F.domain[i]...)[1]
                 end
@@ -394,7 +396,7 @@ function compute_var(F::ResFunc{T, N}, norm::T, mu::Vector{T}) where {T, N}
         AIJ = zeros(npivots[i], npivots[i])
         for j in 1:npivots[i]
             for k in 1:npivots[i]
-                AIJ[j, k] = expnegf(F, (F.I[i + 1][j]..., F.J[i + 1][k]...)...)
+                AIJ[j, k] = expnegf(F, F.I[i + 1][j]..., F.J[i + 1][k]...)
             end
         end
         for pos in 1:order
@@ -407,9 +409,9 @@ function compute_var(F::ResFunc{T, N}, norm::T, mu::Vector{T}) where {T, N}
     for j in 1:npivots[order - 1]
         for pos in 1:order
             f(x) = if pos == order
-                (x - mu[order]) ^ 2 * expnegf(F, (F.I[order][j]..., x)...)
+                (x - mu[order]) ^ 2 * expnegf(F, F.I[order][j]..., x)
             else
-                expnegf(F, (F.I[order][j]..., x)...)
+                expnegf(F, F.I[order][j]..., x)
             end
             R[pos][j] = quadgk(f, F.domain[order]...)[1]
         end
@@ -424,18 +426,18 @@ function compute_12(F::ResFunc{T, N}, x1::T, x2::T) where {T, N}
     npivots = [length(F.I[2])]
     result = zeros(1, npivots[1])
     for j in 1:npivots[1]
-        result[j] = expnegf(F, (x1, F.J[2][j]...)...)
+        result[j] = expnegf(F, x1, F.J[2][j]...)
     end
     AIJ = zeros(npivots[1], npivots[1])
     for j in 1:npivots[1]
         for k in 1:npivots[1]
-            AIJ[j, k] = expnegf(F, (F.I[2][j]..., F.J[2][k]...)...)
+            AIJ[j, k] = expnegf(F, F.I[2][j]..., F.J[2][k]...)
         end
     end
     result *= inv(AIJ)
     R = zeros(npivots[1])
     for j in 1:npivots[1]
-        R[j] = expnegf(F, (F.I[2][j]..., x2)...)
+        R[j] = expnegf(F, F.I[2][j]..., x2)
     end
     result *= R
     return result[]
@@ -455,12 +457,12 @@ function sample_from_tt(F::ResFunc{T, N}) where {T, N}
         if count != 1
             Lenv = zeros(1, npivots[1])
             for j in 1:npivots[1]
-                Lenv[j] = expnegf(F, (sample[1], F.J[2][j]...)...)
+                Lenv[j] = expnegf(F, sample[1], F.J[2][j]...)
             end
             AIJ = zeros(npivots[1], npivots[1])
             for j in 1:npivots[1]
                 for k in 1:npivots[1]
-                    AIJ[j, k] = expnegf(F, (F.I[2][j]..., F.J[2][k]...)...)
+                    AIJ[j, k] = expnegf(F, F.I[2][j]..., F.J[2][k]...)
                 end
             end
             Lenv *= inv(AIJ)
@@ -468,13 +470,13 @@ function sample_from_tt(F::ResFunc{T, N}) where {T, N}
                 Lenvi = zeros(npivots[i - 1], npivots[i])
                 for j in 1:npivots[i - 1]
                     for k in 1:npivots[i]
-                        Lenvi[j, k] = expnegf(F, (F.I[i][j]..., sample[i], F.J[i + 1][k]...)...)
+                        Lenvi[j, k] = expnegf(F, F.I[i][j]..., sample[i], F.J[i + 1][k]...)
                     end
                 end
                 AIJ = zeros(npivots[i], npivots[i])
                 for j in 1:npivots[i]
                     for k in 1:npivots[i]
-                        AIJ[j, k] = expnegf(F, (F.I[i + 1][j]..., F.J[i + 1][k]...)...)
+                        AIJ[j, k] = expnegf(F, F.I[i + 1][j]..., F.J[i + 1][k]...)
                     end
                 end
                 Lenv *= Lenvi * inv(AIJ)
@@ -484,13 +486,13 @@ function sample_from_tt(F::ResFunc{T, N}) where {T, N}
             AIJ = zeros(npivots[order - 1], npivots[order - 1])
             for j in 1:npivots[order - 1]
                 for k in 1:npivots[order - 1]
-                    AIJ[j, k] = expnegf(F, (F.I[order][j]..., F.J[order][k]...)...)
+                    AIJ[j, k] = expnegf(F, F.I[order][j]..., F.J[order][k]...)
                 end
             end
             Renv = inv(AIJ)
             R = zeros(npivots[order - 1])
             for j in 1:npivots[order - 1]
-                f(x) = expnegf(F, (F.I[order][j]..., x)...)
+                f(x) = expnegf(F, F.I[order][j]..., x)
                 R[j] = quadgk(f, F.domain[order]...)[1]
             end
             Renv *= R
@@ -498,14 +500,14 @@ function sample_from_tt(F::ResFunc{T, N}) where {T, N}
                 Renvi = zeros(npivots[i - 1], npivots[i])
                 for j in 1:npivots[i - 1]
                     for k in 1:npivots[i]
-                        f(x) = expnegf(F, (F.I[i][j]..., x, F.J[i + 1][k]...)...)
+                        f(x) = expnegf(F, F.I[i][j]..., x, F.J[i + 1][k]...)
                         Renvi[j, k] = quadgk(f, F.domain[i]...)[1]
                     end
                 end
                 AIJ = zeros(npivots[i], npivots[i])
                 for j in 1:npivots[i]
                     for k in 1:npivots[i]
-                        AIJ[j, k] = expnegf(F, (F.I[i + 1][j]..., F.J[i + 1][k]...)...)
+                        AIJ[j, k] = expnegf(F, F.I[i + 1][j]..., F.J[i + 1][k]...)
                     end
                 end
                 Renv = Renvi * inv(AIJ) * Renv
@@ -520,14 +522,14 @@ function sample_from_tt(F::ResFunc{T, N}) where {T, N}
         if count == 1
             normi = zeros(1, npivots[1])
             for j in 1:npivots[1]
-                f(x) = expnegf(F, (x, F.J[2][j]...)...)
+                f(x) = expnegf(F, x, F.J[2][j]...)
                 normi[j] = quadgk(f, F.domain[1]...)[1]
             end
             normi *= Renv
         elseif count == order
             normi = zeros(npivots[order - 1])
             for j in 1:npivots[order - 1]
-                f(x) = expnegf(F, (F.I[order][j]..., x)...)
+                f(x) = expnegf(F, F.I[order][j]..., x)
                 normi[j] = quadgk(f, F.domain[order]...)[1]
             end
             normi = Lenv * normi
@@ -535,7 +537,7 @@ function sample_from_tt(F::ResFunc{T, N}) where {T, N}
             normi = zeros((npivots[count - 1], npivots[count]))
             for j in 1:npivots[count - 1]
                 for k in 1:npivots[count]
-                    f(x) = expnegf(F, (F.I[count][j]..., x, F.J[count + 1][k]...)...)
+                    f(x) = expnegf(F, F.I[count][j]..., x, F.J[count + 1][k]...)
                     normi[j, k] = quadgk(f, F.domain[count]...)[1]
                 end
             end
@@ -548,14 +550,14 @@ function sample_from_tt(F::ResFunc{T, N}) where {T, N}
             if count == 1
                 cdfi = zeros(1, npivots[1])
                 for j in 1:npivots[1]
-                    f(x) = expnegf(F, (x, F.J[2][j]...)...)
+                    f(x) = expnegf(F, x, F.J[2][j]...)
                     cdfi[j] = quadgk(f, F.domain[1][1], mid)[1]
                 end
                 cdfi *= Renv
             elseif count == order
                 cdfi = zeros(npivots[order - 1])
                 for j in 1:npivots[order - 1]
-                    f(x) = expnegf(F, (F.I[order][j]..., x)...)
+                    f(x) = expnegf(F, F.I[order][j]..., x)
                     cdfi[j] = quadgk(f, F.domain[order][1], mid)[1]
                 end
                 cdfi = Lenv * cdfi
@@ -563,7 +565,7 @@ function sample_from_tt(F::ResFunc{T, N}) where {T, N}
                 cdfi = zeros((npivots[count - 1], npivots[count]))
                 for j in 1:npivots[count - 1]
                     for k in 1:npivots[count]
-                        f(x) = expnegf(F, (F.I[count][j]..., x, F.J[count + 1][k]...)...)
+                        f(x) = expnegf(F, F.I[count][j]..., x, F.J[count + 1][k]...)
                         cdfi[j, k] = quadgk(f, F.domain[count][1], mid)[1]
                     end
                 end
@@ -592,13 +594,13 @@ function compute_marginal(F::ResFunc{T, N}, pos::Int64, norm::T) where {T, N}
     if pos != 1
         Lenv = zeros(1, npivots[1])
         for j in 1:npivots[1]
-            f(x) = expnegf(F, (x, F.J[2][j]...)...)
+            f(x) = expnegf(F, x, F.J[2][j]...)
             Lenv[j] = quadgk(f, F.domain[1]...)[1]
         end
         AIJ = zeros(npivots[1], npivots[1])
         for j in 1:npivots[1]
             for k in 1:npivots[1]
-                AIJ[j, k] = expnegf(F, (F.I[2][j]..., F.J[2][k]...)...)
+                AIJ[j, k] = expnegf(F, F.I[2][j]..., F.J[2][k]...)
             end
         end
         Lenv *= inv(AIJ)
@@ -606,14 +608,14 @@ function compute_marginal(F::ResFunc{T, N}, pos::Int64, norm::T) where {T, N}
             Lenvi = zeros(npivots[i - 1], npivots[i])
             for j in 1:npivots[i - 1]
                 for k in 1:npivots[i]
-                    f(x) = expnegf(F, (F.I[i][j]..., x, F.J[i + 1][k]...)...)
+                    f(x) = expnegf(F, F.I[i][j]..., x, F.J[i + 1][k]...)
                     Lenvi[j, k] = quadgk(f, F.domain[i]...)[1]
                 end
             end
             AIJ = zeros(npivots[i], npivots[i])
             for j in 1:npivots[i]
                 for k in 1:npivots[i]
-                    AIJ[j, k] = expnegf(F, (F.I[i + 1][j]..., F.J[i + 1][k]...)...)
+                    AIJ[j, k] = expnegf(F, F.I[i + 1][j]..., F.J[i + 1][k]...)
                 end
             end
             Lenv *= Lenvi * inv(AIJ)
@@ -623,13 +625,13 @@ function compute_marginal(F::ResFunc{T, N}, pos::Int64, norm::T) where {T, N}
         AIJ = zeros(npivots[order - 1], npivots[order - 1])
         for j in 1:npivots[order - 1]
             for k in 1:npivots[order - 1]
-                AIJ[j, k] = expnegf(F, (F.I[order][j]..., F.J[order][k]...)...)
+                AIJ[j, k] = expnegf(F, F.I[order][j]..., F.J[order][k]...)
             end
         end
         Renv = inv(AIJ)
         R = zeros(npivots[order - 1])
         for j in 1:npivots[order - 1]
-            f(x) = expnegf(F, (F.I[order][j]..., x)...)
+            f(x) = expnegf(F, F.I[order][j]..., x)
             R[j] = quadgk(f, F.domain[order]...)[1]
         end
         Renv *= R
@@ -637,14 +639,14 @@ function compute_marginal(F::ResFunc{T, N}, pos::Int64, norm::T) where {T, N}
             Renvi = zeros(npivots[i - 1], npivots[i])
             for j in 1:npivots[i - 1]
                 for k in 1:npivots[i]
-                    f(x) = expnegf(F, (F.I[i][j]..., x, F.J[i + 1][k]...)...)
+                    f(x) = expnegf(F, F.I[i][j]..., x, F.J[i + 1][k]...)
                     Renvi[j, k] = quadgk(f, F.domain[i]...)[1]
                 end
             end
             AIJ = zeros(npivots[i], npivots[i])
             for j in 1:npivots[i]
                 for k in 1:npivots[i]
-                    AIJ[j, k] = expnegf(F, (F.I[i + 1][j]..., F.J[i + 1][k]...)...)
+                    AIJ[j, k] = expnegf(F, F.I[i + 1][j]..., F.J[i + 1][k]...)
                 end
             end
             Renv = Renvi * inv(AIJ) * Renv
@@ -659,20 +661,20 @@ function compute_marginal(F::ResFunc{T, N}, pos::Int64, norm::T) where {T, N}
             if pos == 1
                 resulti = zeros(1, npivots[2])
                 for l in 1:npivots[2]
-                    resulti[l] = expnegf(F, (xlist[j], ylist[k], F.J[3][l]...)...)
+                    resulti[l] = expnegf(F, xlist[j], ylist[k], F.J[3][l]...)
                 end
                 resulti *= Renv
             elseif pos + 1 == order
                 resulti = zeros(npivots[order - 2])
                 for i in 1:npivots[order - 2]
-                    resulti[i] = expnegf(F, (F.I[order - 1][i]..., xlist[j], ylist[k])...)
+                    resulti[i] = expnegf(F, F.I[order - 1][i]..., xlist[j], ylist[k])
                 end
                 resulti = Lenv * resulti
             else
                 resulti = zeros((npivots[pos - 1], npivots[pos + 1]))
                 for i in 1:npivots[pos - 1]
                     for l in 1:npivots[pos + 1]
-                        resulti[i, l] = expnegf(F, (F.I[pos][i]..., xlist[j], ylist[k], F.J[pos + 2][l]...)...)
+                        resulti[i, l] = expnegf(F, F.I[pos][i]..., xlist[j], ylist[k], F.J[pos + 2][l]...)
                     end
                 end
                 resulti = Lenv * resulti * Renv
