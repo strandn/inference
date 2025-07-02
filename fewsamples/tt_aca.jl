@@ -36,6 +36,7 @@ end
 # Evaluates the residual in the current iteration (determined by the number of pivots found so far)
 # Uses dynamic programming/memoization to accelerate recursive evaluation
 function (F::ResFunc{T, N})(elements::T...) where {T, N}
+    println(elements)
     (x, y) = ([elements[i] for i in 1:F.pos], [elements[i] for i in F.pos+1:F.ndims])
     k = length(F.I[F.pos + 1])
     old = undef
@@ -53,6 +54,7 @@ function (F::ResFunc{T, N})(elements::T...) where {T, N}
                 new[idx] = f - log(Complex(1.0 - real(exp(df))))
             end
         end
+        display(new)
         old = deepcopy(new)
     end
     return new[]
