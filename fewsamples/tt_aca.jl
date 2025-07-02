@@ -185,8 +185,8 @@ function max_metropolis(F::ResFunc{T, N}, n_samples::Int64, jump_width::Float64)
         
         if rand() < acceptance_prob
             chain[i, :] = p_new
-            if f_new > max_res
-                max_res = f_new
+            if exp(-f_new) > max_res
+                max_res = exp(-f_new)
                 max_xy = arg_new
             end
         else
