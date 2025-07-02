@@ -52,7 +52,7 @@ function (F::ResFunc{T, N})(elements::T...) where {T, N}
                 # df = f - old[idx[1] + 1, 1] - old[1, idx[2] + 1] + old[1, 1]
                 # new[idx] = f - log(Complex(1.0 - real(exp(df))))
                 df = old[1, 1] - old[idx[1] + 1, 1] - old[1, idx[2] + 1]
-                new[idx] = -log(Complex(exp(-f) - real(exp(df))))
+                new[idx] = -log(Complex(real(exp(-f)) - real(exp(df))))
             end
         end
         old = deepcopy(new)
