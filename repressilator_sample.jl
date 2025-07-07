@@ -55,18 +55,18 @@ function aca_repressilator()
         end
     end
 
-    mu = [2.0, 2.0, 2.0, 15.0, 15.0, 15.0, 5.0, 5.0]
-    sigma = [4.0, 4.0, 4.0, 25.0, 25.0, 25.0, 25.0, 25.0]
+    mu = [2.0, 2.0, 2.0, 15.0, 15.0, 15.0, 5.0, 1.5]
+    sigma = [4.0, 4.0, 4.0, 25.0, 25.0, 25.0, 25.0, 2.0]
     neglogposterior(X10, X20, X30, α1, α2, α3, m, η) = V([X10, X20, X30, α1, α2, α3, m, η], tspan, nsteps, data, mu, sigma)
 
-    X10_dom = (0.1, 6.0)
-    X20_dom = (0.1, 6.0)
-    X30_dom = (0.1, 6.0)
+    X10_dom = (0.5, 4.0)
+    X20_dom = (0.5, 4.0)
+    X30_dom = (0.5, 4.0)
     α1_dom = (0.5, 30.0)
     α2_dom = (0.5, 30.0)
     α3_dom = (0.5, 30.0)
-    m_dom = (0.1, 15.0)
-    η_dom = (0.1, 15.0)
+    m_dom = (2.5, 7.0)
+    η_dom = (0.7, 1.8)
 
     F = ResFunc(neglogposterior, (X10_dom, X20_dom, X30_dom, α1_dom, α2_dom, α3_dom, m_dom, η_dom), 0.0, mu, sigma)
 
