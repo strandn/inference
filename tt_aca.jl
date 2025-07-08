@@ -157,12 +157,12 @@ function max_metropolis(F::ResFunc{T, N}, n_samples::Int64, jump_width::Float64)
     max_res = 0.0
     max_xy = zeros(F.ndims)
 
-    for k in 1:order
-        chain[1, k] = rand() * (ub[k] - lb[k]) + lb[k]
-    end
-    while abs(F([pivot; [chain[1, k] for k in 1:order]]...)) == 0.0
+    while true
         for k in 1:order
             chain[1, k] = rand() * (ub[k] - lb[k]) + lb[k]
+        end
+        if expnegf(F, chain[1, 1:order]...) > 0.0 && exp(-real(F(chain[1, 1:order]...))) > 0.0
+            break
         end
     end
 
