@@ -2,6 +2,7 @@ using Random
 using Distributions
 using QuadGK
 using MPI
+using LinearAlgebra
 
 # Struct holding metadata used for ACA calculations
 mutable struct ResFunc{T, N}
@@ -48,11 +49,10 @@ function (F::ResFunc{T, N})(elements::T...) where {T, N}
                 col = idx[2] == k + 1 ? y : F.J[F.pos + 1][idx[2]]
                 new[idx] = F.f(row..., col...) - F.offset
             else
-                f = old[idx[1] + 1, idx[2] + 1]
-                # df = f - old[idx[1] + 1, 1] - old[1, idx[2] + 1] + old[1, 1]
-                # new[idx] = f - log(Complex(1.0 - real(exp(df))))
-                df = old[1, 1] - old[idx[1] + 1, 1] - old[1, idx[2] + 1]
-                new[idx] = -log(Complex(real(exp(-f)) - real(exp(df))))
+                arg1 = -old[idx[1] + 1, idx[2] + 1]
+                arg2 = old[1, 1] - old[idx[1] + 1, 1] - old[1, idx[2] + 1]
+                arglarge = max(real(arg1), real(arg2))
+                new[idx] = arglarge - log(Complex(real(exp(arg1 - arglarge) - exp(arg2 - arglarge))))
             end
         end
         old = deepcopy(new)
@@ -157,15 +157,12 @@ function max_metropolis(F::ResFunc{T, N}, n_samples::Int64, jump_width::Float64)
     max_res = 0.0
     max_xy = zeros(F.ndims)
 
-    while true
+    for k in 1:order
+        chain[1, k] = rand() * (ub[k] - lb[k]) + lb[k]
+    end
+    while abs(F([pivot; [chain[1, k] for k in 1:order]]...)) == 0.0
         for k in 1:order
-            chain[1, k] = Inf
-            while chain[1, k] < F.domain[k][1] || chain[1, k] > F.domain[k][2]
-                chain[1, k] = F.mu[k] + sqrt(F.sigma[k]) * randn()
-            end
-        end
-        if expnegf(F, chain[1, 1:order]...) > 0.0 && exp(-real(F(chain[1, 1:order]...))) > 0.0
-            break
+            chain[1, k] = rand() * (ub[k] - lb[k]) + lb[k]
         end
     end
 
@@ -205,29 +202,30 @@ end
 function compute_norm(F::ResFunc{T, N}) where {T, N}
     order = F.ndims
     npivots = [length(F.I[i]) for i in 2:order]
-    norm = zeros(1, npivots[1])
+    result = zeros(1, npivots[1])
     for j in 1:npivots[1]
         f(x) = expnegf(F, x, F.J[2][j]...)
-        norm[j] = quadgk(f, F.domain[1]...; maxevals=10^5)[1]
+        result[j] = quadgk(f, F.domain[1]...)[1]
+        # result[j] = quadgk(f, F.domain[1]...; maxevals=10^5)[1]
     end
     println("i = 1\n")
-    display(norm)
+    display(result)
     AIJ = zeros(npivots[1], npivots[1])
     for j in 1:npivots[1]
         for k in 1:npivots[1]
             AIJ[j, k] = expnegf(F, F.I[2][j]..., F.J[2][k]...)
         end
     end
-    println(det(AIJ))
-    display(AIJ * inv(AIJ))
-    norm *= inv(AIJ)
-    display(norm)
+    println(norm(AIJ * inv(AIJ) - I))
+    result *= inv(AIJ)
+    display(result)
     for i in 2:order-1
         normi = zeros((npivots[i - 1], npivots[i]))
         for j in 1:npivots[i - 1]
             for k in 1:npivots[i]
                 f(x) = expnegf(F, F.I[i][j]..., x, F.J[i + 1][k]...)
-                normi[j, k] = quadgk(f, F.domain[i]...; maxevals=10^5)[1]
+                normi[j, k] = quadgk(f, F.domain[i]...)[1]
+                # normi[j, k] = quadgk(f, F.domain[i]...; maxevals=10^5)[1]
             end
         end
         println("\ni = $i\n")
@@ -238,26 +236,20 @@ function compute_norm(F::ResFunc{T, N}) where {T, N}
                 AIJ[j, k] = expnegf(F, F.I[i + 1][j]..., F.J[i + 1][k]...)
             end
         end
-        println(det(AIJ))
-        display(AIJ * inv(AIJ))
-        norm *= normi * inv(AIJ)
-        display(norm)
+        println(norm(AIJ * inv(AIJ) - I))
+        result *= normi * inv(AIJ)
+        display(result)
     end
     R = zeros(npivots[order - 1])
     for j in 1:npivots[order - 1]
         f(x) = expnegf(F, F.I[order][j]..., x)
-        nbins = 500
-        xlist = LinRange(F.domain[order]..., nbins + 1)
-        for k in 1:nbins
-            print("$(f(xlist[k])), ")
-        end
-        println()
-        R[j] = quadgk(f, F.domain[order]...; maxevals=10^5)[1]
+        R[j] = quadgk(f, F.domain[order]...)[1]
+        # R[j] = quadgk(f, F.domain[order]...; maxevals=10^5)[1]
     end
     println("\ni = $order\n")
     display(R)
-    norm *= R
-    return norm[]
+    result *= R
+    return result[]
 end
 
 # Approximates the normalized 1,2-marginal at (x1, x2)
@@ -514,7 +506,8 @@ function sample_from_tt(F::ResFunc{T, N}) where {T, N}
             R = zeros(npivots[order - 1])
             for j in 1:npivots[order - 1]
                 f(x) = expnegf(F, F.I[order][j]..., x)
-                R[j] = quadgk(f, F.domain[order]...; maxevals=10^5)[1]
+                R[j] = quadgk(f, F.domain[order]...)[1]
+                # R[j] = quadgk(f, F.domain[order]...; maxevals=10^5)[1]
             end
             Renv *= R
             for i in order-1:-1:count+1
@@ -522,7 +515,8 @@ function sample_from_tt(F::ResFunc{T, N}) where {T, N}
                 for j in 1:npivots[i - 1]
                     for k in 1:npivots[i]
                         f(x) = expnegf(F, F.I[i][j]..., x, F.J[i + 1][k]...)
-                        Renvi[j, k] = quadgk(f, F.domain[i]...; maxevals=10^5)[1]
+                        Renvi[j, k] = quadgk(f, F.domain[i]...)[1]
+                        # Renvi[j, k] = quadgk(f, F.domain[i]...; maxevals=10^5)[1]
                     end
                 end
                 AIJ = zeros(npivots[i], npivots[i])
@@ -544,14 +538,16 @@ function sample_from_tt(F::ResFunc{T, N}) where {T, N}
             normi = zeros(1, npivots[1])
             for j in 1:npivots[1]
                 f(x) = expnegf(F, x, F.J[2][j]...)
-                normi[j] = quadgk(f, F.domain[1]...; maxevals=10^5)[1]
+                normi[j] = quadgk(f, F.domain[1]...)[1]
+                # normi[j] = quadgk(f, F.domain[1]...; maxevals=10^5)[1]
             end
             normi *= Renv
         elseif count == order
             normi = zeros(npivots[order - 1])
             for j in 1:npivots[order - 1]
                 f(x) = expnegf(F, F.I[order][j]..., x)
-                normi[j] = quadgk(f, F.domain[order]...; maxevals=10^5)[1]
+                normi[j] = quadgk(f, F.domain[order]...)[1]
+                # normi[j] = quadgk(f, F.domain[order]...; maxevals=10^5)[1]
             end
             normi = Lenv * normi
         else
@@ -559,7 +555,8 @@ function sample_from_tt(F::ResFunc{T, N}) where {T, N}
             for j in 1:npivots[count - 1]
                 for k in 1:npivots[count]
                     f(x) = expnegf(F, F.I[count][j]..., x, F.J[count + 1][k]...)
-                    normi[j, k] = quadgk(f, F.domain[count]...; maxevals=10^5)[1]
+                    normi[j, k] = quadgk(f, F.domain[count]...)[1]
+                    # normi[j, k] = quadgk(f, F.domain[count]...; maxevals=10^5)[1]
                 end
             end
             normi = Lenv * normi * Renv
@@ -572,14 +569,16 @@ function sample_from_tt(F::ResFunc{T, N}) where {T, N}
                 cdfi = zeros(1, npivots[1])
                 for j in 1:npivots[1]
                     f(x) = expnegf(F, x, F.J[2][j]...)
-                    cdfi[j] = quadgk(f, F.domain[1][1], mid; maxevals=10^5)[1]
+                    cdfi[j] = quadgk(f, F.domain[1][1], mid)[1]
+                    # cdfi[j] = quadgk(f, F.domain[1][1], mid; maxevals=10^5)[1]
                 end
                 cdfi *= Renv
             elseif count == order
                 cdfi = zeros(npivots[order - 1])
                 for j in 1:npivots[order - 1]
                     f(x) = expnegf(F, F.I[order][j]..., x)
-                    cdfi[j] = quadgk(f, F.domain[order][1], mid; maxevals=10^5)[1]
+                    cdfi[j] = quadgk(f, F.domain[order][1], mid)[1]
+                    # cdfi[j] = quadgk(f, F.domain[order][1], mid; maxevals=10^5)[1]
                 end
                 cdfi = Lenv * cdfi
             else
@@ -587,7 +586,8 @@ function sample_from_tt(F::ResFunc{T, N}) where {T, N}
                 for j in 1:npivots[count - 1]
                     for k in 1:npivots[count]
                         f(x) = expnegf(F, F.I[count][j]..., x, F.J[count + 1][k]...)
-                        cdfi[j, k] = quadgk(f, F.domain[count][1], mid; maxevals=10^5)[1]
+                        cdfi[j, k] = quadgk(f, F.domain[count][1], mid)[1]
+                        # cdfi[j, k] = quadgk(f, F.domain[count][1], mid; maxevals=10^5)[1]
                     end
                 end
                 cdfi = Lenv * cdfi * Renv
@@ -616,7 +616,8 @@ function compute_marginal(F::ResFunc{T, N}, pos::Int64, norm::T) where {T, N}
         Lenv = zeros(1, npivots[1])
         for j in 1:npivots[1]
             f(x) = expnegf(F, x, F.J[2][j]...)
-            Lenv[j] = quadgk(f, F.domain[1]...; maxevals=10^5)[1]
+            Lenv[j] = quadgk(f, F.domain[1]...)[1]
+            # Lenv[j] = quadgk(f, F.domain[1]...; maxevals=10^5)[1]
         end
         AIJ = zeros(npivots[1], npivots[1])
         for j in 1:npivots[1]
@@ -630,7 +631,8 @@ function compute_marginal(F::ResFunc{T, N}, pos::Int64, norm::T) where {T, N}
             for j in 1:npivots[i - 1]
                 for k in 1:npivots[i]
                     f(x) = expnegf(F, F.I[i][j]..., x, F.J[i + 1][k]...)
-                    Lenvi[j, k] = quadgk(f, F.domain[i]...; maxevals=10^5)[1]
+                    Lenvi[j, k] = quadgk(f, F.domain[i]...)[1]
+                    # Lenvi[j, k] = quadgk(f, F.domain[i]...; maxevals=10^5)[1]
                 end
             end
             AIJ = zeros(npivots[i], npivots[i])
@@ -653,7 +655,8 @@ function compute_marginal(F::ResFunc{T, N}, pos::Int64, norm::T) where {T, N}
         R = zeros(npivots[order - 1])
         for j in 1:npivots[order - 1]
             f(x) = expnegf(F, F.I[order][j]..., x)
-            R[j] = quadgk(f, F.domain[order]...; maxevals=10^5)[1]
+            R[j] = quadgk(f, F.domain[order]...)[1]
+            # R[j] = quadgk(f, F.domain[order]...; maxevals=10^5)[1]
         end
         Renv *= R
         for i in order-1:-1:pos+2
@@ -661,7 +664,8 @@ function compute_marginal(F::ResFunc{T, N}, pos::Int64, norm::T) where {T, N}
             for j in 1:npivots[i - 1]
                 for k in 1:npivots[i]
                     f(x) = expnegf(F, F.I[i][j]..., x, F.J[i + 1][k]...)
-                    Renvi[j, k] = quadgk(f, F.domain[i]...; maxevals=10^5)[1]
+                    Renvi[j, k] = quadgk(f, F.domain[i]...)[1]
+                    # Renvi[j, k] = quadgk(f, F.domain[i]...; maxevals=10^5)[1]
                 end
             end
             AIJ = zeros(npivots[i], npivots[i])

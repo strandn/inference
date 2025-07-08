@@ -1,5 +1,4 @@
 using DifferentialEquations
-using LinearAlgebra
 
 include("tt_aca.jl")
 
@@ -83,10 +82,8 @@ function aca_repressilator()
     MPI.Bcast!(truedata, 0, mpi_comm)
     MPI.Bcast!(data, 0, mpi_comm)
 
-    # mu = [2.0, 2.0, 2.0, 15.0, 15.0, 15.0, 5.0, 5.0]
-    # sigma = [4.0, 4.0, 4.0, 25.0, 25.0, 25.0, 25.0, 25.0]
-    mu = [2.0, 2.0, 2.0, 15.0, 15.0, 15.0, 5.0, 1.5]
-    sigma = [4.0, 4.0, 4.0, 25.0, 25.0, 25.0, 25.0, 2.0]
+    mu = [2.0, 2.0, 2.0, 15.0, 15.0, 15.0, 5.0, 5.0]
+    sigma = [4.0, 4.0, 4.0, 25.0, 25.0, 25.0, 25.0, 25.0]
     neglogposterior(X10, X20, X30, α1, α2, α3, m, η) = V([X10, X20, X30, α1, α2, α3, m, η], tspan, nsteps, data, mu, sigma)
 
     if mpi_rank == 0
@@ -97,14 +94,14 @@ function aca_repressilator()
         end
     end
 
-    X10_dom = (0.5, 4.0)
-    X20_dom = (0.5, 4.0)
-    X30_dom = (0.5, 4.0)
-    α1_dom = (0.5, 30.0)
-    α2_dom = (0.5, 30.0)
-    α3_dom = (0.5, 30.0)
-    m_dom = (2.5, 7.0)
-    η_dom = (0.7, 1.8)
+    X10_dom = (0.5, 3.5)
+    X20_dom = (0.5, 3.5)
+    X30_dom = (0.5, 3.5)
+    α1_dom = (0.5, 25.0)
+    α2_dom = (0.5, 25.0)
+    α3_dom = (0.5, 25.0)
+    m_dom = (3.0, 5.0)
+    η_dom = (0.95, 1.05)
 
     F = ResFunc(neglogposterior, (X10_dom, X20_dom, X30_dom, α1_dom, α2_dom, α3_dom, m_dom, η_dom), cutoff, mu, sigma)
 
@@ -145,9 +142,9 @@ mpi_size = MPI.Comm_size(mpi_comm)
 d = 8
 maxr = 50
 n_chains = 40
-n_samples = 5000
-jump_width = 2.0e-3
-cutoff = 1.0e-3
+n_samples = 1000
+jump_width = 0.01
+cutoff = 0.001
 
 aca_repressilator()
 
