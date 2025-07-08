@@ -51,8 +51,9 @@ function (F::ResFunc{T, N})(elements::T...) where {T, N}
             else
                 arg1 = -old[idx[1] + 1, idx[2] + 1]
                 arg2 = old[1, 1] - old[idx[1] + 1, 1] - old[1, idx[2] + 1]
-                arglarge = max(real(arg1), real(arg2))
-                new[idx] = arglarge - log(Complex(real(exp(arg1 - arglarge) - exp(arg2 - arglarge))))
+                # arglarge = max(real(arg1), real(arg2))
+                # new[idx] = arglarge - log(Complex(real(exp(arg1 - arglarge) - exp(arg2 - arglarge))))
+                new[idx] = -log(Complex(real(exp(arg1) - exp(arg2))))
             end
         end
         old = deepcopy(new)
