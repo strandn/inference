@@ -146,7 +146,7 @@ d = 8
 maxr = 50
 n_chains = 40
 n_samples = 5000
-jump_width = 2.0e-3
+jump_width = 1.0e-3
 cutoff = 1.0e-3
 
 aca_repressilator()
