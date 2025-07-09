@@ -45,10 +45,11 @@ end
 function aca_damped()
     tspan = (0.0, 30.0)
     nsteps = 50
+    dt = (tspan[2] - tspan[1]) / nsteps
 
     data_x = []
     data_v = []
-    open("underdamped_data.txt", "r") do file
+    open("overdamped_data.txt", "r") do file
         for line in eachline(file)
             cols = split(line)
             push!(data_x, parse(Float64, cols[4]))
@@ -67,7 +68,7 @@ function aca_damped()
 
     F = ResFunc(neglogposterior, (x0_dom, v0_dom, ω_dom, γ_dom), 0.0, mu, sigma)
 
-    open("underdamped_IJ.txt", "r") do file
+    open("overdamped_IJ.txt", "r") do file
         F.I, F.J = eval(Meta.parse(readline(file)))
         F.offset = parse(Float64, readline(file))
     end
@@ -80,7 +81,7 @@ function aca_damped()
 
     for count in 1:3
         dens = compute_marginal(F, count, norm)
-        open("underdamped_marginal_$count.txt", "w") do file
+        open("overdamped_marginal_$count.txt", "w") do file
             for i in 1:nbins
                 for j in 1:nbins
                     write(file, "$(grid[count][i]) $(grid[count + 1][j]) $(dens[i, j])\n")
@@ -89,7 +90,7 @@ function aca_damped()
         end
     end
 
-    open("underdamped_samples.txt", "w") do file
+    open("overdamped_samples.txt", "w") do file
         for i in 1:10
             println("Collecting sample $i...")
             sample = sample_from_tt(F)

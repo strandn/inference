@@ -54,7 +54,7 @@ function aca_damped()
     x0_true = 7.5
     v0_true = 2.5
     ω_true = 1.0
-    γ_true = 0.4
+    γ_true = 3.5
 
     truedata_x = zeros(nsteps + 1)
     truedata_v = zeros(nsteps + 1)
@@ -83,7 +83,7 @@ function aca_damped()
     neglogposterior(x0, v0, ω, γ) = V([x0, v0, ω, γ], tspan, nsteps, data_x, data_v, mu, sigma)
 
     if mpi_rank == 0
-        open("underdamped_data.txt", "w") do file
+        open("overdamped_data.txt", "w") do file
             for i in 1:nsteps+1
                 write(file, "$(tlist[i]) $(truedata_x[i]) $(truedata_v[i]) $(data_x[i]) $(data_v[i])\n")
             end
@@ -111,7 +111,7 @@ function aca_damped()
     normbuf = [0.0]
 
     if mpi_rank == 0
-        open("underdamped_IJ.txt", "w") do file
+        open("overdamped_IJ.txt", "w") do file
             write(file, "$IJ\n")
             write(file, "$(F.offset)\n")
         end
