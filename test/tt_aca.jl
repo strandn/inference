@@ -43,6 +43,7 @@ function (F::ResFunc{T, N})(elements::T...) where {T, N}
     new = undef
     old_sign = undef
     new_sign = undef
+    println(elements)
 
     for iter in 0:k
         new = zeros(k - iter + 1, k - iter + 1)
@@ -67,6 +68,8 @@ function (F::ResFunc{T, N})(elements::T...) where {T, N}
                 new_sign[idx] = ifelse(delta < 0.0, -1.0, 1.0)
             end
         end
+        display(new)
+        display(new_sign)
         old = deepcopy(new)
         old_sign = deepcopy(new_sign)
     end
