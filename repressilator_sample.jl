@@ -30,7 +30,7 @@ function V(r, tspan, nsteps, data, mu, sigma)
             throw(ErrorException("ODE solver failed"))
         end
     catch e
-        obs = fill(200.0, nsteps + 1)
+        obs = fill(Inf, nsteps + 1)
     end
 
     s2 = 0.25
@@ -75,7 +75,7 @@ function aca_repressilator()
     end
 
     norm = compute_norm(F)
-    println("norm = $norm")
+    println("norm = $norm\n")
 
     nbins = 100
     grid = (

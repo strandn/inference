@@ -30,7 +30,7 @@ function V(r, tspan, nsteps, data, mu, sigma)
             throw(ErrorException("ODE solver failed"))
         end
     catch e
-        obs = fill(200.0, nsteps + 1)
+        obs = fill(Inf, nsteps + 1)
     end
 
     s2 = 0.25
@@ -142,8 +142,8 @@ mpi_size = MPI.Comm_size(mpi_comm)
 d = 8
 maxr = 50
 n_chains = 40
-n_samples = 2000
-jump_width = 0.002
+n_samples = 5000
+jump_width = 0.001
 cutoff = 0.001
 
 aca_repressilator()
