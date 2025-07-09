@@ -41,23 +41,34 @@ function (F::ResFunc{T, N})(elements::T...) where {T, N}
     k = length(F.I[F.pos + 1])
     old = undef
     new = undef
+    old_sign = undef
+    new_sign = undef
+
     for iter in 0:k
-        new = Complex.(zeros(k - iter + 1, k - iter + 1))
+        new = zeros(k - iter + 1, k - iter + 1)
+        new_sign = ones(k - iter + 1, k - iter + 1)
         for idx in CartesianIndices(new)
             if iter == 0
                 row = idx[1] == k + 1 ? x : F.I[F.pos + 1][idx[1]]
                 col = idx[2] == k + 1 ? y : F.J[F.pos + 1][idx[2]]
-                new[idx] = F.f(row..., col...) - F.offset
+                delta = F.f(row..., col...) - F.offset
+                new[idx] = abs(delta)
+                new_sign[idx] = ifelse(delta < 0.0, -1.0, 1.0)
             else
                 arg1 = -old[idx[1] + 1, idx[2] + 1]
                 arg2 = old[1, 1] - old[idx[1] + 1, 1] - old[1, idx[2] + 1]
-                arglarge = max(real(arg1), real(arg2))
-                new[idx] = -arglarge - log(Complex(real(exp(arg1 - arglarge) - exp(arg2 - arglarge))))
-                # new[idx] = -log(Complex(real(exp(arg1) - exp(arg2))))
-                # println("$arg1 $arg2 $(arg1 - arglarge) $(arg2 - arglarge) $(exp(arg1 - arglarge)) $(exp(arg2 - arglarge)) $(real(exp(arg1 - arglarge) - exp(arg2 - arglarge)))")
+                arglarge = max(arg1, arg2)
+
+                sign1 = old_sign[idx[1] + 1, idx[2] + 1]
+                sign2 = old_sign[1, 1] * old_sign[idx[1] + 1, 1] * old_sign[1, idx[2] + 1]
+
+                delta = sign1 * exp(arg1 - arglarge) - sign2 * exp(arg2 - arglarge)
+                new[idx] = -arglarge - log(abs(delta) + eps())  # add eps to guard against log(0)
+                new_sign[idx] = ifelse(delta < 0.0, -1.0, 1.0)
             end
         end
         old = deepcopy(new)
+        old_sign = deepcopy(new_sign)
     end
     return new[]
 end
@@ -121,16 +132,15 @@ function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, 
             end
             
             # Find position of largest residuals
-            idx = argmax(reslist)
+            idx = argmin(reslist)
             xy = [xylist[idx]]
             MPI.Bcast!(xy, 0, mpi_comm)
-            res_new = [reslist[idx]]
             if isempty(F.I[i + 1]) || F.f(xy[]...) < F.offset
                 offset_new = [F.f(xy[]...)]
                 MPI.Bcast!(offset_new, 0, mpi_comm)
                 F.offset = offset_new[]
-                res_new = [exp(-real(F(xy[]...)))]
             end
+            res_new = [exp(-F(xy[]...))]
             MPI.Bcast!(res_new, 0, mpi_comm)
             if res_new[] < F.cutoff
                 break
@@ -156,14 +166,15 @@ function max_metropolis(F::ResFunc{T, N}, n_samples::Int64, jump_width::Float64)
 
     chain = zeros(n_samples, order)
 
-    max_res = 0.0
+    min_nlr = Inf
     max_xy = zeros(F.ndims)
 
     while true
         for k in 1:order
             chain[1, k] = rand() * (ub[k] - lb[k]) + lb[k]
         end
-        if expnegf(F, chain[1, 1:order]...) > 0.0 && exp(-real(F(chain[1, 1:order]...))) > 0.0
+        fx = F(chain[1, :]...)  # Call once
+        if isfinite(fx)
             break
         end
     end
@@ -181,14 +192,14 @@ function max_metropolis(F::ResFunc{T, N}, n_samples::Int64, jump_width::Float64)
 
         arg_old = [chain[i - 1, k] for k in 1:order]
         arg_new = [p_new[k] for k in 1:order]
-        f_old = real(F(arg_old...))
-        f_new = real(F(arg_new...))
-        acceptance_prob = min(1, exp(f_old - f_new))
+        f_old = F(arg_old...)
+        f_new = F(arg_new...)
+        acceptance_prob = isfinite(f_new) ? min(1, exp(f_old - f_new)) : 0.0
         
         if rand() < acceptance_prob
             chain[i, :] = p_new
-            if exp(-f_new) > max_res
-                max_res = exp(-f_new)
+            if f_new < min_nlr
+                min_nlr = f_new
                 max_xy = arg_new
             end
         else
@@ -196,7 +207,7 @@ function max_metropolis(F::ResFunc{T, N}, n_samples::Int64, jump_width::Float64)
         end
     end
 
-    return Tuple(max_xy), max_res
+    return Tuple(max_xy), min_nlr
 end
 
 # Approximates normalization constant, or partition function (if F is a Boltzmann distribution)
@@ -250,6 +261,7 @@ function compute_norm(F::ResFunc{T, N}) where {T, N}
     end
     println("\ni = $order\n")
     display(R)
+    println()
     result *= R
     return result[]
 end
