@@ -43,6 +43,7 @@ function (F::ResFunc{T, N})(elements::T...) where {T, N}
     new = undef
     old_sign = undef
     new_sign = undef
+    # println(elements)
 
     for iter in 0:k
         new = zeros(k - iter + 1, k - iter + 1)
@@ -51,9 +52,7 @@ function (F::ResFunc{T, N})(elements::T...) where {T, N}
             if iter == 0
                 row = idx[1] == k + 1 ? x : F.I[F.pos + 1][idx[1]]
                 col = idx[2] == k + 1 ? y : F.J[F.pos + 1][idx[2]]
-                delta = F.f(row..., col...) - F.offset
-                new[idx] = abs(delta)
-                new_sign[idx] = ifelse(delta < 0.0, -1.0, 1.0)
+                new[idx] = F.f(row..., col...) - F.offset
             else
                 arg1 = -old[idx[1] + 1, idx[2] + 1]
                 arg2 = old[1, 1] - old[idx[1] + 1, 1] - old[1, idx[2] + 1]
@@ -67,6 +66,8 @@ function (F::ResFunc{T, N})(elements::T...) where {T, N}
                 new_sign[idx] = ifelse(delta < 0.0, -1.0, 1.0)
             end
         end
+        # display(new)
+        # display(new_sign)
         old = deepcopy(new)
         old_sign = deepcopy(new_sign)
     end
@@ -192,9 +193,13 @@ function max_metropolis(F::ResFunc{T, N}, n_samples::Int64, jump_width::Float64)
 
         arg_old = [chain[i - 1, k] for k in 1:order]
         arg_new = [p_new[k] for k in 1:order]
-        f_old = F(arg_old...)
-        f_new = F(arg_new...)
-        acceptance_prob = isfinite(f_new) ? min(1, exp(f_old - f_new)) : 0.0
+        acceptance_prob = 0.0
+        if isfinite(F.f(arg_new...))
+            f_old = F(arg_old...)
+            f_new = F(arg_new...)
+            acceptance_prob = min(1, exp(f_old - f_new))
+        end
+        # acceptance_prob = isfinite(f_new) ? min(1, exp(f_old - f_new)) : 0.0
         
         if rand() < acceptance_prob
             chain[i, :] = p_new

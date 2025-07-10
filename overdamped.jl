@@ -17,15 +17,20 @@ function V(r, tspan, nsteps, data_x, data_v, mu, sigma)
     ω = r[3]
     γ = r[4]
     prob = ODEProblem(damped_oscillator!, [x0, v0], tspan, [ω, γ])
-    sol = solve(prob, Tsit5(), saveat=dt)
+
     obs_x = undef
     obs_v = undef
-    if sol.retcode == ReturnCode.Success
-        obs_x = sol[1, :]
-        obs_v = sol[2, :]
-    else
-        obs_x = fill(200.0, nsteps + 1)
-        obs_v = fill(200.0, nsteps + 1)
+    try
+        sol = solve(prob, Tsit5(), saveat=dt)
+        if sol.retcode == ReturnCode.Success
+            obs_x = sol[1, :]
+            obs_v = sol[2, :]
+        else
+            throw(ErrorException("ODE solver failed"))
+        end
+    catch e
+        obs_x = fill(Inf, nsteps + 1)
+        obs_v = fill(Inf, nsteps + 1)
     end
 
     s2 = 0.15
