@@ -103,7 +103,7 @@ function dmrg_repressilator()
         for i in 1:nbins
             for j in 1:nbins
                 nlp = neglogposterior(grid[1][i], grid[2][j], grid[3][X30_idx], grid[4][α1_idx], grid[5][α2_idx], grid[6][α3_idx], grid[7][m_idx], grid[8][η_idx])
-                write(file, "$(exp(offset - nlp))\n")
+                write(file, "$(grid[1][i]) $(grid[2][j]) $(exp(offset - nlp))\n")
             end
         end
     end
@@ -111,7 +111,7 @@ function dmrg_repressilator()
         for i in 1:nbins
             for j in 1:nbins
                 nlp = neglogposterior(grid[1][X10_idx], grid[2][i], grid[3][j], grid[4][α1_idx], grid[5][α2_idx], grid[6][α3_idx], grid[7][m_idx], grid[8][η_idx])
-                write(file, "$(exp(offset - nlp))\n")
+                write(file, "$(grid[2][i]) $(grid[3][j]) $(exp(offset - nlp))\n")
             end
         end
     end
@@ -119,7 +119,7 @@ function dmrg_repressilator()
         for i in 1:nbins
             for j in 1:nbins
                 nlp = neglogposterior(grid[1][X10_idx], grid[2][X20_idx], grid[3][i], grid[4][j], grid[5][α2_idx], grid[6][α3_idx], grid[7][m_idx], grid[8][η_idx])
-                write(file, "$(exp(offset - nlp))\n")
+                write(file, "$(grid[3][i]) $(grid[4][j]) $(exp(offset - nlp))\n")
             end
         end
     end
@@ -127,7 +127,7 @@ function dmrg_repressilator()
         for i in 1:nbins
             for j in 1:nbins
                 nlp = neglogposterior(grid[1][X10_idx], grid[2][X20_idx], grid[3][X30_idx], grid[4][i], grid[5][j], grid[6][α3_idx], grid[7][m_idx], grid[8][η_idx])
-                write(file, "$(exp(offset - nlp))\n")
+                write(file, "$(grid[4][i]) $(grid[5][j]) $(exp(offset - nlp))\n")
             end
         end
     end
@@ -135,7 +135,7 @@ function dmrg_repressilator()
         for i in 1:nbins
             for j in 1:nbins
                 nlp = neglogposterior(grid[1][X10_idx], grid[2][X20_idx], grid[3][X30_idx], grid[4][α1_idx], grid[5][i], grid[6][j], grid[7][m_idx], grid[8][η_idx])
-                write(file, "$(exp(offset - nlp))\n")
+                write(file, "$(grid[5][i]) $(grid[6][j]) $(exp(offset - nlp))\n")
             end
         end
     end
@@ -143,7 +143,7 @@ function dmrg_repressilator()
         for i in 1:nbins
             for j in 1:nbins
                 nlp = neglogposterior(grid[1][X10_idx], grid[2][X20_idx], grid[3][X30_idx], grid[4][α1_idx], grid[5][α2_idx], grid[6][i], grid[7][j], grid[8][η_idx])
-                write(file, "$(exp(offset - nlp))\n")
+                write(file, "$(grid[6][i]) $(grid[7][j]) $(exp(offset - nlp))\n")
             end
         end
     end
@@ -151,7 +151,7 @@ function dmrg_repressilator()
         for i in 1:nbins
             for j in 1:nbins
                 nlp = neglogposterior(grid[1][X10_idx], grid[2][X20_idx], grid[3][X30_idx], grid[4][α1_idx], grid[5][α2_idx], grid[6][α3_idx], grid[7][i], grid[8][j])
-                write(file, "$(exp(offset - nlp))\n")
+                write(file, "$(grid[7][i]) $(grid[8][j]) $(exp(offset - nlp))\n")
             end
         end
     end
@@ -160,7 +160,7 @@ function dmrg_repressilator()
         for i in 1:nbins
             for j in 1:nbins
                 nlp = neglogposterior(grid[1][i], grid[2][j], grid[3][X30_idx], grid[4][α2_idx], grid[5][α3_idx], grid[6][α1_idx], grid[7][m_idx], grid[8][η_idx])
-                write(file, "$(exp(offset - nlp))\n")
+                write(file, "$(grid[1][i]) $(grid[2][j]) $(exp(offset - nlp))\n")
             end
         end
     end
@@ -168,7 +168,7 @@ function dmrg_repressilator()
         for i in 1:nbins
             for j in 1:nbins
                 nlp = neglogposterior(grid[1][X10_idx], grid[2][i], grid[3][j], grid[4][α2_idx], grid[5][α3_idx], grid[6][α1_idx], grid[7][m_idx], grid[8][η_idx])
-                write(file, "$(exp(offset - nlp))\n")
+                write(file, "$(grid[2][i]) $(grid[3][j]) $(exp(offset - nlp))\n")
             end
         end
     end
@@ -176,7 +176,7 @@ function dmrg_repressilator()
         for i in 1:nbins
             for j in 1:nbins
                 nlp = neglogposterior(grid[1][X10_idx], grid[2][X20_idx], grid[3][i], grid[4][j], grid[5][α3_idx], grid[6][α1_idx], grid[7][m_idx], grid[8][η_idx])
-                write(file, "$(exp(offset - nlp))\n")
+                write(file, "$(grid[3][i]) $(grid[4][j]) $(exp(offset - nlp))\n")
             end
         end
     end
@@ -184,7 +184,7 @@ function dmrg_repressilator()
         for i in 1:nbins
             for j in 1:nbins
                 nlp = neglogposterior(grid[1][X10_idx], grid[2][X20_idx], grid[3][X30_idx], grid[4][i], grid[5][j], grid[6][α1_idx], grid[7][m_idx], grid[8][η_idx])
-                write(file, "$(exp(offset - nlp))\n")
+                write(file, "$(grid[4][i]) $(grid[5][j]) $(exp(offset - nlp))\n")
             end
         end
     end
@@ -192,7 +192,7 @@ function dmrg_repressilator()
         for i in 1:nbins
             for j in 1:nbins
                 nlp = neglogposterior(grid[1][X10_idx], grid[2][X20_idx], grid[3][X30_idx], grid[4][α2_idx], grid[5][i], grid[6][j], grid[7][m_idx], grid[8][η_idx])
-                write(file, "$(exp(offset - nlp))\n")
+                write(file, "$(grid[5][i]) $(grid[6][j]) $(exp(offset - nlp))\n")
             end
         end
     end
@@ -200,7 +200,7 @@ function dmrg_repressilator()
         for i in 1:nbins
             for j in 1:nbins
                 nlp = neglogposterior(grid[1][X10_idx], grid[2][X20_idx], grid[3][X30_idx], grid[4][α2_idx], grid[5][α3_idx], grid[6][i], grid[7][j], grid[8][η_idx])
-                write(file, "$(exp(offset - nlp))\n")
+                write(file, "$(grid[6][i]) $(grid[7][j]) $(exp(offset - nlp))\n")
             end
         end
     end
@@ -208,7 +208,7 @@ function dmrg_repressilator()
         for i in 1:nbins
             for j in 1:nbins
                 nlp = neglogposterior(grid[1][X10_idx], grid[2][X20_idx], grid[3][X30_idx], grid[4][α2_idx], grid[5][α3_idx], grid[6][α1_idx], grid[7][i], grid[8][j])
-                write(file, "$(exp(offset - nlp))\n")
+                write(file, "$(grid[7][i]) $(grid[8][j]) $(exp(offset - nlp))\n")
             end
         end
     end
@@ -217,7 +217,7 @@ function dmrg_repressilator()
         for i in 1:nbins
             for j in 1:nbins
                 nlp = neglogposterior(grid[1][i], grid[2][j], grid[3][X30_idx], grid[4][α3_idx], grid[5][α1_idx], grid[6][α2_idx], grid[7][m_idx], grid[8][η_idx])
-                write(file, "$(exp(offset - nlp))\n")
+                write(file, "$(grid[1][i]) $(grid[2][j]) $(exp(offset - nlp))\n")
             end
         end
     end
@@ -225,7 +225,7 @@ function dmrg_repressilator()
         for i in 1:nbins
             for j in 1:nbins
                 nlp = neglogposterior(grid[1][X10_idx], grid[2][i], grid[3][j], grid[4][α3_idx], grid[5][α1_idx], grid[6][α2_idx], grid[7][m_idx], grid[8][η_idx])
-                write(file, "$(exp(offset - nlp))\n")
+                write(file, "$(grid[2][i]) $(grid[3][j]) $(exp(offset - nlp))\n")
             end
         end
     end
@@ -233,7 +233,7 @@ function dmrg_repressilator()
         for i in 1:nbins
             for j in 1:nbins
                 nlp = neglogposterior(grid[1][X10_idx], grid[2][X20_idx], grid[3][i], grid[4][j], grid[5][α1_idx], grid[6][α2_idx], grid[7][m_idx], grid[8][η_idx])
-                write(file, "$(exp(offset - nlp))\n")
+                write(file, "$(grid[3][i]) $(grid[4][j]) $(exp(offset - nlp))\n")
             end
         end
     end
@@ -241,7 +241,7 @@ function dmrg_repressilator()
         for i in 1:nbins
             for j in 1:nbins
                 nlp = neglogposterior(grid[1][X10_idx], grid[2][X20_idx], grid[3][X30_idx], grid[4][i], grid[5][j], grid[6][α2_idx], grid[7][m_idx], grid[8][η_idx])
-                write(file, "$(exp(offset - nlp))\n")
+                write(file, "$(grid[4][i]) $(grid[5][j]) $(exp(offset - nlp))\n")
             end
         end
     end
@@ -249,7 +249,7 @@ function dmrg_repressilator()
         for i in 1:nbins
             for j in 1:nbins
                 nlp = neglogposterior(grid[1][X10_idx], grid[2][X20_idx], grid[3][X30_idx], grid[4][α3_idx], grid[5][i], grid[6][j], grid[7][m_idx], grid[8][η_idx])
-                write(file, "$(exp(offset - nlp))\n")
+                write(file, "$(grid[5][i]) $(grid[6][j]) $(exp(offset - nlp))\n")
             end
         end
     end
@@ -257,7 +257,7 @@ function dmrg_repressilator()
         for i in 1:nbins
             for j in 1:nbins
                 nlp = neglogposterior(grid[1][X10_idx], grid[2][X20_idx], grid[3][X30_idx], grid[4][α3_idx], grid[5][α1_idx], grid[6][i], grid[7][j], grid[8][η_idx])
-                write(file, "$(exp(offset - nlp))\n")
+                write(file, "$(grid[6][i]) $(grid[7][j]) $(exp(offset - nlp))\n")
             end
         end
     end
@@ -265,7 +265,7 @@ function dmrg_repressilator()
         for i in 1:nbins
             for j in 1:nbins
                 nlp = neglogposterior(grid[1][X10_idx], grid[2][X20_idx], grid[3][X30_idx], grid[4][α3_idx], grid[5][α1_idx], grid[6][α2_idx], grid[7][i], grid[8][j])
-                write(file, "$(exp(offset - nlp))\n")
+                write(file, "$(grid[7][i]) $(grid[8][j]) $(exp(offset - nlp))\n")
             end
         end
     end
