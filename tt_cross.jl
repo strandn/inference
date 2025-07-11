@@ -1,7 +1,5 @@
 using ITensors
 using ITensorMPS
-using Random
-using Distributions
 
 function tensor_train_cross(input_tensor, cutoff::Float64, maxrank::Int64, tol::Float64, n_iter_max::Int64, seedlist::Vector{Vector{Int64}}=Vector{Int64}[])
     tensor_shape = size(input_tensor)
