@@ -232,9 +232,9 @@ end
 
 mutable struct ODEArray{T, N} <: AbstractArray{T, N}
     f
-    grid::NTuple{N, LinRange{Float64, Int64}}
+    grid::NTuple{N, LinRange{T, Int64}}
 
-    function ODEArray(f, grid::NTuple{N, LinRange{Float64, Int64}}) where {T, N}
+    function ODEArray(f, grid::NTuple{N, LinRange{T, Int64}}) where {T, N}
         new{T, N}(f, grid)
     end
 end
