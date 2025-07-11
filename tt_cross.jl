@@ -28,6 +28,7 @@ function tensor_train_cross(input_tensor, cutoff::Float64, maxrank::Int64, tol::
         rank[tensor_order - 1] = length(seedlist)
     end
 
+    println(tensor_shape)
     sites = [siteind(tensor_shape[i], i) for i in 1:tensor_order]
     factor_old = randomMPS(sites)
     factor_new = randomMPS(sites)
