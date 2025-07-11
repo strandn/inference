@@ -247,8 +247,6 @@ function Base.ndims(A::ODEArray)
     return length(A.grid)
 end
 
-function Base.getindex(A::ODEArray, elements::CartesianIndex)
+function Base.getindex(A::ODEArray, elements::Int64...)
     return A.f([A.grid[i][elements[i]] for i in eachindex(elements)]...)
 end
-
-Base.getindex(A::ODEArray, elements::Int64...) = A[CartesianIndex(elements)]
