@@ -1,185 +1,391 @@
 using ITensors
 using ITensorMPS
 
-function tensor_train_cross(input_tensor, cutoff::Float64, maxrank::Int64, tol::Float64, n_iter_max::Int64, seedlist::Vector{Vector{Int64}}=Vector{Int64}[])
+function tensor_train_cross(input_tensor, maxrank::Int64, cutoff::Float64, tol::Float64, n_iter_max::Int64, seedlist::Vector{Vector{Int64}}=Vector{Int64}[])
     tensor_shape = size(input_tensor)
     tensor_order = ndims(input_tensor)
 
-    col_idx = fill([], tensor_order)
-    rank = fill(1, tensor_order)
-    if isempty(seedlist)
-        for k_col_idx in 1:tensor_order-2
-            newidx = [
-                rand(1:tensor_shape[j])
-                for j in k_col_idx+2:tensor_order
-            ]
-            push!(col_idx[k_col_idx], newidx)
-        end
-    else
-        for k_col_idx in 1:tensor_order-2
-            for seed in seedlist
-                newidx = seed[k_col_idx+2:tensor_order]
-                push!(col_idx[k_col_idx], newidx)
-            end
-            rank[k_col_idx] = length(seedlist)
-        end
-        rank[tensor_order - 1] = length(seedlist)
-    end
+    rank = fill(1, tensor_order - 1)
 
     sites = [siteind(tensor_shape[i], i) for i in 1:tensor_order]
-    factor_old = randomMPS(sites)
-    factor_new = randomMPS(sites)
+    factor = Vector{ITensor}(undef, tensor_order)
+    if isempty(seedlist)
+        factor = randomMPS(sites)
+    else
+        rank = fill(length(seedlist), tensor_order - 1)
 
-    iter = 0
-
-    error = norm(factor_old - factor_new)
-    threshold = tol * norm(factor_new)
-    for iter in 1:n_iter_max
-        if error < threshold
-            break
-        end
-
-        factor_old = deepcopy(factor_new)
-
-        row_idx = [[[]]]
-        for k in 1:tensor_order-2
-            sl = siteind(factor_new, k)
-            sr = siteind(factor_new, k + 1)
-            l = linkind(factor_new, k)
-            lr = linkind(factor_new, k + 1)
-            ll = k == 1 ? Index(1) : linkind(factor_new, k - 1)
-            next_row_idx = left_right_ttcross_step(
-                input_tensor, k, rank, row_idx, col_idx, sl, sr, l, lr, ll, cutoff, maxrank
-            )
-            push!(row_idx, next_row_idx)
-        end
-
-        col_idx = fill([[]], tensor_order)
-        lr = Index(1)
-        for k in tensor_order:-1:3
-            sl = siteind(factor_new, k - 1)
-            sr = siteind(factor_new, k)
-            l = linkind(factor_new, k - 1)
-            ll = linkind(factor_new, k - 2)
-            next_col_idx, Q_skeleton, lr = right_left_ttcross_step(
-                input_tensor, k, rank, row_idx, col_idx, sl, sr, l, lr, ll, cutoff, maxrank
-            )
-            col_idx[k - 2] = next_col_idx
-
-            factor_new[k] = Q_skeleton
-        end
-
-        sl = siteind(factor_new, 1)
-        sr = siteind(factor_new, 2)
-        lefttags = tags(linkind(factor_new, 1))
-        bond = ITensor(sl, sr, lr)
-        for i in 1:tensor_shape[1]
-            for j in 1:tensor_shape[2]
-                for ridx in 1:rank[2]
-                    idx = [[i, j]; col_idx[1][ridx]]
-                    bond[sl=>i, sr=>j, lr=>ridx] = input_tensor[idx...]
-                end
+        for i in eachindex(sites)
+            if i < tensor_order
+                links[i] = Index(rank[i], "Link,l=$i")
+            end
+            if i == 1
+                factor[i] = ITensor(links[i], sites[i])
+            elseif i == tensor_order
+                factor[i] = ITensor(links[i - 1], sites[i])
+            else
+                factor[i] = ITensor(links[i - 1], sites[i], links[i])
             end
         end
-        factor_new[1], S, V = svd(bond, sl; cutoff=cutoff, maxdim=maxrank, lefttags=lefttags)
-        factor_new[2] = S * V
 
-        error = norm(factor_old - factor_new)
-        println("Sweep $iter error: $error")
-        println("Link dims: $(linkdims(factor_new))")
-        flush(stdout)
-        threshold = tol * norm(factor_new)
+        for i in eachindex(seedlist)
+            x = seedlist[i, :]
+            factor[1][sites[1]=>x[1], links[1]=>i] = 1.0
+            for k in 2:tensor_order-1
+                factor[k][links[k-1]=>i, sites[k]=>x[k], links[k]=>i] = 1.0
+            end
+            factor[tensor_order][links[tensor_order-1]=>i, sites[tensor_order]=>x[tensor_order]] = 1.0
+        end
+    end
+    links = linkinds(factor)
+
+    P = Vector{Matrix}(undef, tensor_order + 1)
+    P[tensor_order + 1] = ones(1, 1)
+    row_idx = Vector(undef, tensor_order - 1)
+    col_idx = Vector(undef, tensor_order - 1)
+    Q, R, links[tensor_order - 1] = qr(factor[tensor_order], sites[tensor_order]; tags=tags(links[tensor_order - 1]))
+    factor[tensor_order] = deepcopy(Q)
+    Qmat = Matrix(Q, links[tensor_order - 1], sites[tensor_order])
+    J, _ = maxvol(Matrix(transpose(Qmat)))
+    col_idx[tensor_order - 1] = deepcopy(J)
+    P[tensor_order] = Qmat[:, J]
+
+    for k in tensor_order-1:-1:2
+        factor[k] *= R
+        Q, R, links[k - 1] = qr(factor[k], sites[k], links[k]; tags=tags(links[k - 1]))
+        Q *= ITensor(P[k + 1], links[k], links[k]')
+        noprime!(Q)
+        factor[k] = deepcopy(Q)
+        comb = combiner(links[k], sites[k])
+        Qmat = Matrix(comb * Q, links[k - 1], combinedind(comb))
+        J, _ = maxvol(Matrix(transpose(Qmat)))
+        new_idx = [
+            [floor(Int64, (idx - 1) / rank[k]) + 1, mod(idx - 1, rank[k]) + 1] for idx in J
+        ]
+        next_col_idx = [
+            [[jc[1]]; col_idx[k][jc[2]]] for jc in new_idx
+        ]
+        col_idx[k - 1] = next_col_idx
+        P[k] = Qmat[:, J]
+    end
+
+    factor[1] *= R * ITensor(P[2], links[1], links[1]')
+    noprime!(factor[1])
+    comb = combiner(links[1], sites[1])
+    Qmat = permutedims(Vector(comb * factor[1]))
+    J, _ = maxvol(Matrix(transpose(Qmat)))
+    P[1] = Qmat[:, J]
+
+    iter = 0
+    not_converged = true
+
+    for iter in 1:n_iter_max
+        if !not_converged
+            break
+        end
+        not_converged = false
+        
+        if left_right_ttcross(input_tensor, rank, row_idx, col_idx, factor, P, maxrank, cutoff, tol, iter)
+            not_converged = true
+        end
+        if right_left_ttcross(input_tensor, rank, row_idx, col_idx, factor, P, maxrank, cutoff, tol, iter)
+            not_converged = true
+        end
     end
 
     if iter >= n_iter_max
         println("Maximum number of iterations reached.")
         flush(stdout)
     end
-    if norm(factor_old - factor_new) > tol * norm(factor_new)
+    if not_converged
         println("Low Rank Approximation algorithm did not converge.")
         flush(stdout)
     end
 
-    return factor_new
+    return factor
 end
 
-function left_right_ttcross_step(input_tensor, k::Int64, rank::Vector{Int64}, row_idx, col_idx, sl::Index, sr::Index, l::Index, lr::Index, ll::Index, cutoff::Float64, maxrank::Int64)
-    tensor_shape = size(input_tensor)
-
-    bond = k == 1 ? ITensor(sl, sr, lr) : ITensor(sl, sr, ll, lr)
-
-    for i in 1:tensor_shape[k]
-        for j in 1:tensor_shape[k + 1]
-            for ridx in 1:rank[k + 1]
-                if k == 1
-                    idx = [[i, j]; col_idx[1][ridx]]
-                    bond[sl=>i, sr=>j, lr=>ridx] = input_tensor[idx...]
-                else
-                    for lidx in 1:rank[k - 1]
-                        idx = [row_idx[k][lidx]; [i, j]; col_idx[k][ridx]]
-                        bond[sl=>i, sr=>j, ll=>lidx, lr=>ridx] = input_tensor[idx...]
-                    end
-                end
-            end
-        end
-    end
-
-    U, S, V = k == 1 ? svd(bond, sl; cutoff=cutoff, maxdim=maxrank, righttags=tags(l)) : svd(bond, sl, ll; cutoff=cutoff, maxdim=maxrank, righttags=tags(l))
-    q = commonind(S, V)
-    rank[k] = dim(q)
-    C = k == 1 ? combiner(sl) : combiner(sl, ll)
-    I, _ = maxvol(Matrix(C * U * S, combinedind(C), q))
-
-    new_idx = [
-        [floor(Int64, (idx - 1) / tensor_shape[k]) + 1, mod(idx - 1, tensor_shape[k]) + 1] for idx in I
-    ]
-    next_row_idx = [
-        [row_idx[k][ic[1]]; [ic[2]]] for ic in new_idx
-    ]
-
-    return next_row_idx
-end
-
-function right_left_ttcross_step(input_tensor, k::Int64, rank::Vector{Int64}, row_idx, col_idx, sl::Index, sr::Index, l::Index, lr::Index, ll::Index, cutoff::Float64, maxrank::Int64)
+function left_right_ttcross(input_tensor, rank::Vector{Int64}, row_idx, col_idx, factor::MPS, P::Vector{Matrix}, maxrank::Int64, cutoff::Float64, tol::Float64, iter::Int64)
     tensor_shape = size(input_tensor)
     tensor_order = ndims(input_tensor)
 
-    bond = k == tensor_order ? ITensor(sl, sr, ll) : ITensor(sl, sr, ll, lr)
+    sites = siteinds(factor)
+    links = linkinds(factor)
 
-    for i in 1:tensor_shape[k - 1]
-        for j in 1:tensor_shape[k]
-            for lidx in 1:rank[k - 2]
-                if k == tensor_order
-                    idx = [row_idx[tensor_order][lidx]; [i, j]]
-                    bond[sl=>i, sr=>j, ll=>lidx] = input_tensor[idx...]
-                else
-                    for ridx in 1:rank[k]
-                        idx = [row_idx[k][lidx]; [i, j]; col_idx[k][ridx]]
-                        bond[sl=>i, sr=>j, ll=>lidx, lr=>ridx] = input_tensor[idx...]
+    not_converged = false
+
+    bond = ITensor(sites[1], sites[2], links[2])
+    for i in 1:tensor_shape[1]
+        for j in 1:tensor_shape[2]
+            for ridx in 1:rank[2]
+                idx = [[i, j]; col_idx[2][ridx]]
+                bond[sites[1]=>i, sites[2]=>j, links[2]=>ridx] = input_tensor[idx...]
+            end
+        end
+    end
+    bond *= ITensor(inv(P[3]), links[2], links[2]')
+    noprime!(bond)
+    error = norm(bond - factor[1] * factor[2]) / norm(bond)
+    if error > tol / sqrt(tensor_order - 1)
+        not_converged = true
+    end
+
+    U, S, V = svd(bond, sites[1]; cutoff=cutoff, maxdim=maxrank, lefttags=tags(links[1]))
+    links[1] = commonind(U, S)
+    rank[1] = dim(links[1])
+    factor[1] = deepcopy(U)
+    factor[2] = S * V
+    Umat = Matrix(U, sites[1], links[1])
+    I, _ = maxvol(Umat)
+    row_idx[1] = deepcopy(I)
+    P[2] = Umat[I, :]
+
+    println("Right sweep $iter step 1 error: $error")
+    flush(stdout)
+
+    for k in 2:tensor_order-2
+        bond = ITensor(links[k - 1], sites[k], sites[k + 1], links[k + 1])
+        for lidx in 1:rank[k - 1]
+            for i in 1:tensor_shape[k]
+                for j in 1:tensor_shape[k + 1]
+                    for ridx in 1:rank[k + 1]
+                        idx = [row_idx[k - 1][lidx]; [i, j]; col_idx[k + 1][ridx]]
+                        bond[links[k - 1]=>lidx, sites[k]=>i, sites[k+1]=>j, links[k+1]=>ridx] = input_tensor[idx...]
                     end
                 end
             end
         end
+        bond *= ITensor(inv(P[k]), links[k - 1]', links[k - 1]) * ITensor(inv(P[k + 2]), links[k + 1], links[k + 1]')
+        noprime!(bond)
+        error = norm(bond - factor[k] * factor[k + 1]) / norm(bond)
+        if error > tol / sqrt(tensor_order - 1)
+            not_converged = true
+        end
+
+        U, S, V = svd(bond, links[k - 1], sites[k]; cutoff=cutoff, maxdim=maxrank, lefttags=tags(links[k]))
+        links[k] = commonind(U, S)
+        rank[k] = dim(links[k])
+        factor[k] = deepcopy(U)
+        factor[k + 1] = S * V
+        U *= ITensor(P[k], links[k - 1]', links[k - 1])
+        noprime!(U)
+        comb = combiner(sites[k], links[k - 1])
+        Umat = Matrix(comb * U, combinedind(comb), links[k])
+        I, _ = maxvol(Umat)
+        new_idx = [
+            [floor(Int64, (idx - 1) / tensor_shape[k]) + 1, mod(idx - 1, tensor_shape[k]) + 1] for idx in I
+        ]
+        next_row_idx = [
+            [row_idx[k - 1][ic[1]]; [ic[2]]] for ic in new_idx
+        ]
+        row_idx[k] = next_row_idx
+        P[k + 1] = Umat[I, :]
+
+        println("Right sweep $iter step $k error: $error")
+        flush(stdout)
     end
 
-    U, S, V = k == tensor_order ? svd(bond, sr; cutoff=cutoff, maxdim=maxrank, righttags=tags(l)) : svd(bond, lr, sr; cutoff=cutoff, maxdim=maxrank, righttags=tags(l))
-    q = commonind(S, V)
-    rank[k - 1] = dim(q)
-    C = k == tensor_order ? combiner(sr) : combiner(lr, sr)
-    J, Q_inv_mat = maxvol(Matrix(C * U * S, combinedind(C), q))
-    Q_inv = ITensor(Q_inv_mat, q, q')
-    Q_skeleton = U * S * Q_inv
-    noprime!(Q_skeleton)
+    bond = ITensor(links[tensor_order - 2], sites[tensor_order - 1], sites[tensor_order])
+    for lidx in 1:rank[tensor_order - 2]
+        for i in 1:tensor_shape[tensor_order - 1]
+            for j in 1:tensor_shape[tensor_order]
+                idx = [row_idx[tensor_order - 2][lidx]; [i, j]]
+                bond[links[tensor_order-2]=>lidx, sites[tensor_order-1]=>i, sites[tensor_order]=>j] = input_tensor[idx...]
+            end
+        end
+    end
+    bond *= ITensor(inv(P[tensor_order - 1]), links[tensor_order - 2]', links[tensor_order - 2]) * inv(P[tensor_order + 1])[]
+    noprime!(bond)
+    error = norm(bond - factor[tensor_order - 1] * factor[tensor_order]) / norm(bond)
+    if error > tol / sqrt(tensor_order - 1)
+        not_converged = true
+    end
 
-    r = k == tensor_order ? 1 : rank[k]
+    U, S, V = svd(bond, links[tensor_order - 2], sites[tensor_order - 1]; cutoff=cutoff, maxdim=maxrank, lefttags=tags(links[tensor_order - 1]))
+    links[tensor_order - 1] = commonind(U, S)
+    rank[tensor_order - 1] = dim(links[tensor_order - 1])
+    factor[tensor_order - 1] = deepcopy(U)
+    factor[tensor_order] = S * V
+    U *= ITensor(P[tensor_order - 1], links[tensor_order - 2]', links[tensor_order - 2])
+    noprime!(U)
+    comb = combiner(sites[tensor_order - 1], links[tensor_order - 2])
+    Umat = Matrix(comb * U, combinedind(comb), links[tensor_order - 1])
+    I, _ = maxvol(Umat)
     new_idx = [
-        [floor(Int64, (idx - 1) / r) + 1, mod(idx - 1, r) + 1] for idx in J
+        [floor(Int64, (idx - 1) / tensor_shape[tensor_order - 2]) + 1, mod(idx - 1, tensor_shape[tensor_order - 2]) + 1] for idx in I
+    ]
+    next_row_idx = [
+        [row_idx[tensor_order - 2][ic[1]]; [ic[2]]] for ic in new_idx
+    ]
+    row_idx[tensor_order - 1] = next_row_idx
+    P[tensor_order] = Umat[I, :]
+
+    println("Right sweep $iter step $(tensor_order - 1) error: $error")
+    flush(stdout)
+
+    core = ITensor(links[tensor_order - 1], sites[tensor_order])
+    for lidx in 1:rank[tensor_order - 1]
+        for i in 1:tensor_shape[tensor_order]
+            idx = [row_idx[tensor_order - 1][lidx]; [i]]
+            core[links[tensor_order-1]=>lidx, sites[tensor_order]=>i] = input_tensor[idx...]
+        end
+    end
+    # error = norm(core - factor[tensor_order]) / norm(core)
+    # if error > tol / sqrt(tensor_order - 1)
+    #     not_converged = true
+    # end
+    # factor[tensor_order] = deepcopy(core)
+    comb = combiner(sites[tensor_order], links[tensor_order - 1])
+    Umat = Matrix(transpose(permutedims(Vector(comb * core))))
+    I, _ = maxvol(Umat)
+    P[tensor_order + 1] = Umat[I, :]
+
+    # println("Right sweep $iter step $tensor_order error: $error")
+    println("Link dims: $(linkdims(factor))")
+    flush(stdout)
+
+    return not_converged
+end
+
+function right_left_ttcross(input_tensor, rank::Vector{Int64}, row_idx, col_idx, factor::MPS, P::Vector{Matrix}, maxrank::Int64, cutoff::Float64, tol::Float64, iter::Int64)
+    tensor_shape = size(input_tensor)
+    tensor_order = ndims(input_tensor)
+
+    sites = siteinds(factor)
+    links = linkinds(factor)
+
+    not_converged = false
+
+    bond = ITensor(links[tensor_order - 2], sites[tensor_order - 1], sites[tensor_order])
+    for lidx in 1:rank[tensor_order - 2]
+        for i in 1:tensor_shape[tensor_order - 1]
+            for j in 1:tensor_shape[tensor_order]
+                idx = [row_idx[tensor_order - 2][lidx]; [i, j]]
+                bond[links[tensor_order - 2]=>lidx, sites[tensor_order - 1]=>i, sites[tensor_order]=>j] = input_tensor[idx...]
+            end
+        end
+    end
+    bond *= ITensor(inv(P[tensor_order - 1]), links[tensor_order - 2]', links[tensor_order - 2])
+    noprime!(bond)
+    error = norm(bond - factor[tensor_order - 1] * factor[tensor_order]) / norm(bond)
+    if error > tol / sqrt(tensor_order - 1)
+        not_converged = true
+    end
+
+    U, S, V = svd(bond, sites[tensor_order]; cutoff=cutoff, maxdim=maxrank, lefttags=tags(links[tensor_order - 1]))
+    links[tensor_order - 1] = commonind(U, S)
+    rank[tensor_order - 1] = dim(links[tensor_order - 1])
+    factor[tensor_order - 1] = S * V
+    factor[tensor_order] = deepcopy(U)
+    Umat = Matrix(U, links[tensor_order - 1], sites[tensor_order])
+    J, _ = maxvol(Matrix(transpose(Umat)))
+    col_idx[tensor_order - 1] = deepcopy(J)
+    P[tensor_order] = Umat[:, J]
+
+    println("Left sweep $iter step $tensor_order error: $error")
+    flush(stdout)
+
+    for k in tensor_order-2:-1:2
+        bond = ITensor(links[k - 1], sites[k], sites[k + 1], links[k + 1])
+        for lidx in 1:rank[k - 1]
+            for i in 1:tensor_shape[k]
+                for j in 1:tensor_shape[k + 1]
+                    for ridx in 1:rank[k + 1]
+                        idx = [row_idx[k - 1][lidx]; [i, j]; col_idx[k + 1][ridx]]
+                        bond[links[k-1]=>lidx, sites[k]=>i, sites[k+1]=>j, links[k + 1]=>ridx] = input_tensor[idx...]
+                    end
+                end
+            end
+        end
+        bond *= ITensor(inv(P[k]), links[k - 1]', links[k - 1]) * ITensor(inv(P[k + 2]), links[k + 1], links[k + 1]')
+        noprime!(bond)
+        error = norm(bond - factor[k] * factor[k + 1]) / norm(bond)
+        if error > tol / sqrt(tensor_order - 1)
+            not_converged = true
+        end
+
+        U, S, V = svd(bond, sites[k + 1], links[k + 1]; cutoff=cutoff, maxdim=maxrank, lefttags=tags(links[k]))
+        links[k] = commonind(U, S)
+        rank[k] = dim(links[k])
+        factor[k] = S * V
+        factor[k + 1] = deepcopy(U)
+        U *= ITensor(P[k + 2], links[k + 1], links[k + 1]')
+        noprime!(U)
+        comb = combiner(links[k + 1], sites[k + 1])
+        Umat = Matrix(comb * U, links[k], combinedind(comb))
+        J, _ = maxvol(Matrix(transpose(Umat)))
+        new_idx = [
+            [floor(Int64, (idx - 1) / rank[k + 1]) + 1, mod(idx - 1, rank[k + 1]) + 1] for idx in J
+        ]
+        next_col_idx = [
+            [[jc[1]]; col_idx[k + 1][jc[2]]] for jc in new_idx
+        ]
+        col_idx[k] = next_col_idx
+        P[k + 1] = Umat[:, J]
+
+        println("Left sweep $iter step $(k + 1) error: $error")
+        flush(stdout)
+    end
+
+    bond = ITensor(sites[1], sites[2], links[2])
+    for i in 1:tensor_shape[1]
+        for j in 1:tensor_shape[2]
+            for ridx in 1:rank[2]
+                idx = [[i, j]; col_idx[2][ridx]]
+                bond[sites[1]=>i, sites[2]=>j, links[2]=>ridx] = input_tensor[idx...]
+            end
+        end
+    end
+    bond *= inv(P[1])[] * ITensor(inv(P[3]), links[2], links[2]')
+    noprime!(bond)
+    error = norm(bond - factor[1] * factor[2]) / norm(bond)
+    if error > tol / sqrt(tensor_order - 1)
+        not_converged = true
+    end
+
+    U, S, V = svd(bond, sites[2], links[2]; cutoff=cutoff, maxdim=maxrank, lefttags=tags(links[1]))
+    links[1] = commonind(U, S)
+    rank[1] = dim(links[1])
+    factor[1] =  S * V
+    factor[2] = deepcopy(U)
+    U *= ITensor(P[3], links[2], links[2]')
+    noprime!(U)
+    comb = combiner(links[2], sites[2])
+    Umat = Matrix(comb * U, links[1], combinedind(comb))
+    J, _ = maxvol(Matrix(transpose(Umat)))
+    new_idx = [
+        [floor(Int64, (idx - 1) / rank[2]) + 1, mod(idx - 1, rank[2]) + 1] for idx in J
     ]
     next_col_idx = [
-        [[jc[1]]; col_idx[k][jc[2]]] for jc in new_idx
+        [[jc[1]]; col_idx[2][jc[2]]] for jc in new_idx
     ]
+    col_idx[1] = next_col_idx
+    P[2] = Umat[:, J]
 
-    return next_col_idx, Q_skeleton, q
+    println("Left sweep $iter step 2 error: $error")
+    flush(stdout)
+
+    core = ITensor(sites[1], links[1])
+    for i in 1:tensor_shape[1]
+        for ridx in 1:rank[1]
+            idx = [[i]; col_idx[1][ridx]]
+            core[sites[1]=>i, links[1]=>ridx] = input_tensor[idx...]
+        end
+    end
+    # error = norm(core - factor[1]) / norm(core)
+    # if error > tol / sqrt(tensor_order - 1)
+    #     not_converged = true
+    # end
+    # factor[1] = deepcopy(core)
+    comb = combiner(links[1], sites[1])
+    Umat = permutedims(Vector(comb * core))
+    J, _ = maxvol(Matrix(transpose(Umat)))
+    P[1] = Umat[:, J]
+
+    # println("Left sweep 1 step $tensor_order error: $error")
+    println("Link dims: $(linkdims(factor))")
+    flush(stdout)
+
+    return not_converged
 end
 
 function maxvol(A::Matrix{Float64})
