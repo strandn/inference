@@ -283,7 +283,8 @@ function dmrg_repressilator()
     #     [X10_idx, X20_idx, X30_idx, α2_idx, α3_idx, α1_idx, m_idx, η_idx],
     #     [X10_idx, X20_idx, X30_idx, α3_idx, α1_idx, α2_idx, m_idx, η_idx]
     # ]
-    psi = tensor_train_cross(A, cutoff, maxr, tol, maxiter, seedlist)
+    psi = tensor_train_cross(A, maxr, cutoff, tol, maxiter)
+    # psi = tensor_train_cross(A, maxr, cutoff, tol, maxiter, seedlist)
 
     oneslist = [ITensor(ones(nbins), sites[i]) for i in 1:d]
     norm = psi[1] * oneslist[1]
@@ -327,8 +328,8 @@ end
 
 d = 8
 maxr = 100
-cutoff = 1.0e-6
+cutoff = 1.0e-12
 tol = 1.0e-4
-maxiter = 100
+maxiter = 10
 
 dmrg_repressilator()

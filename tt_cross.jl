@@ -1,5 +1,6 @@
 using ITensors
 using ITensorMPS
+using LinearAlgebra
 
 function tensor_train_cross(input_tensor, maxrank::Int64, cutoff::Float64, tol::Float64, n_iter_max::Int64, seedlist::Vector{Vector{Int64}}=Vector{Int64}[])
     tensor_shape = size(input_tensor)
@@ -8,10 +9,9 @@ function tensor_train_cross(input_tensor, maxrank::Int64, cutoff::Float64, tol::
     rank = fill(1, tensor_order - 1)
 
     sites = [siteind(tensor_shape[i], i) for i in 1:tensor_order]
-    factor = Vector{ITensor}(undef, tensor_order)
-    if isempty(seedlist)
-        factor = randomMPS(sites)
-    else
+    factor = randomMPS(sites)
+    links = linkinds(factor)
+    if !isempty(seedlist)
         rank = fill(length(seedlist), tensor_order - 1)
 
         for i in eachindex(sites)
@@ -28,7 +28,7 @@ function tensor_train_cross(input_tensor, maxrank::Int64, cutoff::Float64, tol::
         end
 
         for i in eachindex(seedlist)
-            x = seedlist[i, :]
+            x = seedlist[i, :][]
             factor[1][sites[1]=>x[1], links[1]=>i] = 1.0
             for k in 2:tensor_order-1
                 factor[k][links[k-1]=>i, sites[k]=>x[k], links[k]=>i] = 1.0
@@ -36,7 +36,6 @@ function tensor_train_cross(input_tensor, maxrank::Int64, cutoff::Float64, tol::
             factor[tensor_order][links[tensor_order-1]=>i, sites[tensor_order]=>x[tensor_order]] = 1.0
         end
     end
-    links = linkinds(factor)
 
     P = Vector{Matrix}(undef, tensor_order + 1)
     P[tensor_order + 1] = ones(1, 1)
@@ -45,7 +44,7 @@ function tensor_train_cross(input_tensor, maxrank::Int64, cutoff::Float64, tol::
     Q, R, links[tensor_order - 1] = qr(factor[tensor_order], sites[tensor_order]; tags=tags(links[tensor_order - 1]))
     factor[tensor_order] = deepcopy(Q)
     Qmat = Matrix(Q, links[tensor_order - 1], sites[tensor_order])
-    J, _ = maxvol(Matrix(transpose(Qmat)))
+    J = maxvol(Matrix(transpose(Qmat)))
     col_idx[tensor_order - 1] = deepcopy(J)
     P[tensor_order] = Qmat[:, J]
 
@@ -57,7 +56,7 @@ function tensor_train_cross(input_tensor, maxrank::Int64, cutoff::Float64, tol::
         factor[k] = deepcopy(Q)
         comb = combiner(links[k], sites[k])
         Qmat = Matrix(comb * Q, links[k - 1], combinedind(comb))
-        J, _ = maxvol(Matrix(transpose(Qmat)))
+        J = maxvol(Matrix(transpose(Qmat)))
         new_idx = [
             [floor(Int64, (idx - 1) / rank[k]) + 1, mod(idx - 1, rank[k]) + 1] for idx in J
         ]
@@ -72,7 +71,7 @@ function tensor_train_cross(input_tensor, maxrank::Int64, cutoff::Float64, tol::
     noprime!(factor[1])
     comb = combiner(links[1], sites[1])
     Qmat = permutedims(Vector(comb * factor[1]))
-    J, _ = maxvol(Matrix(transpose(Qmat)))
+    J = maxvol(Matrix(transpose(Qmat)))
     P[1] = Qmat[:, J]
 
     iter = 0
@@ -135,7 +134,7 @@ function left_right_ttcross(input_tensor, rank::Vector{Int64}, row_idx, col_idx,
     factor[1] = deepcopy(U)
     factor[2] = S * V
     Umat = Matrix(U, sites[1], links[1])
-    I, _ = maxvol(Umat)
+    I = maxvol(Umat)
     row_idx[1] = deepcopy(I)
     P[2] = Umat[I, :]
 
@@ -170,7 +169,7 @@ function left_right_ttcross(input_tensor, rank::Vector{Int64}, row_idx, col_idx,
         noprime!(U)
         comb = combiner(sites[k], links[k - 1])
         Umat = Matrix(comb * U, combinedind(comb), links[k])
-        I, _ = maxvol(Umat)
+        I = maxvol(Umat)
         new_idx = [
             [floor(Int64, (idx - 1) / tensor_shape[k]) + 1, mod(idx - 1, tensor_shape[k]) + 1] for idx in I
         ]
@@ -209,7 +208,7 @@ function left_right_ttcross(input_tensor, rank::Vector{Int64}, row_idx, col_idx,
     noprime!(U)
     comb = combiner(sites[tensor_order - 1], links[tensor_order - 2])
     Umat = Matrix(comb * U, combinedind(comb), links[tensor_order - 1])
-    I, _ = maxvol(Umat)
+    I = maxvol(Umat)
     new_idx = [
         [floor(Int64, (idx - 1) / tensor_shape[tensor_order - 2]) + 1, mod(idx - 1, tensor_shape[tensor_order - 2]) + 1] for idx in I
     ]
@@ -236,7 +235,7 @@ function left_right_ttcross(input_tensor, rank::Vector{Int64}, row_idx, col_idx,
     # factor[tensor_order] = deepcopy(core)
     comb = combiner(sites[tensor_order], links[tensor_order - 1])
     Umat = Matrix(transpose(permutedims(Vector(comb * core))))
-    I, _ = maxvol(Umat)
+    I = maxvol(Umat)
     P[tensor_order + 1] = Umat[I, :]
 
     # println("Right sweep $iter step $tensor_order error: $error")
@@ -277,7 +276,7 @@ function right_left_ttcross(input_tensor, rank::Vector{Int64}, row_idx, col_idx,
     factor[tensor_order - 1] = S * V
     factor[tensor_order] = deepcopy(U)
     Umat = Matrix(U, links[tensor_order - 1], sites[tensor_order])
-    J, _ = maxvol(Matrix(transpose(Umat)))
+    J = maxvol(Matrix(transpose(Umat)))
     col_idx[tensor_order - 1] = deepcopy(J)
     P[tensor_order] = Umat[:, J]
 
@@ -312,7 +311,7 @@ function right_left_ttcross(input_tensor, rank::Vector{Int64}, row_idx, col_idx,
         noprime!(U)
         comb = combiner(links[k + 1], sites[k + 1])
         Umat = Matrix(comb * U, links[k], combinedind(comb))
-        J, _ = maxvol(Matrix(transpose(Umat)))
+        J = maxvol(Matrix(transpose(Umat)))
         new_idx = [
             [floor(Int64, (idx - 1) / rank[k + 1]) + 1, mod(idx - 1, rank[k + 1]) + 1] for idx in J
         ]
@@ -351,7 +350,7 @@ function right_left_ttcross(input_tensor, rank::Vector{Int64}, row_idx, col_idx,
     noprime!(U)
     comb = combiner(links[2], sites[2])
     Umat = Matrix(comb * U, links[1], combinedind(comb))
-    J, _ = maxvol(Matrix(transpose(Umat)))
+    J = maxvol(Matrix(transpose(Umat)))
     new_idx = [
         [floor(Int64, (idx - 1) / rank[2]) + 1, mod(idx - 1, rank[2]) + 1] for idx in J
     ]
@@ -378,7 +377,7 @@ function right_left_ttcross(input_tensor, rank::Vector{Int64}, row_idx, col_idx,
     # factor[1] = deepcopy(core)
     comb = combiner(links[1], sites[1])
     Umat = permutedims(Vector(comb * core))
-    J, _ = maxvol(Matrix(transpose(Umat)))
+    J = maxvol(Matrix(transpose(Umat)))
     P[1] = Umat[:, J]
 
     # println("Left sweep 1 step $tensor_order error: $error")
@@ -388,50 +387,56 @@ function right_left_ttcross(input_tensor, rank::Vector{Int64}, row_idx, col_idx,
     return not_converged
 end
 
-function maxvol(A::Matrix{Float64})
-    (n, r) = size(A)
+# function maxvol(A::Matrix{Float64})
+#     (n, r) = size(A)
 
-    row_idx = zeros(Int64, r)
+#     row_idx = zeros(Int64, r)
 
-    rest_of_rows = collect(1:n)
+#     rest_of_rows = collect(1:n)
 
-    i = 1
-    A_new = A
-    while i <= r
-        mask = collect(1:size(A_new)[1])
-        rows_norms = [sum((A_new .^ 2)[i, :]) for i in 1:size(A_new)[1]]
+#     i = 1
+#     A_new = A
+#     while i <= r
+#         mask = collect(1:size(A_new)[1])
+#         rows_norms = [sum((A_new .^ 2)[i, :]) for i in 1:size(A_new)[1]]
 
-        if size(rows_norms) == ()
-            row_idx[i] = rest_of_rows
-            break
-        end
+#         if size(rows_norms) == ()
+#             row_idx[i] = rest_of_rows
+#             break
+#         end
 
-        if any(rows_norms .== 0)
-            zero_idx = argmin(rows_norms)
-            splice!(mask, zero_idx)
-            rest_of_rows = rest_of_rows[mask]
-            A_new = A_new[mask, :]
-            continue
-        end
+#         if any(rows_norms .== 0)
+#             zero_idx = argmin(rows_norms)
+#             splice!(mask, zero_idx)
+#             rest_of_rows = rest_of_rows[mask]
+#             A_new = A_new[mask, :]
+#             continue
+#         end
 
-        max_row_idx = argmax(rows_norms)
-        max_row = A[rest_of_rows[max_row_idx], :]
+#         max_row_idx = argmax(rows_norms)
+#         max_row = A[rest_of_rows[max_row_idx], :]
 
-        projection = A_new * max_row
-        normalization = sqrt.(rows_norms[max_row_idx] * rows_norms)
-        projection = projection ./ normalization
+#         projection = A_new * max_row
+#         normalization = sqrt.(rows_norms[max_row_idx] * rows_norms)
+#         projection = projection ./ normalization
 
-        A_new -= A_new .* projection
+#         A_new -= A_new .* projection
 
-        splice!(mask, max_row_idx)
-        A_new = A_new[mask, :]
+#         splice!(mask, max_row_idx)
+#         A_new = A_new[mask, :]
 
-        row_idx[i] = rest_of_rows[max_row_idx]
-        rest_of_rows = rest_of_rows[mask]
-        i += 1
-    end
+#         row_idx[i] = rest_of_rows[max_row_idx]
+#         rest_of_rows = rest_of_rows[mask]
+#         i += 1
+#     end
     
-    return row_idx, inv(A[row_idx, :])
+#     return row_idx
+# end
+
+function maxvol(A::Matrix{Float64})
+    _, _, p = qr(A', ColumnNorm())
+    row_idx = p[1:size(A, 2)]    
+    return row_idx
 end
 
 mutable struct ODEArray{T, N} <: AbstractArray{T, N}
