@@ -2,4 +2,5 @@
 *.out
 *.err
 *.nb
-*xlsx
+*.xlsx
+*.h5
