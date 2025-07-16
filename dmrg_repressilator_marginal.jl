@@ -100,7 +100,7 @@ function dmrg_repressilator()
         norm *= psi[i] * oneslist[i]
     end
 
-    println(offset - log(norm))
+    println(offset - log(norm[]))
 
     for pos in 1:d-1
         Lenv = undef
