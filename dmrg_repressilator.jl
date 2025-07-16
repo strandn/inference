@@ -283,47 +283,8 @@ function dmrg_repressilator()
     #     [X10_idx, X20_idx, X30_idx, α2_idx, α3_idx, α1_idx, m_idx, η_idx],
     #     [X10_idx, X20_idx, X30_idx, α3_idx, α1_idx, α2_idx, m_idx, η_idx]
     # ]
-    psi = tensor_train_cross(A, maxr, cutoff, tol, maxiter)
-    # psi = tensor_train_cross(A, maxr, cutoff, tol, maxiter, seedlist)
-
-    oneslist = [ITensor(ones(nbins), sites[i]) for i in 1:d]
-    norm = psi[1] * oneslist[1]
-    for i in 2:d
-        norm *= psi[i] * oneslist[i]
-    end
-
-    for pos in 1:d-1
-        Lenv = undef
-        Renv = undef
-        if pos != 1
-            Lenv = psi[1] * oneslist[1]
-            for i in 2:pos-1
-                Lenv *= psi[i] * oneslist[i]
-            end
-        end
-        if pos != d - 1
-            Renv = psi[d] * oneslist[d]
-            for i in d-1:-1:pos+2
-                Renv *= psi[i] * oneslist[i]
-            end
-        end
-        result = undef
-        if pos == 1
-            result = psi[1] * psi[2] * Renv
-        elseif pos + 1 == d
-            result = Lenv * psi[d - 1] * psi[d]
-        else
-            result = Lenv * psi[pos] * psi[pos + 1] * Renv
-        end
-        result /= norm
-        open("dmrg_repressilator_marginal_$pos.txt", "w") do file
-            for i in 1:nbins
-                for j in 1:nbins
-                    write(file, "$(grid[pos][i]) $(grid[pos + 1][j]) $(result[sites[pos] => i, sites[pos + 1] => j])\n")
-                end
-            end
-        end
-    end
+    tensor_train_cross(A, maxr, cutoff, tol, maxiter)
+    # tensor_train_cross(A, maxr, cutoff, tol, maxiter, seedlist)
 end
 
 d = 8

@@ -1,5 +1,4 @@
 using StatsBase
-using HDF5
 
 include("tt_cross.jl")
 
@@ -29,10 +28,6 @@ function dmrg_test()
     println(minimum(output_tensor - input_tensor))
     println(rmsd(output_tensor, input_tensor))
     println(norm(output_tensor - input_tensor) / norm(output_tensor))
-
-    f = h5open("Hilbert.h5", "w")
-    write(f, "Hilbert", psi)
-    close(f)
 end
 
 maxr = 100

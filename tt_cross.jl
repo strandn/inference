@@ -1,6 +1,7 @@
 using ITensors
 using ITensorMPS
 using LinearAlgebra
+using HDF5
 
 function tensor_train_cross(input_tensor, maxrank::Int64, cutoff::Float64, tol::Float64, n_iter_max::Int64, seedlist::Vector{Vector{Int64}}=Vector{Int64}[])
     tensor_shape = size(input_tensor)
@@ -89,6 +90,9 @@ function tensor_train_cross(input_tensor, maxrank::Int64, cutoff::Float64, tol::
         if right_left_ttcross(input_tensor, rank, row_idx, col_idx, factor, P, maxrank, cutoff, tol, iter)
             not_converged = true
         end
+        f = h5open("tt_cross.h5", "w")
+        write(f, "factor$iter", factor)
+        close(f)
     end
 
     if iter >= n_iter_max
