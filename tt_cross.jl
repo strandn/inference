@@ -135,6 +135,7 @@ function left_right_ttcross(input_tensor, rank::Vector{Int64}, row_idx, col_idx,
     U, S, V = svd(bond, sites[1]; cutoff=cutoff, maxdim=maxrank, lefttags=tags(links[1]))
     links[1] = commonind(U, S)
     rank[1] = dim(links[1])
+    println([S[i, i] for i in 1:rank[1]])
     factor[1] = deepcopy(U)
     factor[2] = S * V
     Umat = Matrix(U, sites[1], links[1])
@@ -167,6 +168,7 @@ function left_right_ttcross(input_tensor, rank::Vector{Int64}, row_idx, col_idx,
         U, S, V = svd(bond, links[k - 1], sites[k]; cutoff=cutoff, maxdim=maxrank, lefttags=tags(links[k]))
         links[k] = commonind(U, S)
         rank[k] = dim(links[k])
+        println([S[i, i] for i in 1:rank[k]])
         factor[k] = deepcopy(U)
         factor[k + 1] = S * V
         U *= ITensor(P[k], links[k - 1]', links[k - 1])
@@ -206,6 +208,7 @@ function left_right_ttcross(input_tensor, rank::Vector{Int64}, row_idx, col_idx,
     U, S, V = svd(bond, links[tensor_order - 2], sites[tensor_order - 1]; cutoff=cutoff, maxdim=maxrank, lefttags=tags(links[tensor_order - 1]))
     links[tensor_order - 1] = commonind(U, S)
     rank[tensor_order - 1] = dim(links[tensor_order - 1])
+    println([S[i, i] for i in 1:rank[tensor_order - 1]])
     factor[tensor_order - 1] = deepcopy(U)
     factor[tensor_order] = S * V
     U *= ITensor(P[tensor_order - 1], links[tensor_order - 2]', links[tensor_order - 2])
@@ -277,6 +280,7 @@ function right_left_ttcross(input_tensor, rank::Vector{Int64}, row_idx, col_idx,
     U, S, V = svd(bond, sites[tensor_order]; cutoff=cutoff, maxdim=maxrank, lefttags=tags(links[tensor_order - 1]))
     links[tensor_order - 1] = commonind(U, S)
     rank[tensor_order - 1] = dim(links[tensor_order - 1])
+    println([S[i, i] for i in 1:rank[tensor_order - 1]])
     factor[tensor_order - 1] = S * V
     factor[tensor_order] = deepcopy(U)
     Umat = Matrix(U, links[tensor_order - 1], sites[tensor_order])
@@ -309,6 +313,7 @@ function right_left_ttcross(input_tensor, rank::Vector{Int64}, row_idx, col_idx,
         U, S, V = svd(bond, sites[k + 1], links[k + 1]; cutoff=cutoff, maxdim=maxrank, lefttags=tags(links[k]))
         links[k] = commonind(U, S)
         rank[k] = dim(links[k])
+        println([S[i, i] for i in 1:rank[k]])
         factor[k] = S * V
         factor[k + 1] = deepcopy(U)
         U *= ITensor(P[k + 2], links[k + 1], links[k + 1]')
@@ -348,6 +353,7 @@ function right_left_ttcross(input_tensor, rank::Vector{Int64}, row_idx, col_idx,
     U, S, V = svd(bond, sites[2], links[2]; cutoff=cutoff, maxdim=maxrank, lefttags=tags(links[1]))
     links[1] = commonind(U, S)
     rank[1] = dim(links[1])
+    println([S[i, i] for i in 1:rank[1]])
     factor[1] =  S * V
     factor[2] = deepcopy(U)
     U *= ITensor(P[3], links[2], links[2]')

@@ -28,6 +28,7 @@ function dmrg_repressilator()
     psi = read(f, "factor$iter", MPS)
     close(f)
 
+    sites = siteinds(psi)
     oneslist = [ITensor(ones(nbins), sites[i]) for i in 1:d]
     norm = psi[1] * oneslist[1]
     for i in 2:d
