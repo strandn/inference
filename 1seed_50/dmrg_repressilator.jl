@@ -275,20 +275,20 @@ function dmrg_repressilator()
 
     posterior(x...) = exp(offset - neglogposterior(x...))
     A = ODEArray(posterior, grid)
-    # seedlist = [
-    #     [X10_idx, X20_idx, X30_idx, α1_idx, α2_idx, α3_idx, m_idx, η_idx]
-    # ]
     seedlist = [
-        [X10_idx, X20_idx, X30_idx, α1_idx, α2_idx, α3_idx, m_idx, η_idx],
-        [X10_idx, X20_idx, X30_idx, α2_idx, α3_idx, α1_idx, m_idx, η_idx],
-        [X10_idx, X20_idx, X30_idx, α3_idx, α1_idx, α2_idx, m_idx, η_idx]
+        [X10_idx, X20_idx, X30_idx, α1_idx, α2_idx, α3_idx, m_idx, η_idx]
     ]
+    # seedlist = [
+    #     [X10_idx, X20_idx, X30_idx, α1_idx, α2_idx, α3_idx, m_idx, η_idx],
+    #     [X10_idx, X20_idx, X30_idx, α2_idx, α3_idx, α1_idx, m_idx, η_idx],
+    #     [X10_idx, X20_idx, X30_idx, α3_idx, α1_idx, α2_idx, m_idx, η_idx]
+    # ]
     # tensor_train_cross(A, maxr, cutoff, tol, maxiter)
     tensor_train_cross(A, maxr, cutoff, tol, maxiter, seedlist)
 end
 
 d = 8
-maxr = 100
+maxr = 50
 cutoff = 1.0e-12
 tol = 1.0e-4
 maxiter = 10
