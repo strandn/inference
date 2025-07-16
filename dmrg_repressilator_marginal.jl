@@ -54,6 +54,14 @@ function dmrg_repressilator()
     m_true = 4.0
     η_true = 1.0
 
+    data = []
+    open("repressilator_data.txt", "r") do file
+        for line in eachline(file)
+            cols = split(line)
+            push!(data, parse(Float64, cols[6]))
+        end
+    end
+
     mu = [2.0, 2.0, 2.0, 15.0, 15.0, 15.0, 5.0, 5.0]
     sigma = [4.0, 4.0, 4.0, 25.0, 25.0, 25.0, 25.0, 25.0]
     neglogposterior(X10, X20, X30, α1, α2, α3, m, η) = V([X10, X20, X30, α1, α2, α3, m, η], tspan, nsteps, data, mu, sigma)
