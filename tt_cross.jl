@@ -307,24 +307,26 @@ function tt_cross(input_tensor, maxrank::Int64, tol::Float64, n_iter_max::Int64,
     for k_col_idx in tensor_order-1:-1:1
         col_idx[k_col_idx] = []
         for seed in seedlist
-            push!(col_idx[k_col_idx], seed[k_col_idx+1:tensor_order])
-        end
-        r = length(seedlist)
-        count = 1
-        while r < rank[k_col_idx]
-            idx = [[mod(count - 1, tensor_shape[k_col_idx]) + 1]; col_idx[k_col_idx + 1][div(count - 1, tensor_shape[k_col_idx]) + 1]]
-            if !(idx in [seed[k_col_idx+1:tensor_order] for seed in seedlist])
+            idx = seed[k_col_idx+1:tensor_order]
+            if !(idx in col_idx[k_col_idx])
                 push!(col_idx[k_col_idx], idx)
-                r = r + 1
+            end
+        end
+        count = 1
+        while length(col_idx[k_col_idx]) < rank[k_col_idx]
+            idx = [[mod(count - 1, tensor_shape[k_col_idx]) + 1]; col_idx[k_col_idx + 1][div(count - 1, tensor_shape[k_col_idx]) + 1]]
+            if !(idx in col_idx[k_col_idx])
+                push!(col_idx[k_col_idx], idx)
             end
             count = count + 1
         end
-        println()
     end
 
     iter = 0
 
-    error = norm(factor_new - factor_old) / norm(factor_new)
+    orthogonalize!(factor_new, 1)
+    diff = factor_new - factor_old
+    error = norm(diff) / norm(factor_new)
     for iter in 1:n_iter_max
         if error < tol
             break
@@ -360,7 +362,9 @@ function tt_cross(input_tensor, maxrank::Int64, tol::Float64, n_iter_max::Int64,
             end
         end
 
-        error = norm(factor_new - factor_old) / norm(factor_new)
+        orthogonalize!(factor_new, 1)
+        diff = factor_new - factor_old
+        error = norm(diff) / norm(factor_new)
         println("Sweep $iter error: $error")
         flush(stdout)
 
