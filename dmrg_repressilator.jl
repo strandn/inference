@@ -283,8 +283,8 @@ function dmrg_repressilator()
         [X10_idx, X20_idx, X30_idx, α2_idx, α3_idx, α1_idx, m_idx, η_idx],
         [X10_idx, X20_idx, X30_idx, α3_idx, α1_idx, α2_idx, m_idx, η_idx]
     ]
-    # tensor_train_cross(A, maxr, cutoff, tol, maxiter)
-    tensor_train_cross(A, maxr, cutoff, tol, maxiter, seedlist)
+    # dmrg_cross(A, maxr, cutoff, tol, maxiter)
+    dmrg_cross(A, maxr, cutoff, tol, maxiter, seedlist)
 end
 
 d = 8

@@ -15,7 +15,8 @@ function dmrg_test()
         end
         input_tensor[idx] = 1 / (i + j - 1)
     end
-    psi = tensor_train_cross(input_tensor, maxr, cutoff, tol, maxiter)
+    # psi = dmrg_cross(input_tensor, maxr, cutoff, tol, maxiter)
+    psi = tt_cross(input_tensor, maxr, tol, maxiter)
 
     println(psi)
     psi_prod = deepcopy(psi[1])
@@ -30,7 +31,8 @@ function dmrg_test()
     println(norm(output_tensor - input_tensor) / norm(output_tensor))
 end
 
-maxr = 100
+# maxr = 100
+maxr = 10
 cutoff = 1.0e-12
 tol = 1.0e-4
 maxiter = 10

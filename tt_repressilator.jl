@@ -1,7 +1,6 @@
 using DifferentialEquations
-using ITensors
-using ITensorMPS
-using HDF5
+
+include("tt_cross.jl")
 
 function repressilator!(du, u, p, t)
     X1, X2, X3 = u
@@ -43,7 +42,7 @@ function V(r, tspan, nsteps, data, mu, sigma)
     return result
 end
 
-function dmrg_repressilator()
+function tt_repressilator()
     tspan = (0.0, 30.0)
     nsteps = 50
 
@@ -53,7 +52,7 @@ function dmrg_repressilator()
     α3_true = 20.0
     m_true = 4.0
     η_true = 1.0
-
+    
     data = []
     open("repressilator_data.txt", "r") do file
         for line in eachline(file)
@@ -86,57 +85,37 @@ function dmrg_repressilator()
         LinRange(m_dom..., nbins + 1),
         LinRange(η_dom..., nbins + 1)
     )
+    X10_idx = searchsortedfirst(grid[1], X10_true)
+    X20_idx = searchsortedfirst(grid[2], X20_true)
+    X30_idx = searchsortedfirst(grid[3], X30_true)
+    α1_idx = searchsortedfirst(grid[4], α1_true)
+    α2_idx = searchsortedfirst(grid[5], α2_true)
+    α3_idx = searchsortedfirst(grid[6], α3_true)
+    m_idx = searchsortedfirst(grid[7], m_true)
+    η_idx = searchsortedfirst(grid[8], η_true)
 
     offset = neglogposterior(X10_true, X20_true, X30_true, α1_true, α2_true, α3_true, m_true, η_true)
 
-    f = h5open("dmrg_cross_$iter.h5", "r")
-    psi = read(f, "factor", MPS)
-    close(f)
+    println("Starting TT cross...")
+    flush(stdout)
 
-    sites = siteinds(psi)
-    oneslist = [ITensor(ones(nbins), sites[i]) for i in 1:d]
-    norm = psi[1] * oneslist[1]
-    for i in 2:d
-        norm *= psi[i] * oneslist[i]
-    end
-
-    println(offset - log(norm[]))
-
-    for pos in 1:d-1
-        Lenv = undef
-        Renv = undef
-        if pos != 1
-            Lenv = psi[1] * oneslist[1]
-            for i in 2:pos-1
-                Lenv *= psi[i] * oneslist[i]
-            end
-        end
-        if pos != d - 1
-            Renv = psi[d] * oneslist[d]
-            for i in d-1:-1:pos+2
-                Renv *= psi[i] * oneslist[i]
-            end
-        end
-        result = undef
-        if pos == 1
-            result = psi[1] * psi[2] * Renv
-        elseif pos + 1 == d
-            result = Lenv * psi[d - 1] * psi[d]
-        else
-            result = Lenv * psi[pos] * psi[pos + 1] * Renv
-        end
-        result /= norm
-        open("dmrg_repressilator_marginal_$pos.txt", "w") do file
-            for i in 1:nbins
-                for j in 1:nbins
-                    write(file, "$(grid[pos][i]) $(grid[pos + 1][j]) $(result[sites[pos] => i, sites[pos + 1] => j])\n")
-                end
-            end
-        end
-    end
+    posterior(x...) = exp(offset - neglogposterior(x...))
+    A = ODEArray(posterior, grid)
+    seedlist = [
+        [X10_idx, X20_idx, X30_idx, α1_idx, α2_idx, α3_idx, m_idx, η_idx]
+    ]
+    # seedlist = [
+    #     [X10_idx, X20_idx, X30_idx, α1_idx, α2_idx, α3_idx, m_idx, η_idx],
+    #     [X10_idx, X20_idx, X30_idx, α2_idx, α3_idx, α1_idx, m_idx, η_idx],
+    #     [X10_idx, X20_idx, X30_idx, α3_idx, α1_idx, α2_idx, m_idx, η_idx]
+    # ]
+    tt_cross(A, maxr, tol, maxiter)
+    # tt_cross(A, maxr, tol, maxiter, seedlist)
 end
 
 d = 8
-iter = 10
+maxr = 100
+tol = 1.0e-4
+maxiter = 10
 
-dmrg_repressilator()
+tt_repressilator()

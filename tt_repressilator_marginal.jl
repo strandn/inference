@@ -43,7 +43,7 @@ function V(r, tspan, nsteps, data, mu, sigma)
     return result
 end
 
-function dmrg_repressilator()
+function tt_repressilator()
     tspan = (0.0, 30.0)
     nsteps = 50
 
@@ -89,7 +89,7 @@ function dmrg_repressilator()
 
     offset = neglogposterior(X10_true, X20_true, X30_true, α1_true, α2_true, α3_true, m_true, η_true)
 
-    f = h5open("dmrg_cross_$iter.h5", "r")
+    f = h5open("tt_cross_$iter.h5", "r")
     psi = read(f, "factor", MPS)
     close(f)
 
@@ -126,7 +126,7 @@ function dmrg_repressilator()
             result = Lenv * psi[pos] * psi[pos + 1] * Renv
         end
         result /= norm
-        open("dmrg_repressilator_marginal_$pos.txt", "w") do file
+        open("tt_repressilator_marginal_$pos.txt", "w") do file
             for i in 1:nbins
                 for j in 1:nbins
                     write(file, "$(grid[pos][i]) $(grid[pos + 1][j]) $(result[sites[pos] => i, sites[pos + 1] => j])\n")
@@ -139,4 +139,4 @@ end
 d = 8
 iter = 10
 
-dmrg_repressilator()
+tt_repressilator()
