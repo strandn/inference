@@ -281,8 +281,6 @@ end
 function tt_cross(input_tensor, maxrank::Int64, tol::Float64, n_iter_max::Int64, seedlist::Vector{Vector{Int64}}=Vector{Int64}[])
     tensor_shape = size(input_tensor)
     tensor_order = ndims(input_tensor)
-    println(1)
-    flush(stdout)
 
     rank = zeros(Int64, tensor_order - 1)
     for i in 1:tensor_order-1
@@ -296,69 +294,37 @@ function tt_cross(input_tensor, maxrank::Int64, tol::Float64, n_iter_max::Int64,
         end
         rank[i] = min(left, right, maxrank)
     end
-    println(2)
-    flush(stdout)
 
     sites = [siteind(tensor_shape[i], i) for i in 1:tensor_order]
-    factor_old = randomMPS(sites; linkdims=rank)
+    factor_old = randomMPS(sites)
     factor_new = randomMPS(sites; linkdims=rank)
-    links = linkinds(factor_new)
-    if !isempty(seedlist)
-        for i in eachindex(seedlist)
-            x = seedlist[i, :][]
-            factor_new[1][sites[1]=>x[1], links[1]=>i] = 10.0
-            for k in 2:tensor_order-1
-                factor_new[k][links[k-1]=>i, sites[k]=>x[k], links[k]=>i] = 10.0
-            end
-            factor_new[tensor_order][links[tensor_order-1]=>i, sites[tensor_order]=>x[tensor_order]] = 10.0
-        end
-    end
-    println(3)
-    flush(stdout)
 
-    P = Vector{Matrix}(undef, tensor_order - 1)
     row_idx = Vector(undef, tensor_order)
     col_idx = Vector(undef, tensor_order)
     row_idx[1] = [[]]
     col_idx[tensor_order] = [[]]
-    Q, R, links[tensor_order - 1] = qr(factor_new[tensor_order], sites[tensor_order]; tags=tags(links[tensor_order - 1]))
-    factor_new[tensor_order] = Q
-    Qmat = Matrix(Q, links[tensor_order - 1], sites[tensor_order])
-    J = maxvol(Matrix(transpose(Qmat)))
-    col_idx[tensor_order - 1] = J
-    P[tensor_order - 1] = Qmat[:, J]
-    println(4)
-    flush(stdout)
 
-    for k in tensor_order-1:-1:2
-        factor_new[k] *= R
-        Q, R, links[k - 1] = qr(factor_new[k], sites[k], links[k]; tags=tags(links[k - 1]))
-        Q *= ITensor(P[k], links[k], links[k]')
-        noprime!(Q)
-        factor_new[k] = Q
-        comb = combiner(links[k], sites[k])
-        Qmat = Matrix(comb * Q, links[k - 1], combinedind(comb))
-        J = maxvol(Matrix(transpose(Qmat)))
-        new_idx = [
-            [floor(Int64, (idx - 1) / rank[k]) + 1, mod(idx - 1, rank[k]) + 1] for idx in J
-        ]
-        next_col_idx = [
-            [[jc[1]]; col_idx[k][jc[2]]] for jc in new_idx
-        ]
-        col_idx[k - 1] = next_col_idx
-        P[k - 1] = Qmat[:, J]
+    for k_col_idx in tensor_order-1:-1:1
+        col_idx[k_col_idx] = []
+        for seed in seedlist
+            push!(col_idx[k_col_idx], seed[k_col_idx+1:tensor_order])
+        end
+        r = length(seedlist)
+        count = 1
+        while r < rank[k_col_idx]
+            idx = [[mod(count - 1, tensor_shape[k_col_idx]) + 1]; col_idx[k_col_idx + 1][div(count - 1, tensor_shape[k_col_idx]) + 1]]
+            if !(idx in [seed[k_col_idx+1:tensor_order] for seed in seedlist])
+                push!(col_idx[k_col_idx], idx)
+                r = r + 1
+            end
+            count = count + 1
+        end
+        println()
     end
-    println(5)
-    flush(stdout)
-
-    factor_new[1] *= R * ITensor(P[1], links[1], links[1]')
-    noprime!(factor_new[1])
-    println(6)
-    flush(stdout)
 
     iter = 0
 
-    error = norm(factor_old - factor_new) / norm(factor_new)
+    error = norm(factor_new - factor_old) / norm(factor_new)
     for iter in 1:n_iter_max
         if error < tol
             break
@@ -367,36 +333,34 @@ function tt_cross(input_tensor, maxrank::Int64, tol::Float64, n_iter_max::Int64,
         factor_old = deepcopy(factor_new)
 
         for k in 1:tensor_order-1
-            println("Step $k (right)")
-            flush(stdout)
             next_row_idx = left_right_ttcross_step(
                 input_tensor, k, rank, row_idx, col_idx, siteind(factor_new, k), linkind(factor_new, k), k == 1 ? Index(1) : linkind(factor_new, k - 1)
             )
             row_idx[k + 1] = next_row_idx
+            println("Step $k (right) done!")
+            flush(stdout)
         end
 
         for k in tensor_order:-1:2
-            println("Step $k (left)")
-            flush(stdout)
             next_col_idx, Q_skeleton = right_left_ttcross_step(
                 input_tensor, k, rank, row_idx, col_idx, siteind(factor_new, k), k == tensor_order ? Index(1) : linkind(factor_new, k), linkind(factor_new, k - 1)
             )
             col_idx[k - 1] = next_col_idx
-
             factor_new[k] = Q_skeleton
+            println("Step $k (left) done!")
+            flush(stdout)
         end
 
         s = siteind(factor_new, 1)
         l = linkind(factor_new, 1)
-        @time for i in 1:tensor_shape[1]
+        for i in 1:tensor_shape[1]
             for ridx in 1:rank[1]
                 idx = [[i]; col_idx[1][ridx]]
                 factor_new[1][s=>i, l=>ridx] = input_tensor[idx...]
             end
         end
-        flush(stdout)
 
-        error = norm(factor_old - factor_new) / norm(factor_new)
+        error = norm(factor_new - factor_old) / norm(factor_new)
         println("Sweep $iter error: $error")
         flush(stdout)
 
@@ -408,7 +372,7 @@ function tt_cross(input_tensor, maxrank::Int64, tol::Float64, n_iter_max::Int64,
     if iter >= n_iter_max
         println("Maximum number of iterations reached.")
     end
-    if norm(factor_old - factor_new) > tol * norm(factor_new)
+    if error > tol
         println("Low Rank Approximation algorithm did not converge.")
     end
 
@@ -420,7 +384,7 @@ function left_right_ttcross_step(input_tensor, k::Int64, rank::Vector{Int64}, ro
 
     core = k == 1 ? ITensor(s, l) : ITensor(s, lp, l)
 
-    @time for i in 1:tensor_shape[k]
+    for i in 1:tensor_shape[k]
         for ridx in 1:rank[k]
             if k == 1
                 idx = [[i]; col_idx[1][ridx]]
@@ -433,14 +397,11 @@ function left_right_ttcross_step(input_tensor, k::Int64, rank::Vector{Int64}, ro
             end
         end
     end
-    flush(stdout)
 
-    @time Q, _, q = k == 1 ? qr(core, s) : qr(core, (s, lp))
-    flush(stdout)
+    Q, _, q = k == 1 ? qr(core, s) : qr(core, (s, lp))
     C = k == 1 ? combiner(s) : combiner(s, lp)
     Qmat = Matrix(C * Q, combinedind(C), q)
-    @time I = maxvol(Qmat)
-    flush(stdout)
+    I = maxvol(Qmat)
 
     new_idx = [
         [floor(Int64, (idx - 1) / tensor_shape[k]) + 1, mod(idx - 1, tensor_shape[k]) + 1] for idx in I
@@ -458,7 +419,7 @@ function right_left_ttcross_step(input_tensor, k::Int64, rank::Vector{Int64}, ro
 
     core = k == tensor_order ? ITensor(s, lp) : ITensor(s, lp, l)
 
-    @time for i in 1:tensor_shape[k]
+    for i in 1:tensor_shape[k]
         for lidx in 1:rank[k - 1]
             if k == tensor_order
                 idx = [row_idx[tensor_order][lidx]; [i]]
@@ -471,14 +432,11 @@ function right_left_ttcross_step(input_tensor, k::Int64, rank::Vector{Int64}, ro
             end
         end
     end
-    flush(stdout)
 
-    @time Q, _, q = k == tensor_order ? qr(core, s) : qr(core, (l, s))
-    flush(stdout)
+    Q, _, q = k == tensor_order ? qr(core, s) : qr(core, (l, s))
     C = k == tensor_order ? combiner(s) : combiner(l, s)
     Qmat = Matrix(C * Q, q, combinedind(C))
-    @time J = maxvol(Matrix(transpose(Qmat)))
-    flush(stdout)
+    J = maxvol(Matrix(transpose(Qmat)))
     Q_inv = inv(Qmat[:, J])
     Q_skeleton = Q * delta(q, lp) * ITensor(Q_inv, lp', lp)
     noprime!(Q_skeleton)
