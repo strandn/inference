@@ -281,6 +281,8 @@ end
 function tt_cross(input_tensor, maxrank::Int64, tol::Float64, n_iter_max::Int64, seedlist::Vector{Vector{Int64}}=Vector{Int64}[])
     tensor_shape = size(input_tensor)
     tensor_order = ndims(input_tensor)
+    println(1)
+    flush(stdout)
 
     rank = zeros(Int64, tensor_order - 1)
     for i in 1:tensor_order-1
@@ -294,6 +296,8 @@ function tt_cross(input_tensor, maxrank::Int64, tol::Float64, n_iter_max::Int64,
         end
         rank[i] = min(left, right, maxrank)
     end
+    println(2)
+    flush(stdout)
 
     sites = [siteind(tensor_shape[i], i) for i in 1:tensor_order]
     factor_old = randomMPS(sites; linkdims=rank)
@@ -309,6 +313,8 @@ function tt_cross(input_tensor, maxrank::Int64, tol::Float64, n_iter_max::Int64,
             factor_new[tensor_order][links[tensor_order-1]=>i, sites[tensor_order]=>x[tensor_order]] = 10.0
         end
     end
+    println(3)
+    flush(stdout)
 
     P = Vector{Matrix}(undef, tensor_order - 1)
     row_idx = Vector(undef, tensor_order)
@@ -321,6 +327,8 @@ function tt_cross(input_tensor, maxrank::Int64, tol::Float64, n_iter_max::Int64,
     J = maxvol(Matrix(transpose(Qmat)))
     col_idx[tensor_order - 1] = J
     P[tensor_order - 1] = Qmat[:, J]
+    println(4)
+    flush(stdout)
 
     for k in tensor_order-1:-1:2
         factor_new[k] *= R
@@ -340,9 +348,13 @@ function tt_cross(input_tensor, maxrank::Int64, tol::Float64, n_iter_max::Int64,
         col_idx[k - 1] = next_col_idx
         P[k - 1] = Qmat[:, J]
     end
+    println(5)
+    flush(stdout)
 
     factor_new[1] *= R * ITensor(P[1], links[1], links[1]')
     noprime!(factor_new[1])
+    println(6)
+    flush(stdout)
 
     iter = 0
 
