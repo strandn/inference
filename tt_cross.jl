@@ -324,7 +324,6 @@ function tt_cross(input_tensor, maxrank::Int64, tol::Float64, n_iter_max::Int64,
 
     iter = 0
 
-    orthogonalize!(factor_new, 1)
     diff = factor_new - factor_old
     error = norm(diff) / norm(factor_new)
     for iter in 1:n_iter_max
@@ -362,9 +361,12 @@ function tt_cross(input_tensor, maxrank::Int64, tol::Float64, n_iter_max::Int64,
             end
         end
 
-        orthogonalize!(factor_new, 1)
-        diff = factor_new - factor_old
-        error = norm(diff) / norm(factor_new)
+        @time orthogonalize!(factor_new, 1)
+        @time diff = factor_new - factor_old
+        # error = norm(diff) / norm(factor_new)
+        @time norm1 = norm(diff)
+        @time norm2 = norm(factor_new)
+        error = norm1 / norm2
         println("Sweep $iter error: $error")
         flush(stdout)
 
