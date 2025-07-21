@@ -137,6 +137,6 @@ function tt_repressilator()
 end
 
 d = 8
-iter = 10
+iter = parse(Int64, ARGS[1])
 
 tt_repressilator()
