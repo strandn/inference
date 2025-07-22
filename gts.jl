@@ -35,7 +35,7 @@ function V(r, tspan, nsteps, data_x, data_y, mu, sigma)
         obs_y = fill(Inf, nsteps + 1)
     end
 
-    s2 = 0.15
+    s2 = 0.2
     diff = [x0, y0, α1, α2, β, γ] - mu
     result = 1 / 2 * sum((diff .^ 2) ./ sigma)
     for i in eachindex(data_x)
@@ -49,8 +49,8 @@ function aca_gts()
         println("Generating data...")
     end
 
-    tspan = (0.0, 30.0)
-    nsteps = 50
+    tspan = (0.0, 100.0)
+    nsteps = 30
     dt = (tspan[2] - tspan[1]) / nsteps
     tlist = LinRange(tspan..., nsteps + 1)
     x0_true = 2.0
@@ -73,8 +73,8 @@ function aca_gts()
         truedata_y = sol[2, :]
         data_x = deepcopy(truedata_x)
         data_y = deepcopy(truedata_y)
-        data_x += sqrt(0.15) * randn(length(data_x))
-        data_y += sqrt(0.15) * randn(length(data_y))
+        data_x += sqrt(0.2) * randn(length(data_x))
+        data_y += sqrt(0.2) * randn(length(data_y))
     end
 
     MPI.Bcast!(truedata_x, 0, mpi_comm)
