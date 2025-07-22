@@ -56,7 +56,7 @@ function aca_gts()
     x0_true = 2.0
     y0_true = 3.0
     α1_true = 50.0
-    α1_true = 16.0
+    α2_true = 16.0
     β_true = 2.5
     γ_true = 1.5
 
