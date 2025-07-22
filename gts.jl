@@ -49,8 +49,8 @@ function aca_gts()
         println("Generating data...")
     end
 
-    tspan = (0.0, 100.0)
-    nsteps = 30
+    tspan = (0.0, 30.0)
+    nsteps = 40
     dt = (tspan[2] - tspan[1]) / nsteps
     tlist = LinRange(tspan..., nsteps + 1)
     x0_true = 2.0
@@ -94,38 +94,36 @@ function aca_gts()
         end
     end
 
-    # if mpi_rank == 0
-    #     println("Computing true density...")
-    # end
+    if mpi_rank == 0
+        println("Computing true density...")
+    end
 
-    # x0_dom = (3.0, 12.0)
-    # v0_dom = (-1.0, 7.0)
-    # ω_dom = (0.1, 2.0)
-    # γ_dom = (0.1, 7.5)
+    x0_dom = (0.0, 10.0)
+    y0_dom = (0.0, 10.0)
+    α1_dom = (5.0, 100.0)
+    α2_dom = (5.0, 100.0)
+    β_dom = (1.0, 5.0)
+    γ_dom = (1.0, 5.0)
 
-    # F = ResFunc(neglogposterior, (x0_dom, v0_dom, ω_dom, γ_dom), cutoff, mu, sigma)
+    F = ResFunc(neglogposterior, (x0_dom, y0_dom, α1_dom, α2_dom, β_dom, γ_dom), cutoff, mu, sigma)
 
-    # if mpi_rank == 0
-    #     println("Starting TT-cross ACA...")
-    # end
+    if mpi_rank == 0
+        println("Starting TT-cross ACA...")
+    end
 
-    # IJ = continuous_aca(F, fill(maxr, d - 1), n_chains, n_samples, jump_width, mpi_comm)
+    IJ = continuous_aca(F, fill(maxr, d - 1), n_chains, n_samples, jump_width, mpi_comm)
 
-    # norm = 0.0
-    # normbuf = [0.0]
+    norm = 0.0
+    normbuf = [0.0]
 
-    # if mpi_rank == 0
-    #     open("underdamped_IJ.txt", "w") do file
-    #         write(file, "$IJ\n")
-    #         write(file, "$(F.offset)\n")
-    #     end
-    #     norm = compute_norm(F)
-    #     normbuf = [norm]
-    #     println("norm = $norm")
-    # end
-
-    # MPI.Bcast!(normbuf, 0, mpi_comm)
-    # norm = normbuf[]
+    if mpi_rank == 0
+        open("gts_IJ.txt", "w") do file
+            write(file, "$IJ\n")
+            write(file, "$(F.offset)\n")
+        end
+        norm = compute_norm(F)
+        println("norm = $norm")
+    end
 end
 
 MPI.Init()
@@ -133,7 +131,7 @@ mpi_comm = MPI.COMM_WORLD
 mpi_rank = MPI.Comm_rank(mpi_comm)
 mpi_size = MPI.Comm_size(mpi_comm)
 
-d = 4
+d = 6
 maxr = 50
 n_chains = 40
 n_samples = 400
