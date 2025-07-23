@@ -98,12 +98,12 @@ function aca_gts()
         println("Computing true density...")
     end
 
-    x0_dom = (0.0, 10.0)
-    y0_dom = (0.0, 10.0)
+    x0_dom = (0.0, 5.0)
+    y0_dom = (0.0, 5.5)
     α1_dom = (5.0, 100.0)
-    α2_dom = (5.0, 100.0)
-    β_dom = (1.0, 5.0)
-    γ_dom = (1.0, 5.0)
+    α2_dom = (13.5, 18.5)
+    β_dom = (1.0, 3.5)
+    γ_dom = (1.0, 2.75)
 
     F = ResFunc(neglogposterior, (x0_dom, y0_dom, α1_dom, α2_dom, β_dom, γ_dom), cutoff, mu, sigma)
 

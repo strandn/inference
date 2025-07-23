@@ -1,7 +1,6 @@
 using DifferentialEquations
-using LinearAlgebra
 
-include("tt_aca.jl")
+include("tt_cross.jl")
 
 function gts!(du, u, p, t)
     x, y = u
@@ -35,7 +34,7 @@ function V(r, tspan, nsteps, data_x, data_y, mu, sigma)
         obs_y = fill(Inf, nsteps + 1)
     end
 
-    s2 = 0.2
+    s2 = 0.25
     diff = [x0, y0, α1, α2, β, γ] - mu
     result = 1 / 2 * sum((diff .^ 2) ./ sigma)
     for i in eachindex(data_x)
@@ -44,10 +43,17 @@ function V(r, tspan, nsteps, data_x, data_y, mu, sigma)
     return result
 end
 
-function aca_gts()
+function dmrg_gts()
     tspan = (0.0, 30.0)
-    nsteps = 40
+    nsteps = 25
 
+    x0_true = 2.0
+    y0_true = 3.0
+    α1_true = 50.0
+    α2_true = 16.0
+    β_true = 2.5
+    γ_true = 1.5
+    
     data_x = []
     data_y = []
     open("gts_data.txt", "r") do file
@@ -69,18 +75,8 @@ function aca_gts()
     β_dom = (1.0, 3.5)
     γ_dom = (1.0, 2.75)
 
-    F = ResFunc(neglogposterior, (x0_dom, y0_dom, α1_dom, α2_dom, β_dom, γ_dom), 0.0, mu, sigma)
-
-    open("gts_IJ.txt", "r") do file
-        F.I, F.J = eval(Meta.parse(readline(file)))
-        F.offset = parse(Float64, readline(file))
-    end
-
-    norm = compute_norm(F)
-    println("norm = $norm")
-
     nbins = 100
-    grid = (
+     grid = (
         LinRange(x0_dom..., nbins + 1),
         LinRange(y0_dom..., nbins + 1),
         LinRange(α1_dom..., nbins + 1),
@@ -88,29 +84,31 @@ function aca_gts()
         LinRange(β_dom..., nbins + 1),
         LinRange(γ_dom..., nbins + 1)
     )
+    x0_idx = searchsortedfirst(grid[1], x0_true)
+    y0_idx = searchsortedfirst(grid[2], y0_true)
+    α1_idx = searchsortedfirst(grid[3], α1_true)
+    α2_idx = searchsortedfirst(grid[4], α2_true)
+    β_idx = searchsortedfirst(grid[5], β_true)
+    γ_idx = searchsortedfirst(grid[6], γ_true)
 
-    for count in 1:5
-        dens = compute_marginal(F, count, norm)
-        open("gts_marginal_$count.txt", "w") do file
-            for i in 1:nbins
-                for j in 1:nbins
-                    write(file, "$(grid[count][i]) $(grid[count + 1][j]) $(dens[i, j])\n")
-                end
-            end
-        end
-    end
+    offset = neglogposterior(x0_true, y0_true, α1_true, α2_true, β_true, γ_true)
 
-    open("gts_samples.txt", "w") do file
-        for i in 1:10
-            println("Collecting sample $i...")
-            sample = sample_from_tt(F)
-            write(file, "$(sample[1]) $(sample[2]) $(sample[3]) $(sample[4]) $(sample[5]) $(sample[6])\n")
-        end
-    end
+    println("Starting DMRG cross...")
+    flush(stdout)
+
+    posterior(x...) = exp(offset - neglogposterior(x...))
+    A = ODEArray(posterior, grid)
+    seedlist = [
+        [x0_idx, y0_idx, α1_idx, α2_idx, β_idx, γ_idx]
+    ]
+    dmrg_cross(A, maxr, cutoff, tol, maxiter)
+    # dmrg_cross(A, maxr, cutoff, tol, maxiter, seedlist)
 end
 
-start_time = time()
-aca_gts()
-end_time = time()
-elapsed_time = end_time - start_time
-println("Elapsed time: $elapsed_time seconds")
+d = 8
+maxr = 100
+cutoff = 1.0e-12
+tol = 1.0e-4
+maxiter = 10
+
+dmrg_gts()
