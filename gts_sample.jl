@@ -46,7 +46,7 @@ end
 
 function aca_gts()
     tspan = (0.0, 30.0)
-    nsteps = 40
+    nsteps = 25
 
     data_x = []
     data_y = []
