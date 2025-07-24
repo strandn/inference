@@ -45,6 +45,7 @@ function aca_stamps()
     grid = (
         LinRange(m1_dom..., nbins + 1),
         LinRange(m2_dom..., nbins + 1),
+        LinRange(m3_dom..., nbins + 1),
         LinRange(ls1_dom..., nbins + 1),
         LinRange(ls2_dom..., nbins + 1),
         LinRange(ls3_dom..., nbins + 1),
