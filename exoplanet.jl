@@ -12,14 +12,14 @@ function V(r, tspan, nsteps, data, mu, sigma)
     φ0 = r[3]
     lnP = r[4]
     obs = []
-    for t in tlist[2:nsteps+1]
+    for t in tlist
         push!(obs, radialvelocity(v0, K, φ0, lnP, t))
     end
 
     s2 = 3.24
     diff = [v0, K] - mu
     result = 1 / 2 * sum((diff .^ 2) ./ sigma)
-    for i in 1:nsteps
+    for i in 1:nsteps+1
         result += 1 / 2 * log(2 * pi * s2) + (data[i] - obs[i]) ^ 2 / (2 * s2)
     end
     return result
@@ -29,7 +29,7 @@ function aca_exoplanet()
     if mpi_rank == 0
         println("Generating data...")
     end
-    
+
     tspan = (0.0, 200.0)
     nsteps = 6
     dt = (tspan[2] - tspan[1]) / nsteps
@@ -42,7 +42,7 @@ function aca_exoplanet()
     data = zeros(nsteps + 1)
 
     if mpi_rank == 0
-        for i in 2:nsteps+1
+        for i in 1:nsteps+1
             t = (i - 1) * dt
             data[i] = radialvelocity(v0_true, K_true, φ0_true, lnP_true, t)
         end
