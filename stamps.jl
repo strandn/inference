@@ -14,7 +14,7 @@ function hidalgo_like(x...)
     ps = [MvNormal(μ, Σ) for μ in centers]
 
     # Evaluate density (unnormalized)
-    return 30.0 - log(sum(pdf(p, [elt for elt in x]) for p in ps))
+    return 10.0 - log(sum(pdf(p, [elt for elt in x]) for p in ps))
 end
 
 function aca_stamps()
@@ -67,7 +67,7 @@ mpi_size = MPI.Comm_size(mpi_comm)
 d = 9
 maxr = 50
 n_chains = 40
-n_samples = 10^4
+n_samples = 2 * 10^4
 jump_width = 0.001
 cutoff = 0.001
 
