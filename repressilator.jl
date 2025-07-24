@@ -11,6 +11,7 @@ function repressilator!(du, u, p, t)
 end
 
 function V(r, tspan, nsteps, data, mu, sigma)
+    # TODO: fix time points + ResFunc construction + evidence
     dt = (tspan[2] - tspan[1]) / nsteps
     X10 = r[1]
     X20 = r[2]
@@ -118,20 +119,15 @@ function aca_repressilator()
     end
 
     norm = 0.0
-    normbuf = [0.0]
-
     if mpi_rank == 0
         open("repressilator_IJ.txt", "w") do file
             write(file, "$IJ\n")
             write(file, "$(F.offset)\n")
         end
         norm = compute_norm(F)
-        normbuf = [norm]
         println("norm = $norm")
+        println(F.offset - log(norm))
     end
-
-    MPI.Bcast!(normbuf, 0, mpi_comm)
-    norm = normbuf[]
 end
 
 MPI.Init()

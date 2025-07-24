@@ -21,12 +21,10 @@ mutable struct ResFunc{T, N}
     # Convergence threshhold (algorithm stops if the largest residual in the current iteration falls below this number)
     cutoff::T
     offset::T
-    mu::Vector{T}
-    sigma::Vector{T}
 
     # Constructor
-    function ResFunc(f, domain::NTuple{N, Tuple{T, T}}, cutoff::T, mu::Vector{T}, sigma::Vector{T}) where {T, N}
-        new{T, N}(f, N, 0, domain, [[[T[]]]; [Vector{T}[] for _ in 2:N]], [[[T[]]]; [Vector{T}[] for _ in 2:N]], cutoff, 0.0, mu, sigma)
+    function ResFunc(f, domain::NTuple{N, Tuple{T, T}}, cutoff::T) where {T, N}
+        new{T, N}(f, N, 0, domain, [[[T[]]]; [Vector{T}[] for _ in 2:N]], [[[T[]]]; [Vector{T}[] for _ in 2:N]], cutoff, 0.0)
     end
 end
 
