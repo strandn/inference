@@ -21,7 +21,7 @@ function V(r, tspan, nsteps, data, mu, sigma)
     s2 = 3.24
     diff = [v0, K] - mu
     result = 1 / 2 * sum((diff .^ 2) ./ sigma)
-    for i in 2:nsteps+1
+    for i in 1:nsteps
         result += 1 / 2 * log(2 * pi * s2) + (data[i] - obs[i]) ^ 2 / (2 * s2)
     end
     return result
