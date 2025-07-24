@@ -48,14 +48,14 @@ function aca_repressilator()
     end
 
     tspan = (0.0, 30.0)
-    nsteps = 40
+    nsteps = 50
     dt = (tspan[2] - tspan[1]) / nsteps
     tlist = LinRange(tspan..., nsteps + 1)
     X10_true = X20_true = X30_true = 2.0
     α1_true = 10.0
     α2_true = 15.0
     α3_true = 20.0
-    m_true = 1.5
+    m_true = 4.0
     η_true = 1.0
 
     truedata1 = zeros(nsteps + 1)
@@ -94,14 +94,14 @@ function aca_repressilator()
         end
     end
 
-    X10_dom = (0.5, 10.0)
-    X20_dom = (0.5, 10.0)
-    X30_dom = (0.5, 10.0)
-    α1_dom = (0.5, 30.0)
-    α2_dom = (0.5, 30.0)
-    α3_dom = (0.5, 30.0)
-    m_dom = (0.5, 10.0)
-    η_dom = (0.1, 2.5)
+    X10_dom = (0.5, 3.5)
+    X20_dom = (0.5, 3.5)
+    X30_dom = (0.5, 3.5)
+    α1_dom = (0.5, 25.0)
+    α2_dom = (0.5, 25.0)
+    α3_dom = (0.5, 25.0)
+    m_dom = (3.0, 5.0)
+    η_dom = (0.95, 1.05)
 
     F = ResFunc(neglogposterior, (X10_dom, X20_dom, X30_dom, α1_dom, α2_dom, α3_dom, m_dom, η_dom), cutoff)
 
@@ -137,8 +137,8 @@ mpi_size = MPI.Comm_size(mpi_comm)
 d = 8
 maxr = 50
 n_chains = 40
-n_samples = 10^4
-jump_width = 0.001
+n_samples = 1000
+jump_width = 0.01
 cutoff = 0.001
 
 aca_repressilator()
