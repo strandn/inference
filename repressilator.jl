@@ -11,7 +11,6 @@ function repressilator!(du, u, p, t)
 end
 
 function V(r, tspan, nsteps, data, mu, sigma)
-    # TODO: fix time points + ResFunc construction + evidence
     dt = (tspan[2] - tspan[1]) / nsteps
     X10 = r[1]
     X20 = r[2]
@@ -104,7 +103,7 @@ function aca_repressilator()
     m_dom = (0.5, 10.0)
     η_dom = (0.1, 2.5)
 
-    F = ResFunc(neglogposterior, (X10_dom, X20_dom, X30_dom, α1_dom, α2_dom, α3_dom, m_dom, η_dom), cutoff, mu, sigma)
+    F = ResFunc(neglogposterior, (X10_dom, X20_dom, X30_dom, α1_dom, α2_dom, α3_dom, m_dom, η_dom), cutoff)
 
     if mpi_rank == 0
         println("Starting TT-cross ACA...")
