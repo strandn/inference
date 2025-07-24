@@ -530,6 +530,12 @@ function sample_from_tt(F::ResFunc{T, N}) where {T, N}
             end
             Renv *= R
             for i in order-1:-1:count+1
+                AIJ = zeros(npivots[i - 1], npivots[i - 1])
+                for j in 1:npivots[i - 1]
+                    for k in 1:npivots[i - 1]
+                        AIJ[j, k] = expnegf(F, F.I[i][j]..., F.J[i][k]...)
+                    end
+                end
                 Renvi = zeros(npivots[i - 1], npivots[i])
                 for j in 1:npivots[i - 1]
                     for k in 1:npivots[i]
@@ -538,13 +544,7 @@ function sample_from_tt(F::ResFunc{T, N}) where {T, N}
                         # Renvi[j, k] = quadgk(f, F.domain[i]...; maxevals=10^5)[1]
                     end
                 end
-                AIJ = zeros(npivots[i], npivots[i])
-                for j in 1:npivots[i]
-                    for k in 1:npivots[i]
-                        AIJ[j, k] = expnegf(F, F.I[i + 1][j]..., F.J[i + 1][k]...)
-                    end
-                end
-                Renv = Renvi * inv(AIJ) * Renv
+                Renv = inv(AIJ) * Renvi * Renv
             end
         end
         u = rand()
