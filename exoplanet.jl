@@ -1,5 +1,3 @@
-using LinearAlgebra
-
 include("tt_aca.jl")
 
 function radialvelocity(v0, K, φ0, lnP, t)
@@ -28,6 +26,10 @@ function V(r, tspan, nsteps, data, mu, sigma)
 end
 
 function aca_exoplanet()
+    if mpi_rank == 0
+        println("Generating data...")
+    end
+    
     tspan = (0.0, 200.0)
     nsteps = 6
     dt = (tspan[2] - tspan[1]) / nsteps
@@ -54,7 +56,11 @@ function aca_exoplanet()
     neglogposterior(x0, K, φ0, lnP) = V([x0, K, φ0, lnP], tspan, nsteps, data, mu, sigma)
 
     if mpi_rank == 0
-        println("Computing true density...")
+        open("exoplanet_data.txt", "w") do file
+            for i in 1:nsteps+1
+                write(file, "$(tlist[i]) $(data[i])\n")
+            end
+        end
     end
 
     v0_dom = (-5.0, 5.0)

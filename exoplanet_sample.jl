@@ -1,5 +1,3 @@
-using LinearAlgebra
-
 include("tt_aca.jl")
 
 function radialvelocity(v0, K, φ0, lnP, t)
@@ -14,14 +12,14 @@ function V(r, tspan, nsteps, data, mu, sigma)
     φ0 = r[3]
     lnP = r[4]
     obs = []
-    for t in tlist
+    for t in tlist[2:nsteps+1]
         push!(obs, radialvelocity(v0, K, φ0, lnP, t))
     end
 
     s2 = 3.24
-    diff = [v0, K, φ0, lnP] - mu
+    diff = [v0, K] - mu
     result = 1 / 2 * sum((diff .^ 2) ./ sigma)
-    for i in 1:nsteps+1
+    for i in 1:nsteps
         result += 1 / 2 * log(2 * pi * s2) + (data[i] - obs[i]) ^ 2 / (2 * s2)
     end
     return result
@@ -29,7 +27,7 @@ end
 
 function aca_exoplanet()
     tspan = (0.0, 200.0)
-    nsteps = 10
+    nsteps = 6
 
     data = []
     open("exoplanet_data.txt", "r") do file
@@ -39,16 +37,16 @@ function aca_exoplanet()
         end
     end
 
-    mu = [0.0, 5.0, 3.0, 4.0]
-    sigma = [1.0, 9.0, 2.25, 0.25]
+    mu = [0.0, 5.0]
+    sigma = [1.0, 9.0]
     neglogposterior(x0, K, φ0, lnP) = V([x0, K, φ0, lnP], tspan, nsteps, data, mu, sigma)
 
-    v0_dom = (-3.0, 3.0)
-    K_dom = (0.5, 14.0)
+    v0_dom = (-5.0, 5.0)
+    K_dom = (0.5, 20.0)
     φ0_dom = (0.0, 2 * pi)
     lnP_dom = (3.0, 5.0)
 
-    F = ResFunc(neglogposterior, (v0_dom, K_dom, φ0_dom, lnP_dom), 0.0, mu, sigma)
+    F = ResFunc(neglogposterior, (v0_dom, K_dom, φ0_dom, lnP_dom), 0.0)
 
     open("exoplanet_IJ.txt", "r") do file
         F.I, F.J = eval(Meta.parse(readline(file)))
@@ -57,6 +55,7 @@ function aca_exoplanet()
 
     norm = compute_norm(F)
     println("norm = $norm")
+    println(F.offset - log(norm))
 
     nbins = 100
     grid = (LinRange(v0_dom..., nbins + 1), LinRange(K_dom..., nbins + 1), LinRange(φ0_dom..., nbins + 1), LinRange(lnP_dom..., nbins + 1))

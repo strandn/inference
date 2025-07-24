@@ -1,5 +1,3 @@
-using LinearAlgebra
-
 include("tt_aca.jl")
 
 function hidalgo_like(x...)

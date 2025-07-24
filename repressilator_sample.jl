@@ -1,5 +1,3 @@
-using DifferentialEquations
-
 include("tt_aca.jl")
 
 function repressilator!(du, u, p, t)
