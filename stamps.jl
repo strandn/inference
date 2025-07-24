@@ -43,21 +43,15 @@ function aca_stamps()
     end
 
     norm = 0.0
-    normbuf = [0.0]
-
     if mpi_rank == 0
         open("stamps_IJ.txt", "w") do file
             write(file, "$IJ\n")
             write(file, "$(F.offset)\n")
         end
         norm = compute_norm(F)
-        normbuf = [norm]
         println("norm = $norm")
         println(F.offset - log(norm))
     end
-
-    MPI.Bcast!(normbuf, 0, mpi_comm)
-    norm = normbuf[]
 end
 
 MPI.Init()
