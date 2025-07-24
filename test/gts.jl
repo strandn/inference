@@ -53,12 +53,12 @@ function aca_gts()
     nsteps = 25
     dt = (tspan[2] - tspan[1]) / nsteps
     tlist = LinRange(tspan..., nsteps + 1)
-    x0_true = 2.0
-    y0_true = 3.0
-    α1_true = 50.0
-    α2_true = 16.0
-    β_true = 2.5
-    γ_true = 1.5
+    x0_true = 6.0
+    y0_true = 0.2
+    α1_true = 36.0
+    α2_true = 34.0
+    β_true = 2.0
+    γ_true = 2.0
 
     truedata_x = zeros(nsteps + 1)
     truedata_y = zeros(nsteps + 1)
@@ -82,8 +82,8 @@ function aca_gts()
     MPI.Bcast!(data_x, 0, mpi_comm)
     MPI.Bcast!(data_y, 0, mpi_comm)
 
-    mu = [2.5, 2.5, 35.0, 35.0, 2.0, 2.0]
-    sigma = [6.25, 6.25, 400.0, 400.0, 4.0, 4.0]
+    mu = [5.0, 5.0, 35.0, 35.0, 2.0, 2.0]
+    sigma = [25.0, 25.0, 400.0, 400.0, 4.0, 4.0]
     neglogposterior(x0, y0, α1, α2, β, γ) = V([x0, y0, α1, α2, β, γ], tspan, nsteps, data_x, data_y, mu, sigma)
 
     if mpi_rank == 0

@@ -63,7 +63,7 @@ function (F::ResFunc{T, N})(elements::T...) where {T, N}
 
                 delta = sign1 * exp(arg1 - arglarge) - sign2 * exp(arg2 - arglarge)
                 new[idx] = -arglarge - log(abs(delta) + eps())  # add eps to guard against log(0)
-                new_sign[idx] = ifelse(delta < 0.0, -1.0, 1.0)
+                new_sign[idx] = ifelse(delta < 0.0, -1, 1)
             end
         end
         # display(new)
