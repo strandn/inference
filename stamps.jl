@@ -53,6 +53,7 @@ function aca_stamps()
         norm = compute_norm(F)
         normbuf = [norm]
         println("norm = $norm")
+        println(F.offset - log(norm))
     end
 
     MPI.Bcast!(normbuf, 0, mpi_comm)
