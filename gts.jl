@@ -53,8 +53,8 @@ function aca_gts()
     nsteps = 25
     dt = (tspan[2] - tspan[1]) / nsteps
     tlist = LinRange(tspan..., nsteps + 1)
-    x0_true = 2.5
-    y0_true = 2.5
+    x0_true = 0.1
+    y0_true = 5.0
     α1_true = 36.0
     α2_true = 34.0
     β_true = 2.0
