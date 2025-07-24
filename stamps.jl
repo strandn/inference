@@ -68,7 +68,7 @@ mpi_size = MPI.Comm_size(mpi_comm)
 d = 9
 maxr = 50
 n_chains = 40
-n_samples = 1000
+n_samples = 200
 jump_width = 0.01
 cutoff = 0.001
 
