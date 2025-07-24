@@ -14,7 +14,7 @@ function hidalgo_like(x...)
     ps = [MvNormal(μ, Σ) for μ in centers]
 
     # Evaluate density (unnormalized)
-    return 10.0 - log(sum(pdf(p, [elt for elt in x]) for p in ps))
+    return 30.0 - log(sum(pdf(p, [elt for elt in x]) for p in ps))
 end
 
 function aca_stamps()
