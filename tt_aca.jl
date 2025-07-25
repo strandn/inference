@@ -217,8 +217,8 @@ function compute_norm(F::ResFunc{T, N}) where {T, N}
     result = zeros(1, npivots[1])
     for j in 1:npivots[1]
         f(x) = expnegf(F, x, F.J[2][j]...)
-        result[j] = quadgk(f, F.domain[1]...)[1]
-        # result[j] = quadgk(f, F.domain[1]...; maxevals=10^4)[1]
+        # result[j] = quadgk(f, F.domain[1]...)[1]
+        result[j] = quadgk(f, F.domain[1]...; maxevals=10^4)[1]
     end
     println("i = 1\n")
     display(result)
