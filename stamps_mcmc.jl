@@ -1,3 +1,5 @@
+using Distributions
+
 include("bayesian_mcmc.jl")
 
 function hidalgo_like(x...)
