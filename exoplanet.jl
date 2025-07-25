@@ -26,27 +26,18 @@ function V(r, tspan, nsteps, data, mu, sigma)
 end
 
 function aca_exoplanet()
-    if mpi_rank == 0
-        println("Generating data...")
-    end
-
     tspan = (0.0, 200.0)
     nsteps = 6
-    dt = (tspan[2] - tspan[1]) / nsteps
-    tlist = LinRange(tspan..., nsteps + 1)
-    v0_true = 0.0
-    K_true = 10.0
-    φ0_true = 5.3
-    lnP_true = 4.24
 
-    data = zeros(nsteps + 1)
+    data = []
 
     if mpi_rank == 0
-        for i in 1:nsteps+1
-            t = (i - 1) * dt
-            data[i] = radialvelocity(v0_true, K_true, φ0_true, lnP_true, t)
+        open("exoplanet_data.txt", "r") do file
+            for line in eachline(file)
+                cols = split(line)
+                push!(data, parse(Float64, cols[2]))
+            end
         end
-        data += sqrt(3.24) * randn(nsteps + 1)
     end
 
     MPI.Bcast!(data, 0, mpi_comm)
@@ -54,14 +45,6 @@ function aca_exoplanet()
     mu = [0.0, 5.0]
     sigma = [1.0, 9.0]
     neglogposterior(x0, K, φ0, lnP) = V([x0, K, φ0, lnP], tspan, nsteps, data, mu, sigma)
-
-    if mpi_rank == 0
-        open("exoplanet_data.txt", "w") do file
-            for i in 1:nsteps+1
-                write(file, "$(tlist[i]) $(data[i])\n")
-            end
-        end
-    end
 
     v0_dom = (-5.0, 5.0)
     K_dom = (0.5, 20.0)
