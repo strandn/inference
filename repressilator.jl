@@ -46,18 +46,13 @@ function aca_repressilator()
     tspan = (0.0, 30.0)
     nsteps = 50
 
-    data = zeros(nsteps + 1)
-
-    if mpi_rank == 0
-        open("repressilator_data.txt", "r") do file
-            for line in eachline(file)
-                cols = split(line)
-                push!(data, parse(Float64, cols[6]))
-            end
+    data = []
+    open("repressilator_data.txt", "r") do file
+        for line in eachline(file)
+            cols = split(line)
+            push!(data, parse(Float64, cols[6]))
         end
     end
-
-    MPI.Bcast!(data, 0, mpi_comm)
 
     mu = [2.0, 2.0, 2.0, 15.0, 15.0, 15.0, 5.0, 5.0]
     sigma = [4.0, 4.0, 4.0, 25.0, 25.0, 25.0, 25.0, 25.0]

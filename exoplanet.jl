@@ -29,18 +29,13 @@ function aca_exoplanet()
     tspan = (0.0, 200.0)
     nsteps = 6
 
-    data = zeros(nsteps + 1)
-
-    if mpi_rank == 0
-        open("exoplanet_data.txt", "r") do file
-            for line in eachline(file)
-                cols = split(line)
-                push!(data, parse(Float64, cols[2]))
-            end
+    data = []
+    open("exoplanet_data.txt", "r") do file
+        for line in eachline(file)
+            cols = split(line)
+            push!(data, parse(Float64, cols[2]))
         end
     end
-
-    MPI.Bcast!(data, 0, mpi_comm)
 
     mu = [0.0, 5.0]
     sigma = [1.0, 9.0]
