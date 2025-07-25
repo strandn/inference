@@ -55,7 +55,11 @@ function estimate_log_evidence_TI(neglogposterior;
 
     if rank == 0
         all_expectations = reduce(vcat, gathered)
-        sort!(all_expectations, by=x->x[1])  # Sort by β
+        sort!(all_expectations, by=x->x[1])  # Sort by 
+        
+        for (β, E) in all_expectations
+            println("β = $β, E[-f(x)] = $E")
+        end
 
         # Trapezoidal integration
         logZ = logZ0
