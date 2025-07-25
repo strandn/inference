@@ -65,7 +65,7 @@ function estimate_log_evidence_parallel(neglogposterior;
     end
 
     # Gather all samples to rank 0
-    all_samples = MPI.gather(comm, samples, root=0)
+    all_samples = MPI.gather(samples, comm, root=0)
 
     if rank == 0
         all_fx = reduce(vcat, all_samples)
