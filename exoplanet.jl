@@ -84,10 +84,10 @@ mpi_size = MPI.Comm_size(mpi_comm)
 
 d = 4
 maxr = 50
-n_chains = 40
-n_samples = 1000
+n_chains = 10
+n_samples = 500
 jump_width = 0.01
-cutoff = 0.001
+cutoff = 0.01
 
 aca_exoplanet()
 
