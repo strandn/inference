@@ -46,8 +46,9 @@ function aca_repressilator()
     tspan = (0.0, 30.0)
     nsteps = 50
 
+    data = Float64[]
+
     if mpi_rank == 0
-        data = []
         open("repressilator_data.txt", "r") do file
             for line in eachline(file)
                 cols = split(line)
