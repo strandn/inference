@@ -29,26 +29,48 @@ function estimate_log_evidence_TI(neglogposterior;
     end
 
     # Function to run Metropolis at fixed β
-    function run_mcmc(beta)
-        x = uniform_sample()
-        fx = neglogposterior(x...)
-        fxs = Float64[]
-        for step in 1:(burnin + nsamples)
-            x_prop = x .+ randn(rng, ndim) .* [(b - a) for (a, b) in domain] .* proposal_std
-            fx_prop = neglogposterior(x_prop...)
-            log_accept_ratio = beta * (fx - fx_prop)
-            if log(rand(rng)) < log_accept_ratio
-                x, fx = x_prop, fx_prop
-            end
-            if step > burnin
-                push!(fxs, fx)
-            end
+    function run_mcmc(beta, x_init)
+    x = copy(x_init)
+    fx = neglogposterior(x...)
+    fxs = Float64[]
+    accepted = 0
+
+    scale = [(b - a) for (a, b) in domain]  # domain-wise scale
+    prop_std = proposal_std
+
+    for step in 1:(burnin + nsamples)
+        x_prop = x .+ randn(rng, ndim) .* scale .* prop_std
+        fx_prop = neglogposterior(x_prop...)
+        log_accept_ratio = beta * (fx - fx_prop)
+
+        if log(rand(rng)) < log_accept_ratio
+            x, fx = x_prop, fx_prop
+            accepted += 1
         end
-        return mean(fxs)
+
+        if step > burnin
+            push!(fxs, fx)
+        end
     end
 
+    acc_rate = accepted / (burnin + nsamples)
+    if acc_rate < 0.1
+        @warn "Low acceptance rate at β=$beta: $(round(acc_rate, digits=3))"
+    elseif acc_rate > 0.5
+        @info "High acceptance rate at β=$beta: $(round(acc_rate, digits=3))"
+    end
+
+    return mean(fxs), x  # return final sample too (for warm start)
+end
+
     # Compute local expectations for assigned βs
-    local_expectations = [(β, -run_mcmc(β)) for β in my_betas]
+    local_expectations = []
+    x = uniform_sample()  # shared warm start
+
+    for β in my_betas
+        avg_fx, x = run_mcmc(β, x)  # warm start from last β
+        push!(local_expectations, (β, -avg_fx))
+    end
 
     # Gather all (β, E) pairs to rank 0
     gathered = MPI.gather(local_expectations, comm, root=0)
