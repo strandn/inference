@@ -1,4 +1,4 @@
-include("tt_aca.jl")
+include("bayesian_mcmc.jl")
 
 function hidalgo_like(x...)
     centers = [
@@ -28,29 +28,16 @@ function aca_stamps()
     a2_dom = (-5.0, 5.0)
     a3_dom = (-5.0, 5.0)
 
-    F = ResFunc(hidalgo_like, (m1_dom, m2_dom, m3_dom, ls1_dom, ls2_dom, ls3_dom, a1_dom, a2_dom, a3_dom), cutoff)
+    dom = (m1_dom, m2_dom, m3_dom, ls1_dom, ls2_dom, ls3_dom, a1_dom, a2_dom, a3_dom)
 
     if mpi_rank == 0
-        println("Starting TT-cross ACA...")
+        println("Starting vanilla MCMC...")
     end
 
-    start_time = time()
-    IJ = continuous_aca(F, fill(maxr, d - 1), n_chains, n_samples, jump_width, mpi_comm)
-    end_time = time()
-    elapsed_time = end_time - start_time
-    if mpi_rank == 0
-        println("Elapsed time: $elapsed_time seconds")
-    end
+    result = estimate_log_evidence_parallel(hidalgo_like; domain=dom, comm=mpi_comm, nsamples=n_samples, burnin=burnin; proposal_std=jump_width)
 
-    norm = 0.0
     if mpi_rank == 0
-        open("stamps_IJ.txt", "w") do file
-            write(file, "$IJ\n")
-            write(file, "$(F.offset)\n")
-        end
-        norm = compute_norm(F)
-        println("norm = $norm")
-        println(F.offset - log(norm))
+        println(result)
     end
 end
 
@@ -59,12 +46,9 @@ mpi_comm = MPI.COMM_WORLD
 mpi_rank = MPI.Comm_rank(mpi_comm)
 mpi_size = MPI.Comm_size(mpi_comm)
 
-d = 9
-maxr = 50
-n_chains = 40
-n_samples = 200
+n_samples = 10^4
+burnin = 1000
 jump_width = 0.01
-cutoff = 0.001
 
 aca_stamps()
 
