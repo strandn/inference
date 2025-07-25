@@ -52,7 +52,7 @@ function aca_exoplanet()
         println("Starting vanilla MCMC...")
     end
 
-    result = estimate_log_evidence_parallel(neglogposterior; domain=dom, comm=mpi_comm, nsamples=n_samples, burnin=burnin; proposal_std=jump_width)
+    result = estimate_log_evidence_parallel(neglogposterior; domain=dom, comm=mpi_comm, nsamples=n_samples, burnin=burnin, proposal_std=jump_width)
 
     if mpi_rank == 0
         println(result)
