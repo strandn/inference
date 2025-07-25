@@ -3,77 +3,67 @@ using Statistics
 using LinearAlgebra
 using MPI
 
-"""
-    estimate_log_evidence_parallel(neglogposterior; 
-                                   domain::NTuple{N,Tuple{Float64,Float64}},
-                                   comm::MPI.Comm,
-                                   nsamples::Int=10_000,
-                                   burnin::Int=1000,
-                                   proposal_std::Float64=0.01,
-                                   rng::AbstractRNG=Random.GLOBAL_RNG)
-
-Estimates the negative log evidence -log(Z) using Metropolis-Hastings MCMC
-with MPI-parallelized walkers.
-
-Arguments:
-- `neglogposterior`: Function accepting `x...`, returning scalar negative log posterior.
-- `domain`: Tuple of tuples specifying uniform initialization range for each dimension.
-- `comm`: MPI communicator.
-- `nsamples`: Number of samples after burn-in per walker.
-- `burnin`: Burn-in samples to discard.
-- `proposal_std`: Standard deviation for isotropic Gaussian proposal.
-- `rng`: Optional random number generator.
-
-Returns:
-- `-log(Z)` on rank 0, `nothing` on other ranks.
-"""
-function estimate_log_evidence_parallel(neglogposterior;
+function estimate_log_evidence_TI(neglogposterior;
         domain::NTuple{N,Tuple{Float64,Float64}},
         comm::MPI.Comm,
         nsamples::Int=10_000,
         burnin::Int=1000,
         proposal_std::Float64=0.01,
+        nbetas::Int=10,
         rng::AbstractRNG=Random.GLOBAL_RNG) where {N}
 
     rank = MPI.Comm_rank(comm)
-
+    size = MPI.Comm_size(comm)
     ndim = N
+    vol = prod(b - a for (a, b) in domain)
+    logZ0 = log(vol)
 
-    # Sample uniformly from the domain
-    function uniform_sample(domain)
+    # Split beta ladder among processes
+    betas = range(0.0, 1.0; length=nbetas)
+    local_betas = Iterators.partition(betas, cld(nbetas, size)) |> collect
+    my_betas = local_betas[rank + 1]
+
+    # Sample uniformly from domain
+    function uniform_sample()
         return [rand(rng) * (b - a) + a for (a, b) in domain]
     end
 
-    # Initialize walker
-    x = uniform_sample(domain)
-    fx = neglogposterior(x...)
-
-    samples = Float64[]
-
-    for step in 1:(burnin + nsamples)
-        x_prop = x .+ randn(rng, ndim) .* [(b - a) for (a, b) in domain] .* proposal_std
-        fx_prop = neglogposterior(x_prop...)
-
-        log_accept_ratio = fx - fx_prop
-        if log(rand(rng)) < log_accept_ratio
-            x, fx = x_prop, fx_prop
+    # Function to run Metropolis at fixed β
+    function run_mcmc(beta)
+        x = uniform_sample()
+        fx = neglogposterior(x...)
+        fxs = Float64[]
+        for step in 1:(burnin + nsamples)
+            x_prop = x .+ randn(rng, ndim) .* [(b - a) for (a, b) in domain] .* proposal_std
+            fx_prop = neglogposterior(x_prop...)
+            log_accept_ratio = beta * (fx - fx_prop)
+            if log(rand(rng)) < log_accept_ratio
+                x, fx = x_prop, fx_prop
+            end
+            if step > burnin
+                push!(fxs, fx)
+            end
         end
-
-        if step > burnin
-            push!(samples, fx)
-        end
+        return mean(fxs)
     end
 
-    # Gather all samples to rank 0
-    all_samples = MPI.gather(samples, comm, root=0)
+    # Compute local expectations for assigned βs
+    local_expectations = [(β, -run_mcmc(β)) for β in my_betas]
+
+    # Gather all (β, E) pairs to rank 0
+    gathered = MPI.gather(local_expectations, comm, root=0)
 
     if rank == 0
-        all_fx = reduce(vcat, all_samples)
-        N_total = length(all_fx)
+        all_expectations = reduce(vcat, gathered)
+        sort!(all_expectations, by=x->x[1])  # Sort by β
 
-        # Log-sum-exp trick
-        xmax = maximum(-all_fx)
-        log_Z = -log(N_total) + (xmax + log(sum(exp.(-all_fx .- xmax))))
-        return -log_Z
+        # Trapezoidal integration
+        logZ = logZ0
+        for i in 1:length(all_expectations)-1
+            β₁, E₁ = all_expectations[i]
+            β₂, E₂ = all_expectations[i+1]
+            logZ += (β₂ - β₁) * (E₁ + E₂) / 2
+        end
+        return -logZ
     end
 end
