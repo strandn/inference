@@ -29,7 +29,7 @@ function aca_exoplanet()
     tspan = (0.0, 200.0)
     nsteps = 6
 
-    data = Float64[]
+    data = zeros(nsteps + 1)
 
     if mpi_rank == 0
         open("exoplanet_data.txt", "r") do file
