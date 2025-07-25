@@ -12,7 +12,7 @@ function V(r, tspan, nsteps, data, mu, sigma)
     φ0 = r[3]
     lnP = r[4]
     obs = []
-    for t in tlist[2:nsteps+1]
+    for t in tlist
         push!(obs, radialvelocity(v0, K, φ0, lnP, t))
     end
 
