@@ -52,7 +52,7 @@ function aca_exoplanet()
         println("Starting vanilla MCMC...")
     end
 
-    result = estimate_log_evidence_TI(neglogposterior; domain=dom, comm=mpi_comm, nsamples=n_samples, burnin=burnin, proposal_std=jump_width, nbetas=nbetas)
+    result = estimate_log_evidence_uniform(neglogposterior; domain=dom, comm=mpi_comm, nsamples=n_samples)
 
     if mpi_rank == 0
         println(result)
@@ -65,9 +65,6 @@ mpi_rank = MPI.Comm_rank(mpi_comm)
 mpi_size = MPI.Comm_size(mpi_comm)
 
 n_samples = 10^4
-burnin = 1000
-jump_width = 0.01
-nbetas = 100
 
 aca_exoplanet()
 

@@ -3,6 +3,59 @@ using Statistics
 using LinearAlgebra
 using MPI
 
+"""
+    estimate_log_evidence_uniform(neglogposterior;
+                                  domain::NTuple{N,Tuple{Float64,Float64}},
+                                  comm::MPI.Comm,
+                                  nsamples::Int=10_000,
+                                  rng::AbstractRNG=Random.GLOBAL_RNG)
+
+Estimates log normalization constant log(Z) via uniform sampling and Monte Carlo integration.
+
+Arguments:
+- `neglogposterior`: function accepting `x...`, returning scalar negative log-density (unnormalized).
+- `domain`: tuple of tuples defining [a,b] for each dimension.
+- `comm`: MPI communicator.
+- `nsamples`: number of samples **per process**.
+- `rng`: optional random number generator.
+
+Returns:
+- `log(Z)` on rank 0, `nothing` on other ranks.
+"""
+function estimate_log_evidence_uniform(neglogposterior;
+        domain::NTuple{N,Tuple{Float64,Float64}},
+        comm::MPI.Comm,
+        nsamples::Int=10^4,
+        rng::AbstractRNG=Random.GLOBAL_RNG) where {N}
+
+    rank = MPI.Comm_rank(comm)
+
+    # Precompute domain volume
+    vol = prod(b - a for (a, b) in domain)
+
+    # Uniform samples from domain
+    function uniform_sample()
+        return [rand(rng) * (b - a) + a for (a, b) in domain]
+    end
+
+    # Local samples and evaluations
+    local_fx = [neglogposterior(uniform_sample()...) for _ in 1:nsamples]
+
+    # Perform numerically stable log-sum-exp
+    xmax_local = maximum(-local_fx)
+
+    # Reduce across all processes
+    xmax_global = MPI.allreduce(xmax_local, MPI.MAX, comm)
+    shifted_local = sum(exp.(-fx - xmax_global) for fx in local_fx)
+    sumexp_global = MPI.allreduce(shifted_local, +, comm)
+    N_total = MPI.allreduce(nsamples, +, comm)
+
+    if rank == 0
+        logZ = log(vol) - log(N_total) + xmax_global + log(sumexp_global)
+        return -logZ
+    end
+end
+
 function estimate_log_evidence_TI(neglogposterior;
         domain::NTuple{N,Tuple{Float64,Float64}},
         comm::MPI.Comm,

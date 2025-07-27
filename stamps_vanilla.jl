@@ -36,7 +36,7 @@ function aca_stamps()
         println("Starting vanilla MCMC...")
     end
 
-    result = estimate_log_evidence_TI(hidalgo_like; domain=dom, comm=mpi_comm, nsamples=n_samples, burnin=burnin, proposal_std=jump_width, nbetas=nbetas)
+    result = estimate_log_evidence_uniform(hidalgo_like; domain=dom, comm=mpi_comm, nsamples=n_samples)
 
     if mpi_rank == 0
         println(result)
@@ -48,10 +48,7 @@ mpi_comm = MPI.COMM_WORLD
 mpi_rank = MPI.Comm_rank(mpi_comm)
 mpi_size = MPI.Comm_size(mpi_comm)
 
-n_samples = 10^5
-burnin = 1000
-jump_width = 0.05
-nbetas = 100
+n_samples = 10^4
 
 aca_stamps()
 
