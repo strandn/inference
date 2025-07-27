@@ -74,11 +74,9 @@ function aca_repressilator()
     sigma = [4.0, 4.0, 4.0, 25.0, 25.0, 25.0, 25.0, 25.0]
     neglogposterior(X10, X20, X30, α1, α2, α3, m, η) = V([X10, X20, X30, α1, α2, α3, m, η], tspan, nsteps, data, mu, sigma)
 
-    if mpi_rank == 0
-        open("repressilator_data.txt", "w") do file
-            for i in 1:nsteps+1
-                write(file, "$(tlist[i]) $(truedata1[i]) $(truedata2[i]) $(truedata3[i]) $(truedata[i]) $(data[i])\n")
-            end
+    open("repressilator_data.txt", "w") do file
+        for i in 1:nsteps+1
+            write(file, "$(tlist[i]) $(truedata1[i]) $(truedata2[i]) $(truedata3[i]) $(truedata[i]) $(data[i])\n")
         end
     end
 end

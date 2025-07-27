@@ -50,7 +50,7 @@ mpi_size = MPI.Comm_size(mpi_comm)
 
 n_samples = 10^5
 burnin = 1000
-jump_width = 0.01
+jump_width = 0.05
 nbetas = 100
 
 aca_stamps()
