@@ -50,6 +50,12 @@ mpi_size = MPI.Comm_size(mpi_comm)
 
 n_samples = 10^5
 
+start_time = time()
 aca_stamps()
+end_time = time()
+elapsed_time = end_time - start_time
+if mpi_rank == 0
+    println("Elapsed time: $elapsed_time seconds")
+end
 
 MPI.Finalize()
