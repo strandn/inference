@@ -1,6 +1,6 @@
 using Distributions
 
-include("bayesian_mcmc.jl")
+include("bayesian_vanilla.jl")
 
 function hidalgo_like(x...)
     centers = [
@@ -33,7 +33,7 @@ function aca_stamps()
     dom = (m1_dom, m2_dom, m3_dom, ls1_dom, ls2_dom, ls3_dom, a1_dom, a2_dom, a3_dom)
 
     if mpi_rank == 0
-        println("Starting vanilla MCMC...")
+        println("Starting MC integration...")
     end
 
     result = estimate_log_evidence_uniform(hidalgo_like; domain=dom, comm=mpi_comm, nsamples=n_samples)
@@ -48,7 +48,7 @@ mpi_comm = MPI.COMM_WORLD
 mpi_rank = MPI.Comm_rank(mpi_comm)
 mpi_size = MPI.Comm_size(mpi_comm)
 
-n_samples = 10^4
+n_samples = 10^5
 
 aca_stamps()
 

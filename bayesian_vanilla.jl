@@ -45,10 +45,10 @@ function estimate_log_evidence_uniform(neglogposterior;
     xmax_local = maximum(-local_fx)
 
     # Reduce across all processes
-    xmax_global = MPI.allreduce(xmax_local, MPI.MAX, comm)
+    xmax_global = MPI.Allreduce(xmax_local, MPI.MAX, comm)
     shifted_local = sum(exp.(-fx - xmax_global) for fx in local_fx)
-    sumexp_global = MPI.allreduce(shifted_local, +, comm)
-    N_total = MPI.allreduce(nsamples, +, comm)
+    sumexp_global = MPI.Allreduce(shifted_local, +, comm)
+    N_total = MPI.Allreduce(nsamples, +, comm)
 
     if rank == 0
         logZ = log(vol) - log(N_total) + xmax_global + log(sumexp_global)

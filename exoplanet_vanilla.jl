@@ -1,4 +1,4 @@
-include("bayesian_mcmc.jl")
+include("bayesian_vanilla.jl")
 
 function radialvelocity(v0, K, φ0, lnP, t)
     Ω = 2 * pi / exp(lnP)
@@ -49,7 +49,7 @@ function aca_exoplanet()
     dom = (v0_dom, K_dom, φ0_dom, lnP_dom)
 
     if mpi_rank == 0
-        println("Starting vanilla MCMC...")
+        println("Starting MC integration...")
     end
 
     result = estimate_log_evidence_uniform(neglogposterior; domain=dom, comm=mpi_comm, nsamples=n_samples)
@@ -64,7 +64,7 @@ mpi_comm = MPI.COMM_WORLD
 mpi_rank = MPI.Comm_rank(mpi_comm)
 mpi_size = MPI.Comm_size(mpi_comm)
 
-n_samples = 10^4
+n_samples = 10^5
 
 aca_exoplanet()
 
