@@ -48,7 +48,7 @@ mpi_comm = MPI.COMM_WORLD
 mpi_rank = MPI.Comm_rank(mpi_comm)
 mpi_size = MPI.Comm_size(mpi_comm)
 
-n_samples = 10^5
+n_samples = 10^8
 
 start_time = time()
 aca_stamps()
