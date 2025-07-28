@@ -65,7 +65,7 @@ mpi_comm = MPI.COMM_WORLD
 mpi_rank = MPI.Comm_rank(mpi_comm)
 mpi_size = MPI.Comm_size(mpi_comm)
 
-n_samples = 10^6
+n_samples = 10^7
 
 for _ in 1:20
     start_time = time()
@@ -74,6 +74,7 @@ for _ in 1:20
     elapsed_time = end_time - start_time
     if mpi_rank == 0
         println("Elapsed time: $elapsed_time seconds")
+        flush(stdout)
     end
 end
 

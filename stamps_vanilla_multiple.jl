@@ -58,6 +58,7 @@ for _ in 1:20
     elapsed_time = end_time - start_time
     if mpi_rank == 0
         println("Elapsed time: $elapsed_time seconds")
+        flush(stdout)
     end
 end
 
