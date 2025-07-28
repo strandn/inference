@@ -50,6 +50,7 @@ function aca_exoplanet()
 
     if mpi_rank == 0
         println("Starting MC integration...")
+        flush(stdout)
     end
 
     result = estimate_log_evidence_uniform(neglogposterior; domain=dom, comm=mpi_comm, nsamples=n_samples)
