@@ -1,7 +1,7 @@
 using Random
-using Statistics
-using LinearAlgebra
 using MPI
+using LinearAlgebra
+using Statistics
 
 """
     estimate_log_evidence_uniform(neglogposterior;
@@ -16,7 +16,7 @@ Arguments:
 - `neglogposterior`: function accepting `x...`, returning scalar negative log-density (unnormalized).
 - `domain`: tuple of tuples defining [a,b] for each dimension.
 - `comm`: MPI communicator.
-- `nsamples`: number of samples **per process**.
+- `nsamples`: number of samples per process.
 - `rng`: optional random number generator.
 
 Returns:
@@ -25,7 +25,7 @@ Returns:
 function estimate_log_evidence_uniform(neglogposterior;
         domain::NTuple{N,Tuple{Float64,Float64}},
         comm::MPI.Comm,
-        nsamples::Int=10^4,
+        nsamples::Int=10_000,
         rng::AbstractRNG=Random.GLOBAL_RNG) where {N}
 
     rank = MPI.Comm_rank(comm)
@@ -33,21 +33,39 @@ function estimate_log_evidence_uniform(neglogposterior;
     # Precompute domain volume
     vol = prod(b - a for (a, b) in domain)
 
-    # Uniform samples from domain
+    # Generate one uniform sample from the domain
     function uniform_sample()
         return [rand(rng) * (b - a) + a for (a, b) in domain]
     end
 
-    # Local samples and evaluations
-    local_fx = [neglogposterior(uniform_sample()...) for _ in 1:nsamples]
+    # Streaming log-sum-exp accumulation
+    xmax_local = -Inf
+    sumexp_shifted = 0.0
 
-    # Perform numerically stable log-sum-exp
-    xmax_local = maximum(-local_fx)
+    for _ in 1:nsamples
+        fx = neglogposterior(uniform_sample()...)
+        val = -fx
 
-    # Reduce across all processes
+        if val > xmax_local
+            sumexp_shifted = sumexp_shifted * exp(xmax_local - val) + 1.0
+            xmax_local = val
+        else
+            sumexp_shifted += exp(val - xmax_local)
+        end
+    end
+
+    # Allreduce: global max
     xmax_global = MPI.Allreduce(xmax_local, MPI.MAX, comm)
-    shifted_local = sum(exp.(-fx - xmax_global) for fx in local_fx)
-    sumexp_global = MPI.Allreduce(shifted_local, +, comm)
+
+    # Recalculate local sum with global xmax
+    sumexp_adjusted = 0.0
+    for _ in 1:nsamples
+        fx = neglogposterior(uniform_sample()...)
+        sumexp_adjusted += exp(-fx - xmax_global)
+    end
+
+    # Allreduce: global sum and sample count
+    sumexp_global = MPI.Allreduce(sumexp_adjusted, +, comm)
     N_total = MPI.Allreduce(nsamples, +, comm)
 
     if rank == 0
