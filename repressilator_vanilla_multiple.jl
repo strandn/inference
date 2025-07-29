@@ -1,3 +1,5 @@
+using DifferentialEquations
+
 include("bayesian_vanilla.jl")
 
 function repressilator!(du, u, p, t)
@@ -84,7 +86,7 @@ mpi_comm = MPI.COMM_WORLD
 mpi_rank = MPI.Comm_rank(mpi_comm)
 mpi_size = MPI.Comm_size(mpi_comm)
 
-n_samples = 10^8
+n_samples = 10^7
 
 for _ in 1:20
     start_time = time()

@@ -67,7 +67,7 @@ function aca_repressilator()
     m_dom = (3.0, 5.0)
     η_dom = (0.95, 1.05)
 
-    F = ResFunc(neglogposterior, (X10_dom, X20_dom, X30_dom, α1_dom, α2_dom, α3_dom, m_dom, η_dom), 0.0, mu, sigma)
+    F = ResFunc(neglogposterior, (X10_dom, X20_dom, X30_dom, α1_dom, α2_dom, α3_dom, m_dom, η_dom), 0.0)
 
     open("repressilator_IJ.txt", "r") do file
         F.I, F.J = eval(Meta.parse(readline(file)))

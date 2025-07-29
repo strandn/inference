@@ -43,67 +43,31 @@ function V(r, tspan, nsteps, data, mu, sigma)
 end
 
 function aca_repressilator()
-    if mpi_rank == 0
-        println("Generating data...")
-    end
-
     tspan = (0.0, 30.0)
-    nsteps = 20
-    dt = (tspan[2] - tspan[1]) / nsteps
-    tlist = LinRange(tspan..., nsteps + 1)
-    X10_true = X20_true = X30_true = 2.0
-    α1_true = 10.0
-    α2_true = 15.0
-    α3_true = 20.0
-    m_true = 1.5
-    η_true = 1.0
+    nsteps = 50
 
-    truedata1 = zeros(nsteps + 1)
-    truedata2 = zeros(nsteps + 1)
-    truedata3 = zeros(nsteps + 1)
-    truedata = zeros(nsteps + 1)
-    data = zeros(nsteps + 1)
-
-    if mpi_rank == 0
-        prob = ODEProblem(repressilator!, [X10_true, X20_true, X30_true], tspan, [α1_true, α2_true, α3_true, m_true, η_true])
-        sol = solve(prob, Tsit5(), saveat=dt)
-
-        truedata1 = sol[1, :]
-        truedata2 = sol[2, :]
-        truedata3 = sol[3, :]
-        truedata = truedata1 + truedata2 + truedata3
-        data = deepcopy(truedata)
-        data += sqrt(0.25) * randn(nsteps + 1)
+    data = []
+    open("repressilator_data.txt", "r") do file
+        for line in eachline(file)
+            cols = split(line)
+            push!(data, parse(Float64, cols[6]))
+        end
     end
-
-    MPI.Bcast!(truedata1, 0, mpi_comm)
-    MPI.Bcast!(truedata2, 0, mpi_comm)
-    MPI.Bcast!(truedata3, 0, mpi_comm)
-    MPI.Bcast!(truedata, 0, mpi_comm)
-    MPI.Bcast!(data, 0, mpi_comm)
 
     mu = [2.0, 2.0, 2.0, 15.0, 15.0, 15.0, 5.0, 5.0]
     sigma = [4.0, 4.0, 4.0, 25.0, 25.0, 25.0, 25.0, 25.0]
     neglogposterior(X10, X20, X30, α1, α2, α3, m, η) = V([X10, X20, X30, α1, α2, α3, m, η], tspan, nsteps, data, mu, sigma)
 
-    if mpi_rank == 0
-        open("repressilator_data.txt", "w") do file
-            for i in 1:nsteps+1
-                write(file, "$(tlist[i]) $(truedata1[i]) $(truedata2[i]) $(truedata3[i]) $(truedata[i]) $(data[i])\n")
-            end
-        end
-    end
+    X10_dom = (0.5, 3.5)
+    X20_dom = (0.5, 3.5)
+    X30_dom = (0.5, 3.5)
+    α1_dom = (0.5, 25.0)
+    α2_dom = (0.5, 25.0)
+    α3_dom = (0.5, 25.0)
+    m_dom = (3.0, 5.0)
+    η_dom = (0.95, 1.05)
 
-    X10_dom = (0.5, 10.0)
-    X20_dom = (0.5, 10.0)
-    X30_dom = (0.5, 10.0)
-    α1_dom = (0.5, 30.0)
-    α2_dom = (0.5, 30.0)
-    α3_dom = (0.5, 30.0)
-    m_dom = (0.5, 10.0)
-    η_dom = (0.1, 2.5)
-
-    F = ResFunc(neglogposterior, (X10_dom, X20_dom, X30_dom, α1_dom, α2_dom, α3_dom, m_dom, η_dom), cutoff, mu, sigma)
+    F = ResFunc(neglogposterior, (X10_dom, X20_dom, X30_dom, α1_dom, α2_dom, α3_dom, m_dom, η_dom), cutoff)
 
     if mpi_rank == 0
         println("Starting TT-cross ACA...")
@@ -118,20 +82,15 @@ function aca_repressilator()
     end
 
     norm = 0.0
-    normbuf = [0.0]
-
     if mpi_rank == 0
         open("repressilator_IJ.txt", "w") do file
             write(file, "$IJ\n")
             write(file, "$(F.offset)\n")
         end
         norm = compute_norm(F)
-        normbuf = [norm]
         println("norm = $norm")
+        println(F.offset - log(norm))
     end
-
-    MPI.Bcast!(normbuf, 0, mpi_comm)
-    norm = normbuf[]
 end
 
 MPI.Init()
@@ -141,10 +100,10 @@ mpi_size = MPI.Comm_size(mpi_comm)
 
 d = 8
 maxr = 50
-n_chains = 40
-n_samples = 10^4
-jump_width = 0.001
-cutoff = 0.001
+n_chains = 50
+n_samples = 1000
+jump_width = 0.01
+cutoff = 0.01
 
 aca_repressilator()
 

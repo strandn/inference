@@ -1,6 +1,6 @@
 using DifferentialEquations
 
-include("tt_aca.jl")
+include("bayesian_vanilla.jl")
 
 function repressilator!(du, u, p, t)
     X1, X2, X3 = u
@@ -67,29 +67,16 @@ function aca_repressilator()
     m_dom = (3.0, 5.0)
     η_dom = (0.95, 1.05)
 
-    F = ResFunc(neglogposterior, (X10_dom, X20_dom, X30_dom, α1_dom, α2_dom, α3_dom, m_dom, η_dom), cutoff)
+    dom = (X10_dom, X20_dom, X30_dom, α1_dom, α2_dom, α3_dom, m_dom, η_dom)
 
     if mpi_rank == 0
-        println("Starting TT-cross ACA...")
+        println("Starting MC integration...")
     end
 
-    start_time = time()
-    IJ = continuous_aca(F, fill(maxr, d - 1), n_chains, n_samples, jump_width, mpi_comm)
-    end_time = time()
-    elapsed_time = end_time - start_time
-    if mpi_rank == 0
-        println("Elapsed time: $elapsed_time seconds")
-    end
+    result = estimate_log_evidence_uniform(neglogposterior; domain=dom, comm=mpi_comm, nsamples=n_samples)
 
-    norm = 0.0
     if mpi_rank == 0
-        open("repressilator_IJ.txt", "w") do file
-            write(file, "$IJ\n")
-            write(file, "$(F.offset)\n")
-        end
-        norm = compute_norm(F)
-        println("norm = $norm")
-        println(F.offset - log(norm))
+        println(result)
     end
 end
 
@@ -98,13 +85,14 @@ mpi_comm = MPI.COMM_WORLD
 mpi_rank = MPI.Comm_rank(mpi_comm)
 mpi_size = MPI.Comm_size(mpi_comm)
 
-d = 8
-maxr = 50
-n_chains = 20
-n_samples = 1000
-jump_width = 0.01
-cutoff = 0.01
+n_samples = 10^8
 
+start_time = time()
 aca_repressilator()
+end_time = time()
+elapsed_time = end_time - start_time
+if mpi_rank == 0
+    println("Elapsed time: $elapsed_time seconds")
+end
 
 MPI.Finalize()
