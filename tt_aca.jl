@@ -237,6 +237,7 @@ function compute_norm(F::ResFunc{T, N}) where {T, N}
     end
     AIJinv = inv(AIJ)
     println(norm(AIJ * AIJinv - I))
+    flush(stdout)
     skeleton[1] = ITensor(links[1], links[1]')
     for j in 1:npivots[1]
         for k in 1:npivots[1]
@@ -264,6 +265,7 @@ function compute_norm(F::ResFunc{T, N}) where {T, N}
         end
         AIJinv = inv(AIJ)
         println(norm(AIJ * AIJinv - I))
+        flush(stdout)
         skeleton[i] = ITensor(links[i], links[i]')
         for j in 1:npivots[i]
             for k in 1:npivots[i]
@@ -281,6 +283,7 @@ function compute_norm(F::ResFunc{T, N}) where {T, N}
     println("\ni = $order\n")
     display(integrals[order])
     println()
+    flush(stdout)
     result *= integrals[order]
     return result[], integrals, skeleton, links
 end
@@ -303,6 +306,7 @@ function sample_from_tt(F::ResFunc{T, N}, integrals::Vector{ITensor}, skeleton::
         end
         u = rand()
         println("u_$count = $u")
+        flush(stdout)
         a, b = F.domain[count]
         abs_tol = rel_tol * abs(b - a)
 
