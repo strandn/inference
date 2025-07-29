@@ -321,8 +321,8 @@ function sample_from_tt(F::ResFunc{T, N}, integrals::Vector{ITensor}, skeleton::
         else
             normi = ITensor(links[count])
             for j in 1:npivots[count]
-                f(x) = count == 1 ? expnegf(F, x, F.J[2][j]...) : expnegf(F, sample[1:count-1]..., x, F.J[count + 1][j]...)
-                normi[links[count]=>j] = quadgk(f, F.domain[count]...; maxevals=10^3)[1]
+                fi(x) = count == 1 ? expnegf(F, x, F.J[2][j]...) : expnegf(F, sample[1:count-1]..., x, F.J[count + 1][j]...)
+                normi[links[count]=>j] = quadgk(fi, F.domain[count]...; maxevals=10^3)[1]
             end
             normi *= Renv
         end
@@ -336,8 +336,8 @@ function sample_from_tt(F::ResFunc{T, N}, integrals::Vector{ITensor}, skeleton::
             else
                 cdfi = ITensor(links[count])
                 for j in 1:npivots[count]
-                    f(x) = count == 1 ? expnegf(F, x, F.J[2][j]...) : expnegf(F, sample[1:count-1]..., x, F.J[count + 1][j]...)
-                    cdfi[links[count]=>j] = quadgk(f, a, mid; maxevals=10^3)[1]
+                    fi(x) = count == 1 ? expnegf(F, x, F.J[2][j]...) : expnegf(F, sample[1:count-1]..., x, F.J[count + 1][j]...)
+                    cdfi[links[count]=>j] = quadgk(fi, a, mid; maxevals=10^3)[1]
                 end
                 cdfi *= Renv
             end
