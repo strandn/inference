@@ -314,33 +314,33 @@ function sample_from_tt(F::ResFunc{T, N}, integrals::Vector{ITensor}, skeleton::
         a, b = F.domain[count]
         abs_tol = rel_tol * abs(b - a)
 
-        normi = ITensor(links[count])
-        for j in 1:npivots[count]
-            f(x) = if count == 1
-                expnegf(F, x, F.J[2][j]...)
-            elseif count == order
-                expnegf(F, sample[1:order-1]..., x)
-            else
-                expnegf(F, sample[1:count-1]..., x, F.J[count + 1][j]...)
+        normi = undef
+        if count == order
+            f(x) = expnegf(F, sample[1:order-1]..., x)
+            normi = quadgk(f, F.domain[count]...; maxevals=10^3)[1]
+        else
+            normi = ITensor(links[count])
+            for j in 1:npivots[count]
+                f(x) = count == 1 ? expnegf(F, x, F.J[2][j]...) : expnegf(F, sample[1:count-1]..., x, F.J[count + 1][j]...)
+                normi[links[count]=>j] = quadgk(f, F.domain[count]...; maxevals=10^3)[1]
             end
-            normi[links[count]=>j] = quadgk(f, F.domain[count]...; maxevals=10^3)[1]
+            normi *= Renv
         end
-        normi *= Renv
 
         while b - a > abs_tol
             mid = (a + b) / 2
-            cdfi = ITensor(links[count])
-            for j in 1:npivots[count]
-                f(x) = if count == 1
-                    expnegf(F, x, F.J[2][j]...)
-                elseif count == order
-                    expnegf(F, sample[1:order-1]..., x)
-                else
-                    expnegf(F, sample[1:count-1]..., x, F.J[count + 1][j]...)
+            cdfi = undef
+            if count == order
+                f(x) = expnegf(F, sample[1:order-1]..., x)
+                cdfi = quadgk(f, a, mid; maxevals=10^3)[1]
+            else
+                cdfi = ITensor(links[count])
+                for j in 1:npivots[count]
+                    f(x) = count == 1 ? expnegf(F, x, F.J[2][j]...) : expnegf(F, sample[1:count-1]..., x, F.J[count + 1][j]...)
+                    cdfi[links[count]=>j] = quadgk(f, a, mid; maxevals=10^3)[1]
                 end
-                cdfi[links[count]=>j] = quadgk(f, F.domain[count][1], mid; maxevals=10^3)[1]
+                cdfi *= Renv
             end
-            cdfi *= Renv
             if cdfi[] / normi[] < u
                 a = mid
             else
