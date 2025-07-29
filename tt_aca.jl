@@ -332,12 +332,12 @@ function sample_from_tt(F::ResFunc{T, N}, integrals::Vector{ITensor}, skeleton::
             cdfi = undef
             if count == order
                 f2(x) = expnegf(F, sample[1:order-1]..., x)
-                cdfi = quadgk(f2, a, mid; maxevals=10^3)[1]
+                cdfi = quadgk(f2, F.domain[count][1], mid; maxevals=10^3)[1]
             else
                 cdfi = ITensor(links[count])
                 for j in 1:npivots[count]
                     f2i(x) = count == 1 ? expnegf(F, x, F.J[2][j]...) : expnegf(F, sample[1:count-1]..., x, F.J[count + 1][j]...)
-                    cdfi[links[count]=>j] = quadgk(f2i, a, mid; maxevals=10^3)[1]
+                    cdfi[links[count]=>j] = quadgk(f2i, F.domain[count][1], mid; maxevals=10^3)[1]
                 end
                 cdfi *= Renv
             end
