@@ -310,16 +310,15 @@ function sample_from_tt(F::ResFunc{T, N}, integrals::Vector{ITensor}, skeleton::
         a, b = F.domain[count]
         abs_tol = rel_tol * abs(b - a)
 
-        f(x) = if count == 1
-            expnegf(F, x, F.J[2][j]...)
-        elseif count == order
-            expnegf(F, sample[1:order-1], x)
-        else
-            expnegf(F, sample[1:count-1], x, F.J[count + 1][j]...)
-        end
-
         normi = ITensor(links[count])
         for j in 1:npivots[count]
+            f(x) = if count == 1
+                expnegf(F, x, F.J[2][j]...)
+            elseif count == order
+                expnegf(F, sample[1:order-1], x)
+            else
+                expnegf(F, sample[1:count-1], x, F.J[count + 1][j]...)
+            end
             normi[links[count]=>j] = quadgk(f, F.domain[count]...; maxevals=10^3)[1]
         end
         normi *= Renv
@@ -328,6 +327,13 @@ function sample_from_tt(F::ResFunc{T, N}, integrals::Vector{ITensor}, skeleton::
             mid = (a + b) / 2
             cdfi = ITensor(links[count])
             for j in 1:npivots[count]
+                f(x) = if count == 1
+                    expnegf(F, x, F.J[2][j]...)
+                elseif count == order
+                    expnegf(F, sample[1:order-1], x)
+                else
+                    expnegf(F, sample[1:count-1], x, F.J[count + 1][j]...)
+                end
                 cdfi[links[count]=>j] = quadgk(f, F.domain[count][1], mid; maxevals=10^3)[1]
             end
             cdfi *= Renv
