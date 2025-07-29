@@ -74,8 +74,10 @@ function aca_repressilator()
         F.offset = parse(Float64, readline(file))
     end
 
-    norm = compute_norm(F)
+    norm, integrals, skeleton, links = compute_norm(F)
     println("norm = $norm\n")
+    println(F.offset - log(norm))
+    flush(stdout)
 
     nbins = 100
     grid = (
@@ -90,11 +92,11 @@ function aca_repressilator()
     )
 
     for count in 1:7
-        dens = compute_marginal(F, count, norm)
+        dens = compute_marginal(F, integrals, skeleton, links, count)
         open("repressilator_marginal_$count.txt", "w") do file
             for i in 1:nbins
                 for j in 1:nbins
-                    write(file, "$(grid[count][i]) $(grid[count + 1][j]) $(dens[i, j])\n")
+                    write(file, "$(grid[count][i]) $(grid[count + 1][j]) $(dens[i, j] / norm)\n")
                 end
             end
         end
@@ -103,7 +105,7 @@ function aca_repressilator()
     open("repressilator_samples.txt", "w") do file
         for i in 1:10
             println("Collecting sample $i...")
-            sample = sample_from_tt(F)
+            sample = sample_from_tt(F, integrals, skeleton, links)
             write(file, "$(sample[1]) $(sample[2]) $(sample[3]) $(sample[4])\n")
         end
     end
