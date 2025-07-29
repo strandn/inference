@@ -281,7 +281,7 @@ function compute_norm(F::ResFunc{T, N}) where {T, N}
         integrals[order][links[order - 1]'=>j] = quadgk(f, F.domain[order]...; maxevals=10^3)[1]
     end
     println("\ni = $order\n")
-    display(integrals[order])
+    println(integrals[order])
     println()
     flush(stdout)
     result *= integrals[order]
@@ -378,7 +378,7 @@ function compute_marginal(F::ResFunc{T, N}, integrals::Vector{ITensor}, skeleton
             elseif pos + 1 == order
                 resulti = ITensor(links[order - 2]')
                 for i in 1:npivots[order - 2]
-                    resulti[inks[order - 2]'=>i] = expnegf(F, F.I[order - 1][i]..., xlist[j], ylist[k])
+                    resulti[links[order - 2]'=>i] = expnegf(F, F.I[order - 1][i]..., xlist[j], ylist[k])
                 end
                 resulti *= Lenv
             else
