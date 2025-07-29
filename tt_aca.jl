@@ -229,6 +229,7 @@ function compute_norm(F::ResFunc{T, N}) where {T, N}
     result = integrals[1]
     println("i = 1\n")
     println(integrals[1])
+    println()
     AIJ = zeros(npivots[1], npivots[1])
     for j in 1:npivots[1]
         for k in 1:npivots[1]
@@ -237,7 +238,7 @@ function compute_norm(F::ResFunc{T, N}) where {T, N}
     end
     AIJinv = inv(AIJ)
     println(norm(AIJ * AIJinv - I))
-    flush(stdout)
+    println()
     skeleton[1] = ITensor(links[1], links[1]')
     for j in 1:npivots[1]
         for k in 1:npivots[1]
@@ -246,6 +247,7 @@ function compute_norm(F::ResFunc{T, N}) where {T, N}
     end
     result *= skeleton[1]
     println(result)
+    flush(stdout)
     for i in 2:order-1
         links[i] = Index(npivots[i], "Link,l=$i")
         integrals[i] = ITensor(links[i - 1]', links[i])
@@ -257,6 +259,7 @@ function compute_norm(F::ResFunc{T, N}) where {T, N}
         end
         println("\ni = $i\n")
         println(integrals[i])
+        println()
         AIJ = zeros(npivots[i], npivots[i])
         for j in 1:npivots[i]
             for k in 1:npivots[i]
@@ -265,7 +268,7 @@ function compute_norm(F::ResFunc{T, N}) where {T, N}
         end
         AIJinv = inv(AIJ)
         println(norm(AIJ * AIJinv - I))
-        flush(stdout)
+        println()
         skeleton[i] = ITensor(links[i], links[i]')
         for j in 1:npivots[i]
             for k in 1:npivots[i]
@@ -274,6 +277,7 @@ function compute_norm(F::ResFunc{T, N}) where {T, N}
         end
         result *= integrals[i] * skeleton[i]
         println(result)
+        flush(stdout)
     end
     integrals[order] = ITensor(links[order - 1]')
     for j in 1:npivots[order - 1]

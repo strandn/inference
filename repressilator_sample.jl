@@ -77,6 +77,7 @@ function aca_repressilator()
     norm, integrals, skeleton, links = compute_norm(F)
     println("norm = $norm\n")
     println(F.offset - log(norm))
+    println()
     flush(stdout)
 
     nbins = 100

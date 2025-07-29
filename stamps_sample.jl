@@ -38,6 +38,7 @@ function aca_stamps()
     norm, integrals, skeleton, links = compute_norm(F)
     println("norm = $norm")
     println(F.offset - log(norm))
+    println()
     flush(stdout)
 
     nbins = 100
