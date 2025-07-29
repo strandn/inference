@@ -98,14 +98,15 @@ n_chains = 10
 n_samples = 1000
 jump_width = 0.01
 cutoff = 0.01
-
-start_time = time()
-aca_repressilator()
-end_time = time()
-elapsed_time = end_time - start_time
-if mpi_rank == 0
-    println("Elapsed time: $elapsed_time seconds")
-    flush(stdout)
+for _ in 1:20
+    start_time = time()
+    aca_repressilator()
+    end_time = time()
+    elapsed_time = end_time - start_time
+    if mpi_rank == 0
+        println("Elapsed time: $elapsed_time seconds")
+        flush(stdout)
+    end
 end
 
 MPI.Finalize()
