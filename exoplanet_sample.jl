@@ -56,6 +56,7 @@ function aca_exoplanet()
     norm = compute_norm(F)
     println("norm = $norm")
     println(F.offset - log(norm))
+    flush(stdout)
 
     nbins = 100
     grid = (LinRange(v0_dom..., nbins + 1), LinRange(K_dom..., nbins + 1), LinRange(φ0_dom..., nbins + 1), LinRange(lnP_dom..., nbins + 1))

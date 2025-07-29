@@ -90,6 +90,7 @@ function aca_repressilator()
         norm = compute_norm(F)
         println("norm = $norm")
         println(F.offset - log(norm))
+        flush(stdout)
     end
 end
 

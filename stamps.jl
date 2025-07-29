@@ -51,6 +51,7 @@ function aca_stamps()
         norm = compute_norm(F)
         println("norm = $norm")
         println(F.offset - log(norm))
+        flush(stdout)
     end
 end
 
