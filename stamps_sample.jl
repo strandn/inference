@@ -35,7 +35,7 @@ function aca_stamps()
         F.offset = parse(Float64, readline(file))
     end
 
-    norm = compute_norm(F)
+    norm, integrals, skeleton, links = compute_norm(F)
     println("norm = $norm")
     println(F.offset - log(norm))
     flush(stdout)
@@ -54,11 +54,11 @@ function aca_stamps()
     )
 
     for count in 1:8
-        dens = compute_marginal(F, count, norm)
+        dens = compute_marginal(F, integrals, skeleton, links, count)
         open("stamps_marginal_$count.txt", "w") do file
             for i in 1:nbins
                 for j in 1:nbins
-                    write(file, "$(grid[count][i]) $(grid[count + 1][j]) $(dens[i, j])\n")
+                    write(file, "$(grid[count][i]) $(grid[count + 1][j]) $(dens[i, j] / norm)\n")
                 end
             end
         end
@@ -67,7 +67,7 @@ function aca_stamps()
     open("stamps_samples.txt", "w") do file
         for i in 1:30
             println("Collecting sample $i...")
-            sample = sample_from_tt(F)
+            sample = sample_from_tt(F, integrals, skeleton, links)
             write(file, "$(sample[1]) $(sample[2]) $(sample[3]) $(sample[4]) $(sample[5]) $(sample[6]) $(sample[7]) $(sample[8]) $(sample[9])\n")
         end
     end
