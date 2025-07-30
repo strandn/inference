@@ -52,13 +52,7 @@ function aca_exoplanet()
         println("Starting TT-cross ACA...")
     end
 
-    start_time = time()
     IJ = continuous_aca(F, fill(maxr, d - 1), n_chains, n_samples, jump_width, mpi_comm)
-    end_time = time()
-    elapsed_time = end_time - start_time
-    if mpi_rank == 0
-        println("Elapsed time: $elapsed_time seconds")
-    end
 
     norm = 0.0
     if mpi_rank == 0
@@ -85,6 +79,12 @@ n_samples = 100
 jump_width = 0.01
 cutoff = 0.01
 
+start_time = time()
 aca_exoplanet()
+end_time = time()
+elapsed_time = end_time - start_time
+if mpi_rank == 0
+    println("Elapsed time: $elapsed_time seconds")
+end
 
 MPI.Finalize()

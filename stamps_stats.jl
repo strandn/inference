@@ -28,45 +28,37 @@ function aca_stamps()
     a2_dom = (-5.0, 5.0)
     a3_dom = (-5.0, 5.0)
 
-    F = ResFunc(hidalgo_like, (m1_dom, m2_dom, m3_dom, ls1_dom, ls2_dom, ls3_dom, a1_dom, a2_dom, a3_dom), cutoff)
+    F = ResFunc(hidalgo_like, (m1_dom, m2_dom, m3_dom, ls1_dom, ls2_dom, ls3_dom, a1_dom, a2_dom, a3_dom), 0.0)
 
-    if mpi_rank == 0
-        println("Starting TT-cross ACA...")
+    open("stamps_IJ.txt", "r") do file
+        F.I, F.J = eval(Meta.parse(readline(file)))
+        F.offset = parse(Float64, readline(file))
     end
 
-    IJ = continuous_aca(F, fill(maxr, d - 1), n_chains, n_samples, jump_width, mpi_comm)
+    norm, integrals, skeleton, links = compute_norm(F)
+    println("norm = $norm")
+    println(F.offset - log(norm))
+    println()
+    flush(stdout)
 
-    norm = 0.0
-    if mpi_rank == 0
-        open("stamps_IJ.txt", "w") do file
-            write(file, "$IJ\n")
-            write(file, "$(F.offset)\n")
+    mu = zeros(d)
+    for i in 1:d
+        mu[i] = compute_mu(F, integrals, skeleton, links, i)
+    end
+    println(mu)
+    cov = zeros(d, d)
+    for i in 1:d
+        for j in i:d
+            cov[i, j] = cov[k, i] = compute_cov(F, integrals, skeleton, links, mu, i, j)
         end
-        norm, _, _ = compute_norm(F)
-        println("norm = $norm")
-        println(F.offset - log(norm))
-        flush(stdout)
     end
+    display(cov)
+    flush(stdout)
 end
 
-MPI.Init()
-mpi_comm = MPI.COMM_WORLD
-mpi_rank = MPI.Comm_rank(mpi_comm)
-mpi_size = MPI.Comm_size(mpi_comm)
-
 d = 9
-maxr = 50
-n_chains = 20
-n_samples = 200
-jump_width = 0.01
-cutoff = 0.001
-
 start_time = time()
 aca_stamps()
 end_time = time()
 elapsed_time = end_time - start_time
-if mpi_rank == 0
-    println("Elapsed time: $elapsed_time seconds")
-end
-
-MPI.Finalize()
+println("Elapsed time: $elapsed_time seconds")

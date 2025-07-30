@@ -94,7 +94,6 @@ end_time = time()
 elapsed_time = end_time - start_time
 if mpi_rank == 0
     println("Elapsed time: $elapsed_time seconds")
-    flush(stdout)
 end
 
 MPI.Finalize()
