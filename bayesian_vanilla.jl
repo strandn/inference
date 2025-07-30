@@ -109,7 +109,7 @@ function mcmc_mean_cov_parallel(neglogposterior;
         nsamples::Int=10_000,
         burnin::Int=1000,
         proposal_std::Float64=0.01,
-        thin::Int=1,
+        thin::Int=100,
         rng_seed::Int=42) where {N}
 
     rank = MPI.Comm_rank(comm)
@@ -160,7 +160,7 @@ function mcmc_mean_cov_parallel(neglogposterior;
         all_local_samples = vcat(all_local_samples, chain_samples)
     end
 
-    gathered_samples = MPI.gather(comm, all_local_samples, root=0)
+    gathered_samples = MPI.gather(all_local_samples, comm, root=0)
 
     if rank == 0
         all_samples = reduce(vcat, gathered_samples)
