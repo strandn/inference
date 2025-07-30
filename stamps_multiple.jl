@@ -42,7 +42,7 @@ function aca_stamps()
             write(file, "$IJ\n")
             write(file, "$(F.offset)\n")
         end
-        norm = compute_norm(F)
+        norm, _, _ = compute_norm(F)
         println("norm = $norm")
         println(F.offset - log(norm))
     end
