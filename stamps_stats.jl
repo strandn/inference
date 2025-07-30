@@ -49,7 +49,7 @@ function aca_stamps()
     cov = zeros(d, d)
     for i in 1:d
         for j in i:d
-            cov[i, j] = cov[k, i] = compute_cov(F, integrals, skeleton, links, mu, i, j)
+            cov[i, j] = cov[j, i] = compute_cov(F, integrals, skeleton, links, mu, i, j)
         end
     end
     display(cov)
