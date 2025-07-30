@@ -67,53 +67,46 @@ function aca_repressilator()
     m_dom = (3.0, 5.0)
     η_dom = (0.95, 1.05)
 
-    F = ResFunc(neglogposterior, (X10_dom, X20_dom, X30_dom, α1_dom, α2_dom, α3_dom, m_dom, η_dom), 0.0)
+    F = ResFunc(neglogposterior, (X10_dom, X20_dom, X30_dom, α1_dom, α2_dom, α3_dom, m_dom, η_dom), cutoff)
 
-    open("repressilator_IJ.txt", "r") do file
-        F.I, F.J = eval(Meta.parse(readline(file)))
-        F.offset = parse(Float64, readline(file))
+    if mpi_rank == 0
+        println("Starting TT-cross ACA...")
     end
 
-    norm, integrals, skeleton, links = compute_norm(F)
-    println("norm = $norm\n")
-    println(F.offset - log(norm))
-    println()
-    flush(stdout)
+    IJ = continuous_aca(F, fill(maxr, d - 1), n_chains, n_samples, jump_width, mpi_comm)
 
-    nbins = 100
-    grid = (
-        LinRange(X10_dom..., nbins + 1),
-        LinRange(X20_dom..., nbins + 1),
-        LinRange(X30_dom..., nbins + 1),
-        LinRange(α1_dom..., nbins + 1),
-        LinRange(α2_dom..., nbins + 1),
-        LinRange(α3_dom..., nbins + 1),
-        LinRange(m_dom..., nbins + 1),
-        LinRange(η_dom..., nbins + 1)
-    )
-
-    for count in 1:7
-        dens = compute_marginal(F, integrals, skeleton, links, count)
-        open("repressilator_marginal_$count.txt", "w") do file
-            for i in 1:nbins
-                for j in 1:nbins
-                    write(file, "$(grid[count][i]) $(grid[count + 1][j]) $(dens[i, j] / norm)\n")
-                end
-            end
+    norm = 0.0
+    if mpi_rank == 0
+        open("repressilator_IJ.txt", "w") do file
+            write(file, "$IJ\n")
+            write(file, "$(F.offset)\n")
         end
-    end
-
-    open("repressilator_samples.txt", "w") do file
-        for i in 1:10
-            println("Collecting sample $i...")
-            sample = sample_from_tt(F, integrals, skeleton, links)
-            write(file, "$(sample[1]) $(sample[2]) $(sample[3]) $(sample[4])\n")
-        end
+        norm, _, _ = compute_norm(F)
+        println("norm = $norm")
+        println(F.offset - log(norm))
     end
 end
 
-start_time = time()
-aca_repressilator()
-end_time = time()
-elapsed_time = end_time - start_time
-println("Elapsed time: $elapsed_time seconds")
+MPI.Init()
+mpi_comm = MPI.COMM_WORLD
+mpi_rank = MPI.Comm_rank(mpi_comm)
+mpi_size = MPI.Comm_size(mpi_comm)
+
+d = 8
+maxr = 5
+n_chains = 20
+n_samples = 1000
+jump_width = 0.01
+cutoff = 1.0e-4
+for _ in 1:20
+    start_time = time()
+    aca_repressilator()
+    end_time = time()
+    elapsed_time = end_time - start_time
+    if mpi_rank == 0
+        println("Elapsed time: $elapsed_time seconds")
+        flush(stdout)
+    end
+end
+
+MPI.Finalize()
