@@ -44,9 +44,11 @@ function aca_stamps()
     # end
 
     mu, cov = mcmc_mean_cov_parallel(neglogposterior; domain=dom, comm=mpi_comm, nchains=n_chains, nsamples=n_samples)
-    println(mu)
-    display(cov)
-    flush(stdout)
+    if mpi_rank == 0
+        println(mu)
+        display(cov)
+        flush(stdout)
+    end
 end
 
 MPI.Init()
