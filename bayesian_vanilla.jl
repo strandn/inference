@@ -116,8 +116,8 @@ function mcmc_mean_cov_parallel(neglogposterior;
     ndim = N
 
     # Determine how many chains to run on this rank
-    chains_per_rank = fill(nchains ÷ nprocs, nprocs)
-    for i in 1:(nchains % nprocs)
+    chains_per_rank = fill(div(nchains, nprocs), nprocs)
+    for i in 1:mod(nchains, nprocs)
         chains_per_rank[i] += 1
     end
     local_nchains = chains_per_rank[rank+1]
