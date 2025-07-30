@@ -43,13 +43,13 @@ function aca_stamps()
 
     mu = zeros(d)
     for i in 1:d
-        mu[i] = compute_mu(F, integrals, skeleton, links, i)
+        mu[i] = compute_mu(F, integrals, skeleton, links, i) / norm
     end
     println(mu)
     cov = zeros(d, d)
     for i in 1:d
         for j in i:d
-            cov[i, j] = cov[j, i] = compute_cov(F, integrals, skeleton, links, mu, i, j)
+            cov[i, j] = cov[j, i] = compute_cov(F, integrals, skeleton, links, mu, i, j) / norm
         end
     end
     display(cov)
