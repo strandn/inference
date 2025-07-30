@@ -57,7 +57,7 @@ mpi_rank = MPI.Comm_rank(mpi_comm)
 mpi_size = MPI.Comm_size(mpi_comm)
 
 n_chains = 100
-n_samples = 10^8
+n_samples = 10^6
 thin = 100
 
 start_time = time()
