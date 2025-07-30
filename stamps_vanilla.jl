@@ -37,11 +37,16 @@ function aca_stamps()
         flush(stdout)
     end
 
-    result = estimate_log_evidence_uniform(hidalgo_like; domain=dom, comm=mpi_comm, nsamples=n_samples)
+    # result = estimate_log_evidence_uniform(hidalgo_like; domain=dom, comm=mpi_comm, nsamples=n_samples)
 
-    if mpi_rank == 0
-        println(result)
-    end
+    # if mpi_rank == 0
+    #     println(result)
+    # end
+
+    mu, cov = mcmc_mean_cov_parallel(neglogposterior; domain=dom, comm=mpi_comm, nchains=n_chains, nsamples=n_samples)
+    println(mu)
+    display(cov)
+    flush(stdout)
 end
 
 MPI.Init()
@@ -49,6 +54,7 @@ mpi_comm = MPI.COMM_WORLD
 mpi_rank = MPI.Comm_rank(mpi_comm)
 mpi_size = MPI.Comm_size(mpi_comm)
 
+n_chains = 20
 n_samples = 10^8
 
 start_time = time()
