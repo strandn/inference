@@ -43,7 +43,7 @@ function aca_stamps()
     #     println(result)
     # end
 
-    mu, cov = mcmc_mean_cov_parallel(hidalgo_like; domain=dom, comm=mpi_comm, nchains=n_chains, nsamples=n_samples)
+    mu, cov = mcmc_mean_cov_parallel(hidalgo_like; domain=dom, comm=mpi_comm, nchains=n_chains, nsamples=n_samples, thin=thin)
     if mpi_rank == 0
         println(mu)
         display(cov)
@@ -58,6 +58,7 @@ mpi_size = MPI.Comm_size(mpi_comm)
 
 n_chains = 20
 n_samples = 10^8
+thin = 100
 
 start_time = time()
 aca_stamps()

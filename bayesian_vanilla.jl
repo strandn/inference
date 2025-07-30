@@ -109,6 +109,7 @@ function mcmc_mean_cov_parallel(neglogposterior;
         nsamples::Int=10_000,
         burnin::Int=1000,
         proposal_std::Float64=0.01,
+        thin::Int=1,
         rng_seed::Int=42) where {N}
 
     rank = MPI.Comm_rank(comm)
@@ -116,8 +117,8 @@ function mcmc_mean_cov_parallel(neglogposterior;
     ndim = N
 
     # Determine how many chains to run on this rank
-    chains_per_rank = fill(div(nchains, nprocs), nprocs)
-    for i in 1:mod(nchains, nprocs)
+    chains_per_rank = fill(nchains ÷ nprocs, nprocs)
+    for i in 1:(nchains % nprocs)
         chains_per_rank[i] += 1
     end
     local_nchains = chains_per_rank[rank+1]
@@ -128,17 +129,20 @@ function mcmc_mean_cov_parallel(neglogposterior;
         return [rand(rng)*(b - a) + a for (a, b) in domain]
     end
 
-    # Collect samples from each chain
+    nrecord = nsamples  # total samples to record *after thinning*
+    steps_needed = burnin + nrecord * thin
+
     all_local_samples = Matrix{Float64}(undef, 0, ndim)
 
-    for chain in 1:local_nchains
+    for _ in 1:local_nchains
         x = uniform_sample(domain)
         fx = neglogposterior(x...)
-        samples = Matrix{Float64}(undef, nsamples, ndim)
+        chain_samples = Matrix{Float64}(undef, nrecord, ndim)
 
         scale = [(b - a) for (a, b) in domain]
 
-        for step in 1:(burnin + nsamples)
+        sample_idx = 0
+        for step in 1:steps_needed
             x_prop = x .+ randn(rng, ndim) .* scale .* proposal_std
             fx_prop = neglogposterior(x_prop...)
 
@@ -147,15 +151,15 @@ function mcmc_mean_cov_parallel(neglogposterior;
                 x, fx = x_prop, fx_prop
             end
 
-            if step > burnin
-                samples[step - burnin, :] .= x
+            if step > burnin && (step - burnin) % thin == 0
+                sample_idx += 1
+                chain_samples[sample_idx, :] .= x
             end
         end
 
-        all_local_samples = vcat(all_local_samples, samples)
+        all_local_samples = vcat(all_local_samples, chain_samples)
     end
 
-    # Gather samples from all ranks
     gathered_samples = MPI.gather(comm, all_local_samples, root=0)
 
     if rank == 0
