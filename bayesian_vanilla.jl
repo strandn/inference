@@ -117,8 +117,8 @@ function mcmc_mean_cov_parallel(neglogposterior;
     ndim = N
 
     # Determine how many chains to run on this rank
-    chains_per_rank = fill(nchains ÷ nprocs, nprocs)
-    for i in 1:(nchains % nprocs)
+    chains_per_rank = fill(div(nchains, nprocs), nprocs)
+    for i in 1:mod(nchains,nprocs)
         chains_per_rank[i] += 1
     end
     local_nchains = chains_per_rank[rank+1]
@@ -126,7 +126,7 @@ function mcmc_mean_cov_parallel(neglogposterior;
     rng = MersenneTwister(rng_seed + rank)
 
     function uniform_sample(domain)
-        return [rand(rng)*(b - a) + a for (a, b) in domain]
+        return [rand(rng) * (b - a) + a for (a, b) in domain]
     end
 
     nrecord = nsamples  # total samples to record *after thinning*
@@ -164,7 +164,9 @@ function mcmc_mean_cov_parallel(neglogposterior;
     gathered_samples = MPI.Gather(all_local_samples, 0, comm)
 
     if rank == 0
-        gathered_samples = reshape(gathered_samples, nsamples * nchains, ndim)
+        gathered_samples = reshape(gathered_samples, nsamples * local_nchains, nprocs * ndim)
+        blocks = [gathered_samples[:, (i-1)*ndim+1:i*ndim] for i in 1:nprocs]
+        gathered_samples = vcat(blocks...)
         mean_vec = [mean(gathered_samples[:, i]) for i in 1:ndim]
         cov_mat = cov(gathered_samples)
         return mean_vec, cov_mat
