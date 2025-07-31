@@ -22,6 +22,7 @@ function aca_stamps()
     open("stamps0cov.txt", "w") do file
         write(file, "$Σ_total\n")
     end
+    display(Σ_total)
 end
 
 aca_stamps()
