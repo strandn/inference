@@ -46,7 +46,7 @@ function aca_stamps()
     mu, cov = mcmc_mean_cov_parallel(hidalgo_like; domain=dom, comm=mpi_comm, nchains=n_chains, nsamples=n_samples)
     if mpi_rank == 0
         open("stamps0cov.txt", "w") do file
-            write(file, repr("text/plain", cov))
+            write(file, "$cov\n")
         end
         println(mu)
         display(cov)
