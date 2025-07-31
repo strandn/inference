@@ -162,6 +162,7 @@ function mcmc_mean_cov_parallel(neglogposterior;
 
     # Flatten local samples and gather
     local_vec = vec(all_local_samples)
+    println("$rank $(size(local_vec))")
     gathered = MPI.gather(local_vec, comm, root=0)
 
     if rank == 0
