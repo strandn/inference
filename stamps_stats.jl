@@ -35,6 +35,7 @@ function aca_stamps()
         F.offset = parse(Float64, readline(file))
     end
 
+    cov0 = undef
     open("stamps0cov.txt", "r") do file
         cov0 = eval(Meta.parse(readline(file)))
     end
