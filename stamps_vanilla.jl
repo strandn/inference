@@ -43,13 +43,16 @@ function aca_stamps()
     #     println(result)
     # end
 
+    cov0 = undef
+    open("stamps0cov.txt", "r") do file
+        cov0 = eval(Meta.parse(readline(file)))
+    end
+
     mu, cov = mcmc_mean_cov_parallel(hidalgo_like; domain=dom, comm=mpi_comm, nchains=n_chains, nsamples=n_samples)
     if mpi_rank == 0
-        open("stamps0cov.txt", "w") do file
-            write(file, "$cov\n")
-        end
         println(mu)
         display(cov)
+        println(LinearAlgebra.norm(cov - cov0) / LinearAlgebra.norm(cov0))
         flush(stdout)
     end
 end
