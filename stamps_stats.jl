@@ -35,6 +35,10 @@ function aca_stamps()
         F.offset = parse(Float64, readline(file))
     end
 
+    open("stamps0cov.txt", "r") do file
+        cov0 = eval(Meta.parse(readline(file)))
+    end
+
     norm, integrals, skeleton, links = compute_norm(F)
     println("norm = $norm")
     println(F.offset - log(norm))
@@ -53,6 +57,7 @@ function aca_stamps()
         end
     end
     display(cov)
+    println(LinearAlgebra.norm(cov - cov0) / LinearAlgebra.norm(cov0))
     flush(stdout)
 end
 
