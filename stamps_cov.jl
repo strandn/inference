@@ -1,3 +1,5 @@
+using LinearAlgebra
+
 function aca_stamps()
     centers = [
         [65.0, 85.0, 115.0, log(2.0^2), log(3.0^2), log(4.0^2), 0.0, 0.0, 0.0],
