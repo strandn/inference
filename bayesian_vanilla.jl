@@ -160,11 +160,11 @@ function mcmc_mean_cov_parallel(neglogposterior;
         all_local_samples = vcat(all_local_samples, chain_samples)
     end
 
-    all_local_samples = reshape(all_local_samples, nsamples * ndim)
+    all_local_samples = reshape(all_local_samples, nsamples * local_nchains * ndim)
     gathered_samples = MPI.Gather(all_local_samples, 0, comm)
-    gathered_samples = reshape(gathered_samples, nsamples * nprocs, ndim)
 
     if rank == 0
+        gathered_samples = reshape(gathered_samples, nsamples * nchains, ndim)
         mean_vec = [mean(gathered_samples[:, i]) for i in 1:ndim]
         cov_mat = cov(all_samples)
         return mean_vec, cov_mat
