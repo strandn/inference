@@ -110,7 +110,7 @@ function mcmc_mean_cov_parallel(neglogposterior;
         burnin::Int=1000,
         proposal_std::Float64=0.01,
         thin::Int=100,
-        rng_seed::Int=42) where {N}
+        rng::AbstractRNG=Random.GLOBAL_RNG) where {N}
 
     rank = MPI.Comm_rank(comm)
     nprocs = MPI.Comm_size(comm)
@@ -122,8 +122,6 @@ function mcmc_mean_cov_parallel(neglogposterior;
         chains_per_rank[i] += 1
     end
     local_nchains = chains_per_rank[rank+1]
-
-    rng = MersenneTwister(rng_seed + rank)
 
     function uniform_sample(domain)
         return [rand(rng) * (b - a) + a for (a, b) in domain]
