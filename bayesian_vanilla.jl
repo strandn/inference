@@ -168,5 +168,7 @@ function mcmc_mean_cov_parallel(neglogposterior;
         mean_vec = [mean(gathered_samples[:, i]) for i in 1:ndim]
         cov_mat = cov(all_samples)
         return mean_vec, cov_mat
+    else
+        return nothing, nothing
     end
 end
