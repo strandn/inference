@@ -160,21 +160,12 @@ function mcmc_mean_cov_parallel(neglogposterior;
         all_local_samples = vcat(all_local_samples, chain_samples)
     end
 
-    # Flatten local samples and gather
-    local_vec = vec(all_local_samples)
-    println("$rank $(size(local_vec))")
-    gathered = MPI.gather(local_vec, comm, root=0)
+    all_local_samples = reshape(all_local_samples, nsamples * ndims)
+    gathered_samples = MPI.Gather(all_local_samples, 0, comm)
+    gathered_samples = reshape(gathered_samples, nsamples * nprocs, ndims)
 
     if rank == 0
-        total_len = sum(length.(gathered))
-        total_rows = total_len ÷ ndim
-
-        if total_len % ndim != 0
-            error("Mismatch: total gathered length $total_len is not divisible by ndim = $ndim")
-        end
-
-        all_samples = reshape(vcat(gathered...), ndim, total_rows)'  # shape (total_rows, ndim)
-        mean_vec = vec(mean(all_samples, dims=1))
+        mean_vec = [mean(gathered_samples[:, i]) for i in 1:ndims]
         cov_mat = cov(all_samples)
         return mean_vec, cov_mat
     end
