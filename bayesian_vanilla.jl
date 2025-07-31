@@ -159,6 +159,7 @@ function mcmc_mean_cov_parallel(neglogposterior;
 
         all_local_samples = vcat(all_local_samples, chain_samples)
     end
+    println("$rank $(size(all_local_samples))")
 
     gathered_samples = MPI.gather(all_local_samples, comm, root=0)
 
