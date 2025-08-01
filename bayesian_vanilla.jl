@@ -142,27 +142,29 @@ function mcmc_mean_cov_parallel(neglogposterior;
         scale = [(b - a) for (a, b) in domain]
 
         sample_idx = 0
+        accepted = 0
         for step in 1:steps_needed
             x_prop = x .+ randn(rng, ndim) .* scale .* proposal_std
             fx_prop = neglogposterior(x_prop...)
 
             log_accept_ratio = fx - fx_prop
-            sum_acc_ratio += exp(log_accept_ratio)
             if log(rand(rng)) < log_accept_ratio
                 x, fx = x_prop, fx_prop
+                accepted += 1
             end
 
             if step > burnin && (step - burnin) % thin == 0
                 sample_idx += 1
                 chain_samples[sample_idx, :] .= x
             end
+            sum_acc_ratio += accepted / steps_needed
         end
 
         all_local_samples = vcat(all_local_samples, chain_samples)
     end
     
     if rank == 0
-        println("Average acceptance ratio: $(sum_acc_ratio / (local_nchains * steps_needed))")
+        println("Average acceptance ratio: $(sum_acc_ratio / local_nchains)")
     end
 
     all_local_samples = reshape(all_local_samples, nsamples * local_nchains * ndim)
