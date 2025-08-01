@@ -60,7 +60,7 @@ function aca_exoplanet()
     # end
 
     cov0 = undef
-    open("stamps0cov.txt", "r") do file
+    open("exoplanet0cov.txt", "r") do file
         cov0 = eval(Meta.parse(readline(file)))
     end
 
