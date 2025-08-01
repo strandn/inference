@@ -53,10 +53,23 @@ function aca_exoplanet()
         flush(stdout)
     end
 
-    result = estimate_log_evidence_uniform(neglogposterior; domain=dom, comm=mpi_comm, nsamples=n_samples)
+    # result = estimate_log_evidence_uniform(neglogposterior; domain=dom, comm=mpi_comm, nsamples=n_samples)
 
+    # if mpi_rank == 0
+    #     println(result)
+    # end
+
+    cov0 = undef
+    open("exoplanet0cov.txt", "r") do file
+        cov0 = eval(Meta.parse(readline(file)))
+    end
+
+    mu, cov = mcmc_mean_cov_parallel(neglogposterior; domain=dom, comm=mpi_comm, nchains=n_chains, nsamples=n_samples)
     if mpi_rank == 0
-        println(result)
+        println(mu)
+        display(cov)
+        println(LinearAlgebra.norm(cov - cov0) / LinearAlgebra.norm(cov0))
+        flush(stdout)
     end
 end
 
@@ -65,7 +78,8 @@ mpi_comm = MPI.COMM_WORLD
 mpi_rank = MPI.Comm_rank(mpi_comm)
 mpi_size = MPI.Comm_size(mpi_comm)
 
-n_samples = 10^6
+n_chains = 20
+n_samples = 10
 
 for _ in 1:20
     start_time = time()

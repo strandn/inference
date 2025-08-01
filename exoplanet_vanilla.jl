@@ -59,16 +59,16 @@ function aca_exoplanet()
     #     println(result)
     # end
 
-    # cov0 = undef
-    # open("stamps0cov.txt", "r") do file
-    #     cov0 = eval(Meta.parse(readline(file)))
-    # end
+    cov0 = undef
+    open("stamps0cov.txt", "r") do file
+        cov0 = eval(Meta.parse(readline(file)))
+    end
 
     mu, cov = mcmc_mean_cov_parallel(neglogposterior; domain=dom, comm=mpi_comm, nchains=n_chains, nsamples=n_samples)
     if mpi_rank == 0
         println(mu)
         display(cov)
-        # println(LinearAlgebra.norm(cov - cov0) / LinearAlgebra.norm(cov0))
+        println(LinearAlgebra.norm(cov - cov0) / LinearAlgebra.norm(cov0))
         flush(stdout)
     end
 end
@@ -78,7 +78,7 @@ mpi_comm = MPI.COMM_WORLD
 mpi_rank = MPI.Comm_rank(mpi_comm)
 mpi_size = MPI.Comm_size(mpi_comm)
 
-n_chains = 100
+n_chains = 20
 n_samples = 10^8
 
 start_time = time()
