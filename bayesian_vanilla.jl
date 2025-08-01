@@ -108,7 +108,7 @@ function mcmc_mean_cov_parallel(neglogposterior;
         nchains::Int,
         nsamples::Int=10_000,
         burnin::Int=1000,
-        proposal_std::Float64=0.01,
+        proposal_std::Float64=0.05,
         thin::Int=100,
         rng::AbstractRNG=Random.GLOBAL_RNG) where {N}
 
