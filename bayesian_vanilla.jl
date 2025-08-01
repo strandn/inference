@@ -132,7 +132,7 @@ function mcmc_mean_cov_parallel(neglogposterior;
 
     all_local_samples = Matrix{Float64}(undef, 0, ndim)
 
-    sum_acc_ratio = []
+    sum_acc_ratio = 0.0
 
     for _ in 1:local_nchains
         x = uniform_sample(domain)
