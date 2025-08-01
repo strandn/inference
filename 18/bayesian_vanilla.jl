@@ -74,93 +74,101 @@ function estimate_log_evidence_uniform(neglogposterior;
     end
 end
 
-function estimate_log_evidence_TI(neglogposterior;
-        domain::NTuple{N,Tuple{Float64,Float64}},
+"""
+    mcmc_mean_cov_parallel(neglogposterior;
+                           domain::NTuple{N, Tuple{Float64, Float64}},
+                           comm::MPI.Comm,
+                           nchains::Int,
+                           nsamples::Int=10_000,
+                           burnin::Int=1000,
+                           proposal_std::Float64=1.0,
+                           rng_seed::Int=42)
+
+Run MCMC with potentially multiple chains per MPI process and estimate the
+mean and covariance matrix of the posterior distribution.
+
+Arguments:
+- `neglogposterior`: function taking x... and returning negative log posterior
+- `domain`: tuple of length-N tuples specifying domain bounds
+- `comm`: MPI communicator
+- `nchains`: total number of chains (≥ MPI size)
+- `nsamples`: number of samples per chain after burn-in
+- `burnin`: burn-in steps per chain
+- `proposal_std`: stddev of isotropic Gaussian proposal
+- `rng_seed`: base seed for RNGs (per-process seed = rng_seed + rank)
+
+Returns on rank 0:
+- `mean::Vector{Float64}`
+- `covariance::Matrix{Float64}`
+Other ranks return `nothing`.
+"""
+function mcmc_mean_cov_parallel(neglogposterior;
+        domain::NTuple{N, Tuple{Float64, Float64}},
         comm::MPI.Comm,
+        nchains::Int,
         nsamples::Int=10_000,
         burnin::Int=1000,
         proposal_std::Float64=0.01,
-        nbetas::Int=10,
+        thin::Int=100,
         rng::AbstractRNG=Random.GLOBAL_RNG) where {N}
 
     rank = MPI.Comm_rank(comm)
-    size = MPI.Comm_size(comm)
+    nprocs = MPI.Comm_size(comm)
     ndim = N
-    vol = prod(b - a for (a, b) in domain)
-    logZ0 = log(vol)
 
-    # Split beta ladder among processes
-    betas = range(0.0, 1.0; length=nbetas)
-    local_betas = Iterators.partition(betas, cld(nbetas, size)) |> collect
-    my_betas = local_betas[rank + 1]
+    # Determine how many chains to run on this rank
+    chains_per_rank = fill(div(nchains, nprocs), nprocs)
+    for i in 1:mod(nchains,nprocs)
+        chains_per_rank[i] += 1
+    end
+    local_nchains = chains_per_rank[rank+1]
 
-    # Sample uniformly from domain
-    function uniform_sample()
+    function uniform_sample(domain)
         return [rand(rng) * (b - a) + a for (a, b) in domain]
     end
 
-    # Function to run Metropolis at fixed β
-    function run_mcmc(beta, x_init)
-    x = copy(x_init)
-    fx = neglogposterior(x...)
-    fxs = Float64[]
-    accepted = 0
+    nrecord = nsamples  # total samples to record *after thinning*
+    steps_needed = burnin + nrecord * thin
 
-    scale = [(b - a) for (a, b) in domain]  # domain-wise scale
-    prop_std = proposal_std
+    all_local_samples = Matrix{Float64}(undef, 0, ndim)
 
-    for step in 1:(burnin + nsamples)
-        x_prop = x .+ randn(rng, ndim) .* scale .* prop_std
-        fx_prop = neglogposterior(x_prop...)
-        log_accept_ratio = beta * (fx - fx_prop)
+    for _ in 1:local_nchains
+        x = uniform_sample(domain)
+        fx = neglogposterior(x...)
+        chain_samples = Matrix{Float64}(undef, nrecord, ndim)
 
-        if log(rand(rng)) < log_accept_ratio
-            x, fx = x_prop, fx_prop
-            accepted += 1
+        scale = [(b - a) for (a, b) in domain]
+
+        sample_idx = 0
+        for step in 1:steps_needed
+            x_prop = x .+ randn(rng, ndim) .* scale .* proposal_std
+            fx_prop = neglogposterior(x_prop...)
+
+            log_accept_ratio = fx - fx_prop
+            if log(rand(rng)) < log_accept_ratio
+                x, fx = x_prop, fx_prop
+            end
+
+            if step > burnin && (step - burnin) % thin == 0
+                sample_idx += 1
+                chain_samples[sample_idx, :] .= x
+            end
         end
 
-        if step > burnin
-            push!(fxs, fx)
-        end
+        all_local_samples = vcat(all_local_samples, chain_samples)
     end
 
-    acc_rate = accepted / (burnin + nsamples)
-    if acc_rate < 0.1
-        @warn "Low acceptance rate at β=$beta: $(round(acc_rate, digits=3))"
-    elseif acc_rate > 0.5
-        @info "High acceptance rate at β=$beta: $(round(acc_rate, digits=3))"
-    end
-
-    return mean(fxs), x  # return final sample too (for warm start)
-end
-
-    # Compute local expectations for assigned βs
-    local_expectations = []
-    x = uniform_sample()  # shared warm start
-
-    for β in my_betas
-        avg_fx, x = run_mcmc(β, x)  # warm start from last β
-        push!(local_expectations, (β, -avg_fx))
-    end
-
-    # Gather all (β, E) pairs to rank 0
-    gathered = MPI.gather(local_expectations, comm, root=0)
+    all_local_samples = reshape(all_local_samples, nsamples * local_nchains * ndim)
+    gathered_samples = MPI.Gather(all_local_samples, 0, comm)
 
     if rank == 0
-        all_expectations = reduce(vcat, gathered)
-        sort!(all_expectations, by=x->x[1])  # Sort by 
-        
-        for (β, E) in all_expectations
-            println("β = $β, E[-f(x)] = $E")
-        end
-
-        # Trapezoidal integration
-        logZ = logZ0
-        for i in 1:length(all_expectations)-1
-            β₁, E₁ = all_expectations[i]
-            β₂, E₂ = all_expectations[i+1]
-            logZ += (β₂ - β₁) * (E₁ + E₂) / 2
-        end
-        return -logZ
+        gathered_samples = reshape(gathered_samples, nsamples * local_nchains, nprocs * ndim)
+        blocks = [gathered_samples[:, (i-1)*ndim+1:i*ndim] for i in 1:nprocs]
+        gathered_samples = vcat(blocks...)
+        mean_vec = [mean(gathered_samples[:, i]) for i in 1:ndim]
+        cov_mat = cov(gathered_samples)
+        return mean_vec, cov_mat
+    else
+        return nothing, nothing
     end
 end
