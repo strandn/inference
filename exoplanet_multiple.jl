@@ -60,7 +60,7 @@ function aca_exoplanet()
             write(file, "$IJ\n")
             write(file, "$(F.offset)\n")
         end
-        norm, _, _ = compute_norm(F)
+        norm, integrals, skeleton = compute_norm(F)
         println("norm = $norm")
         println(F.offset - log(norm))
 
