@@ -132,6 +132,8 @@ function mcmc_mean_cov_parallel(neglogposterior;
 
     all_local_samples = Matrix{Float64}(undef, 0, ndim)
 
+    sum_acc_ratio = []
+
     for _ in 1:local_nchains
         x = uniform_sample(domain)
         fx = neglogposterior(x...)
@@ -145,6 +147,7 @@ function mcmc_mean_cov_parallel(neglogposterior;
             fx_prop = neglogposterior(x_prop...)
 
             log_accept_ratio = fx - fx_prop
+            sum_acc_ratio += exp(log_accept_ratio)
             if log(rand(rng)) < log_accept_ratio
                 x, fx = x_prop, fx_prop
             end
@@ -156,6 +159,10 @@ function mcmc_mean_cov_parallel(neglogposterior;
         end
 
         all_local_samples = vcat(all_local_samples, chain_samples)
+    end
+    
+    if rank == 0
+        println("Average acceptance ratio: $(sum_acc_ratio / (local_nchains * steps_needed))")
     end
 
     all_local_samples = reshape(all_local_samples, nsamples * local_nchains * ndim)
