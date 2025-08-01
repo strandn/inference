@@ -63,6 +63,21 @@ function aca_exoplanet()
         norm, _, _ = compute_norm(F)
         println("norm = $norm")
         println(F.offset - log(norm))
+
+        mulist = zeros(d)
+        for i in 1:d
+            mulist[i] = compute_mu(F, integrals, skeleton, links, i) / norm
+        end
+        println(mulist)
+        cov = zeros(d, d)
+        for i in 1:d
+            for j in i:d
+                cov[i, j] = cov[j, i] = compute_cov(F, integrals, skeleton, links, mulist, i, j) / norm
+            end
+        end
+        display(cov)
+        println(LinearAlgebra.norm(cov - cov0) / LinearAlgebra.norm(cov0))
+        flush(stdout)
     end
 end
 
