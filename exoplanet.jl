@@ -54,15 +54,36 @@ function aca_exoplanet()
 
     IJ = continuous_aca(F, fill(maxr, d - 1), n_chains, n_samples, jump_width, mpi_comm)
 
-    norm = 0.0
+    # cov0 = undef
+    # open("stamps0cov.txt", "r") do file
+    #     cov0 = eval(Meta.parse(readline(file)))
+    # end
+
     if mpi_rank == 0
-        open("exoplanet_IJ.txt", "w") do file
+        open("stamps_IJ.txt", "w") do file
             write(file, "$IJ\n")
             write(file, "$(F.offset)\n")
         end
-        norm, _, _ = compute_norm(F)
+        norm, integrals, skeleton, links = compute_norm(F)
         println("norm = $norm")
         println(F.offset - log(norm))
+        
+        mu = zeros(d)
+        for i in 1:d
+            mu[i] = compute_mu(F, integrals, skeleton, links, i) / norm
+        end
+        println(mu)
+        cov = zeros(d, d)
+        for i in 1:d
+            for j in i:d
+                cov[i, j] = cov[j, i] = compute_cov(F, integrals, skeleton, links, mu, i, j) / norm
+            end
+        end
+        display(cov)
+        # println(LinearAlgebra.norm(cov - cov0) / LinearAlgebra.norm(cov0))
+        open("exoplanet0cov.txt", "w") do file
+            write(file, "$cov\n")
+        end
         flush(stdout)
     end
 end
@@ -75,9 +96,9 @@ mpi_size = MPI.Comm_size(mpi_comm)
 d = 4
 maxr = 50
 n_chains = 20
-n_samples = 100
+n_samples = 500
 jump_width = 0.01
-cutoff = 0.01
+cutoff = 1.0e-4
 
 start_time = time()
 aca_exoplanet()
