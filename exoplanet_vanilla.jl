@@ -53,24 +53,24 @@ function aca_exoplanet()
         flush(stdout)
     end
 
-    result = estimate_log_evidence_uniform(neglogposterior; domain=dom, comm=mpi_comm, nsamples=n_samples)
+    # result = estimate_log_evidence_uniform(neglogposterior; domain=dom, comm=mpi_comm, nsamples=n_samples)
 
-    if mpi_rank == 0
-        println(result)
+    # if mpi_rank == 0
+    #     println(result)
+    # end
+
+    cov0 = undef
+    open("exoplanet0cov.txt", "r") do file
+        cov0 = eval(Meta.parse(readline(file)))
     end
 
-    # cov0 = undef
-    # open("exoplanet0cov.txt", "r") do file
-    #     cov0 = eval(Meta.parse(readline(file)))
-    # end
-
-    # mu, cov = mcmc_mean_cov_parallel(neglogposterior; domain=dom, comm=mpi_comm, nchains=n_chains, nsamples=n_samples, proposal_std=jump_width, periodicity=(false, false, true, false))
-    # if mpi_rank == 0
-    #     println(mu)
-    #     display(cov)
-    #     println(LinearAlgebra.norm(cov - cov0) / LinearAlgebra.norm(cov0))
-    #     flush(stdout)
-    # end
+    mu, cov = mcmc_mean_cov_parallel(neglogposterior; domain=dom, comm=mpi_comm, nchains=n_chains, nsamples=n_samples, proposal_std=jump_width, periodicity=(false, false, true, false))
+    if mpi_rank == 0
+        println(mu)
+        display(cov)
+        println(LinearAlgebra.norm(cov - cov0) / LinearAlgebra.norm(cov0))
+        flush(stdout)
+    end
 end
 
 MPI.Init()
