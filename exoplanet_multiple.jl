@@ -54,6 +54,11 @@ function aca_exoplanet()
 
     IJ = continuous_aca(F, fill(maxr, d - 1), n_chains, n_samples, jump_width, mpi_comm)
 
+    cov0 = undef
+    open("stamps0cov.txt", "r") do file
+        cov0 = eval(Meta.parse(readline(file)))
+    end
+
     norm = 0.0
     if mpi_rank == 0
         open("exoplanet_IJ.txt", "w") do file
