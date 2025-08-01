@@ -46,7 +46,7 @@ function aca_exoplanet()
     φ0_dom = (0.0, 2 * pi)
     lnP_dom = (3.0, 5.0)
 
-    F = ResFunc(neglogposterior, (v0_dom, K_dom, φ0_dom, lnP_dom), 0.0)
+    F = ResFunc(neglogposterior, (v0_dom, K_dom, φ0_dom, lnP_dom), 0.0, (false, false, true, false))
 
     open("exoplanet_IJ.txt", "r") do file
         F.I, F.J = eval(Meta.parse(readline(file)))

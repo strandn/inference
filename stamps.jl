@@ -28,7 +28,7 @@ function aca_stamps()
     a2_dom = (-5.0, 5.0)
     a3_dom = (-5.0, 5.0)
 
-    F = ResFunc(hidalgo_like, (m1_dom, m2_dom, m3_dom, ls1_dom, ls2_dom, ls3_dom, a1_dom, a2_dom, a3_dom), cutoff)
+    F = ResFunc(hidalgo_like, (m1_dom, m2_dom, m3_dom, ls1_dom, ls2_dom, ls3_dom, a1_dom, a2_dom, a3_dom), cutoff, fill(false, d))
 
     if mpi_rank == 0
         println("Starting TT-cross ACA...")

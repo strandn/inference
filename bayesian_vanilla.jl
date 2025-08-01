@@ -110,7 +110,8 @@ function mcmc_mean_cov_parallel(neglogposterior;
         burnin::Int=1000,
         proposal_std::Float64=0.01,
         thin::Int=100,
-        rng::AbstractRNG=Random.GLOBAL_RNG) where {N}
+        rng::AbstractRNG=Random.GLOBAL_RNG,
+        periodicity::NTuple{N, Bool}=fill(false, N)) where {N}
 
     rank = MPI.Comm_rank(comm)
     nprocs = MPI.Comm_size(comm)
@@ -145,6 +146,17 @@ function mcmc_mean_cov_parallel(neglogposterior;
         accepted = 0
         for step in 1:steps_needed
             x_prop = x .+ randn(rng, ndim) .* scale .* proposal_std
+            for k in 1:ndim
+                if(periodicity[k])
+                    x_prop[k] = mod(x_prop[k] - domain[k][1], domain[k][2] - domain[k][1]) + domain[k][1]
+                else
+                    if x_prop[k] < domain[k][1]
+                        x_prop[k] = domain[k][1] + abs(x_prop[k] - domain[k][1])
+                    elseif x_prop[k] > domain[k][2]
+                        x_prop[k] = domain[k][2] - abs(x_prop[k] - domain[k][2])
+                    end
+                end
+            end
             fx_prop = neglogposterior(x_prop...)
 
             log_accept_ratio = fx - fx_prop

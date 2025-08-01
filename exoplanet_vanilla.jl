@@ -64,7 +64,7 @@ function aca_exoplanet()
         cov0 = eval(Meta.parse(readline(file)))
     end
 
-    mu, cov = mcmc_mean_cov_parallel(neglogposterior; domain=dom, comm=mpi_comm, nchains=n_chains, nsamples=n_samples, proposal_std=jump_width)
+    mu, cov = mcmc_mean_cov_parallel(neglogposterior; domain=dom, comm=mpi_comm, nchains=n_chains, nsamples=n_samples, proposal_std=jump_width, periodicity=(false, false, true, false))
     if mpi_rank == 0
         println(mu)
         display(cov)
