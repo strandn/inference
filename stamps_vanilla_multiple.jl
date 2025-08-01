@@ -48,7 +48,7 @@ function aca_stamps()
         cov0 = eval(Meta.parse(readline(file)))
     end
 
-    mu, cov = mcmc_mean_cov_parallel(hidalgo_like; domain=dom, comm=mpi_comm, nchains=n_chains, nsamples=n_samples, periodicity=fill(false, d))
+    mu, cov = mcmc_mean_cov_parallel(hidalgo_like; domain=dom, comm=mpi_comm, nchains=n_chains, nsamples=n_samples, periodicity=fill(false, 9))
     if mpi_rank == 0
         println(mu)
         display(cov)
