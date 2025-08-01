@@ -111,7 +111,7 @@ function mcmc_mean_cov_parallel(neglogposterior;
         proposal_std::Float64=0.01,
         thin::Int=100,
         rng::AbstractRNG=Random.GLOBAL_RNG,
-        periodicity::NTuple{N, Bool}=fill(false, N)) where {N}
+        periodicity::NTuple{N, Bool}) where {N}
 
     rank = MPI.Comm_rank(comm)
     nprocs = MPI.Comm_size(comm)
