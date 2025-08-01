@@ -157,9 +157,9 @@ function mcmc_mean_cov_parallel(neglogposterior;
                 sample_idx += 1
                 chain_samples[sample_idx, :] .= x
             end
-            sum_acc_ratio += accepted / steps_needed
         end
 
+        sum_acc_ratio += accepted / steps_needed
         all_local_samples = vcat(all_local_samples, chain_samples)
     end
     
