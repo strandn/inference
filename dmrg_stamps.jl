@@ -130,7 +130,7 @@ function dmrg_stamps()
     end
 
     vec2list = [ITensor(collect(grid[i][1:nbins] .- meanlist[i]), sites[i]) for i in 1:d]
-    vec22list = [ITensor(collet((grid[i][1:nbins] .- meanlist[i]).^2), sites[i]) for i in 1:d]
+    vec22list = [ITensor(collect((grid[i][1:nbins] .- meanlist[i]).^2), sites[i]) for i in 1:d]
     varlist = zeros(d, d)
     for i in 1:d
         for j in i:d
