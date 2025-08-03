@@ -120,7 +120,7 @@ function dmrg_stamps()
         for k in 2:d
             mean *= psi[k] * (i == k ? vec1list[k] : oneslist[k])
         end
-        meanlist[k] = mean[]
+        meanlist[i] = mean[]
     end
     println(meanlist)
 
