@@ -113,10 +113,10 @@ function dmrg_stamps()
         end
     end
 
-    vec1list = [ITensor(grid[i][1:nbins], sites[i]) for i in 1:d]
+    vec1list = [ITensor(collect(grid[i][1:nbins]), sites[i]) for i in 1:d]
     meanlist = zeros(d)
     for i in 1:d
-    mean = psi[1] * (i == 1 ? vec1list[1] : oneslist[1])
+        mean = psi[1] * (i == 1 ? vec1list[1] : oneslist[1])
         for k in 2:d
             mean *= psi[i] * (i == k ? vec1list[k] : oneslist[k])
         end
@@ -129,8 +129,8 @@ function dmrg_stamps()
         cov0 = eval(Meta.parse(readline(file)))
     end
 
-    vec2list = [ITensor(grid[i][1:nbins] .- meanlist[i], sites[i]) for i in 1:d]
-    vec22list = [ITensor((grid[i][1:nbins] .- meanlist[i]).^2, sites[i]) for i in 1:d]
+    vec2list = [ITensor(collect(grid[i][1:nbins] .- meanlist[i]), sites[i]) for i in 1:d]
+    vec22list = [ITensor(collet((grid[i][1:nbins] .- meanlist[i]).^2), sites[i]) for i in 1:d]
     varlist = zeros(d, d)
     for i in 1:d
         for j in i:d
