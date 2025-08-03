@@ -118,9 +118,9 @@ function dmrg_stamps()
     for i in 1:d
         mean = psi[1] * (i == 1 ? vec1list[1] : oneslist[1])
         for k in 2:d
-            mean *= psi[i] * (i == k ? vec1list[k] : oneslist[k])
+            mean *= psi[k] * (i == k ? vec1list[k] : oneslist[k])
         end
-        meanlist[i] = mean[]
+        meanlist[k] = mean[]
     end
     println(meanlist)
 
@@ -145,7 +145,7 @@ function dmrg_stamps()
                 var *= oneslist[1]
             end
             for k in 2:d
-                var *= psi[i]
+                var *= psi[k]
                 if i == k || j == k
                     if i == j
                         var *= vec22list[k]
