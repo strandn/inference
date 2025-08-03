@@ -19,7 +19,7 @@ function hidalgo_like(x...)
     return 10.0 - log(sum(pdf(p, [elt for elt in x]) for p in ps))
 end
 
-function dmrg_stamps()
+function tt_stamps()
     m1_true = 65.0
     m2_true = 85.0
     m3_true = 115.0
@@ -64,7 +64,7 @@ function dmrg_stamps()
 
     offset = hidalgo_like(m1_true, m2_true, m3_true, ls1_true, ls2_true, ls3_true, a1_true, a2_true, a3_true)
 
-    println("Starting DMRG cross...")
+    println("Starting TT cross...")
     flush(stdout)
 
     posterior(x...) = exp(offset - hidalgo_like(x...))
@@ -74,8 +74,8 @@ function dmrg_stamps()
         [m3_idx, m1_idx, m2_idx, ls1_idx, ls2_idx, ls3_idx, a1_idx, a2_idx, a3_idx],
         [m2_idx, m3_idx, m1_idx, ls1_idx, ls2_idx, ls3_idx, a1_idx, a2_idx, a3_idx]
     ]
-    # psi = dmrg_cross(A, maxr, cutoff, tol, maxiter)
-    psi = dmrg_cross(A, maxr, cutoff, tol, maxiter, seedlist)
+    psi = tt_cross(A, maxr, tol, maxiter)
+    # psi = tt_cross(A, maxr, tol, maxiter, seedlist)
 
     sites = siteinds(psi)
     oneslist = [ITensor(ones(nbins), sites[i]) for i in 1:d]
@@ -111,7 +111,7 @@ function dmrg_stamps()
         else
             result = Lenv * psi[pos] * psi[pos + 1] * Renv
         end
-        open("dmrg_stamps_marginal_$pos.txt", "w") do file
+        open("tt_stamps_marginal_$pos.txt", "w") do file
             for i in 1:nbins
                 for j in 1:nbins
                     write(file, "$(grid[pos][i]) $(grid[pos + 1][j]) $(result[sites[pos] => i, sites[pos + 1] => j])\n")
@@ -172,13 +172,12 @@ function dmrg_stamps()
 end
 
 d = 9
-maxr = 100
-cutoff = 1.0e-10
+maxr = 3
 tol = 0.01
 maxiter = 10
 
 start_time = time()
-dmrg_stamps()
+tt_stamps()
 end_time = time()
 elapsed_time = end_time - start_time
 println("Elapsed time: $elapsed_time seconds")
