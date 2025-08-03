@@ -172,7 +172,7 @@ end
 
 d = 9
 maxr = 100
-cutoff = 1.0e-4
+cutoff = 1.0e-8
 tol = 0.01
 maxiter = 10
 
