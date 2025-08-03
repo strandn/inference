@@ -1,5 +1,3 @@
-using DifferentialEquations
-
 include("tt_cross.jl")
 
 function hidalgo_like(x...)
