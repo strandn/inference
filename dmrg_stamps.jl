@@ -70,15 +70,12 @@ function dmrg_stamps()
     posterior(x...) = exp(offset - hidalgo_like(x...))
     A = ODEArray(posterior, grid)
     seedlist = [
-        [m1_idx, m2_idx, m3_idx, ls1_idx, ls2_idx, ls3_idx, a1_idx, a2_idx, a3_idx]
+        [m1_idx, m2_idx, m3_idx, ls1_idx, ls2_idx, ls3_idx, a1_idx, a2_idx, a3_idx],
+        [m3_idx, m1_idx, m2_idx, ls1_idx, ls2_idx, ls3_idx, a1_idx, a2_idx, a3_idx],
+        [m2_idx, m3_idx, m1_idx, ls1_idx, ls2_idx, ls3_idx, a1_idx, a2_idx, a3_idx]
     ]
-    # seedlist = [
-    #     [m1_idx, m2_idx, m3_idx, ls1_idx, ls2_idx, ls3_idx, a1_idx, a2_idx, a3_idx],
-    #     [m3_idx, m1_idx, m2_idx, ls1_idx, ls2_idx, ls3_idx, a1_idx, a2_idx, a3_idx],
-    #     [m2_idx, m3_idx, m1_idx, ls1_idx, ls2_idx, ls3_idx, a1_idx, a2_idx, a3_idx]
-    # ]
-    psi = dmrg_cross(A, maxr, cutoff, tol, maxiter)
-    # psi = dmrg_cross(A, maxr, cutoff, tol, maxiter, seedlist)
+    # psi = dmrg_cross(A, maxr, cutoff, tol, maxiter)
+    psi = dmrg_cross(A, maxr, cutoff, tol, maxiter, seedlist)
 
     sites = siteinds(psi)
     oneslist = [ITensor(ones(nbins), sites[i]) for i in 1:d]
@@ -86,7 +83,7 @@ function dmrg_stamps()
     for i in 2:d
         norm *= psi[i] * oneslist[i]
     end
-    psi /= norm
+    psi /= norm[]
 
     println(offset - log(norm[]))
 
