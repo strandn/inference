@@ -63,7 +63,7 @@ mpi_rank = MPI.Comm_rank(mpi_comm)
 mpi_size = MPI.Comm_size(mpi_comm)
 
 n_chains = 20
-n_samples = 10
+n_samples = 10^6
 jump_width = 0.05
 
 for _ in 1:20

@@ -74,8 +74,8 @@ function tt_stamps()
         [m3_idx, m1_idx, m2_idx, ls1_idx, ls2_idx, ls3_idx, a1_idx, a2_idx, a3_idx],
         [m2_idx, m3_idx, m1_idx, ls1_idx, ls2_idx, ls3_idx, a1_idx, a2_idx, a3_idx]
     ]
-    psi = tt_cross(A, maxr, tol, maxiter)
-    # psi = tt_cross(A, maxr, tol, maxiter, seedlist)
+    # psi = tt_cross(A, maxr, tol, maxiter)
+    psi = tt_cross(A, maxr, tol, maxiter, seedlist)
 
     sites = siteinds(psi)
     oneslist = [ITensor(ones(nbins), sites[i]) for i in 1:d]

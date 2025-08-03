@@ -88,7 +88,7 @@ mpi_size = MPI.Comm_size(mpi_comm)
 
 n_samples = 10^8
 
-for _ in 1:20
+for _ in 1:3
     start_time = time()
     aca_repressilator()
     end_time = time()
