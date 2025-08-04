@@ -112,7 +112,7 @@ function left_right_dmrgcross(input_tensor, rank::Vector{Int64}, row_idx, col_id
     not_converged = false
 
     bond = ITensor(sites[1], sites[2], links[2])
-    @time for i in 1:tensor_shape[1]
+    for i in 1:tensor_shape[1]
         for j in 1:tensor_shape[2]
             for ridx in 1:rank[2]
                 idx = [[i, j]; col_idx[2][ridx]]
@@ -127,15 +127,14 @@ function left_right_dmrgcross(input_tensor, rank::Vector{Int64}, row_idx, col_id
         not_converged = true
     end
 
-    @show bond
-    @time U, S, V = svd(bond, sites[1]; cutoff=cutoff, maxdim=maxrank, lefttags=tags(links[1]))
+    U, S, V = svd(bond, sites[1]; cutoff=cutoff, maxdim=maxrank, lefttags=tags(links[1]))
     links[1] = commonind(U, S)
     rank[1] = ITensors.dim(links[1])
     println([S[i, i] for i in 1:rank[1]])
     factor[1] = U
     factor[2] = S * V
     Umat = Matrix(U, sites[1], links[1])
-    @time I = maxvol(Umat)
+    I = maxvol(Umat)
     row_idx[1] = I
     P[1] = Umat[I, :]
 
@@ -144,7 +143,7 @@ function left_right_dmrgcross(input_tensor, rank::Vector{Int64}, row_idx, col_id
 
     for k in 2:tensor_order-2
         bond = ITensor(links[k - 1], sites[k], sites[k + 1], links[k + 1])
-        @time for lidx in 1:rank[k - 1]
+        for lidx in 1:rank[k - 1]
             for i in 1:tensor_shape[k]
                 for j in 1:tensor_shape[k + 1]
                     for ridx in 1:rank[k + 1]
@@ -161,8 +160,7 @@ function left_right_dmrgcross(input_tensor, rank::Vector{Int64}, row_idx, col_id
             not_converged = true
         end
 
-        @show bond
-        @time U, S, V = svd(bond, links[k - 1], sites[k]; cutoff=cutoff, maxdim=maxrank, lefttags=tags(links[k]))
+        U, S, V = svd(bond, links[k - 1], sites[k]; cutoff=cutoff, maxdim=maxrank, lefttags=tags(links[k]))
         links[k] = commonind(U, S)
         rank[k] = ITensors.dim(links[k])
         println([S[i, i] for i in 1:rank[k]])
@@ -172,7 +170,7 @@ function left_right_dmrgcross(input_tensor, rank::Vector{Int64}, row_idx, col_id
         noprime!(U)
         comb = combiner(sites[k], links[k - 1])
         Umat = Matrix(comb * U, combinedind(comb), links[k])
-        @time I = maxvol(Umat)
+        I = maxvol(Umat)
         new_idx = [
             [floor(Int64, (idx - 1) / tensor_shape[k]) + 1, mod(idx - 1, tensor_shape[k]) + 1] for idx in I
         ]
@@ -202,7 +200,7 @@ function right_left_dmrgcross(input_tensor, rank::Vector{Int64}, row_idx, col_id
     not_converged = false
 
     bond = ITensor(links[tensor_order - 2], sites[tensor_order - 1], sites[tensor_order])
-    @time for lidx in 1:rank[tensor_order - 2]
+    for lidx in 1:rank[tensor_order - 2]
         for i in 1:tensor_shape[tensor_order - 1]
             for j in 1:tensor_shape[tensor_order]
                 idx = [row_idx[tensor_order - 2][lidx]; [i, j]]
@@ -217,15 +215,14 @@ function right_left_dmrgcross(input_tensor, rank::Vector{Int64}, row_idx, col_id
         not_converged = true
     end
 
-    @show bond
-    @time U, S, V = svd(bond, sites[tensor_order]; cutoff=cutoff, maxdim=maxrank, lefttags=tags(links[tensor_order - 1]))
+    U, S, V = svd(bond, sites[tensor_order]; cutoff=cutoff, maxdim=maxrank, lefttags=tags(links[tensor_order - 1]))
     links[tensor_order - 1] = commonind(U, S)
     rank[tensor_order - 1] = ITensors.dim(links[tensor_order - 1])
     println([S[i, i] for i in 1:rank[tensor_order - 1]])
     factor[tensor_order - 1] = S * V
     factor[tensor_order] = U
     Umat = Matrix(U, links[tensor_order - 1], sites[tensor_order])
-    @time J = maxvol(Matrix(transpose(Umat)))
+    J = maxvol(Matrix(transpose(Umat)))
     col_idx[tensor_order - 1] = J
     P[tensor_order - 1] = Umat[:, J]
 
@@ -234,7 +231,7 @@ function right_left_dmrgcross(input_tensor, rank::Vector{Int64}, row_idx, col_id
 
     for k in tensor_order-2:-1:2
         bond = ITensor(links[k - 1], sites[k], sites[k + 1], links[k + 1])
-        @time for lidx in 1:rank[k - 1]
+        for lidx in 1:rank[k - 1]
             for i in 1:tensor_shape[k]
                 for j in 1:tensor_shape[k + 1]
                     for ridx in 1:rank[k + 1]
@@ -251,8 +248,7 @@ function right_left_dmrgcross(input_tensor, rank::Vector{Int64}, row_idx, col_id
             not_converged = true
         end
 
-        @show bond
-        @time U, S, V = svd(bond, sites[k + 1], links[k + 1]; cutoff=cutoff, maxdim=maxrank, lefttags=tags(links[k]))
+        U, S, V = svd(bond, sites[k + 1], links[k + 1]; cutoff=cutoff, maxdim=maxrank, lefttags=tags(links[k]))
         links[k] = commonind(U, S)
         rank[k] = ITensors.dim(links[k])
         println([S[i, i] for i in 1:rank[k]])
@@ -262,7 +258,7 @@ function right_left_dmrgcross(input_tensor, rank::Vector{Int64}, row_idx, col_id
         noprime!(U)
         comb = combiner(links[k + 1], sites[k + 1])
         Umat = Matrix(comb * U, links[k], combinedind(comb))
-        @time J = maxvol(Matrix(transpose(Umat)))
+        J = maxvol(Matrix(transpose(Umat)))
         new_idx = [
             [floor(Int64, (idx - 1) / rank[k + 1]) + 1, mod(idx - 1, rank[k + 1]) + 1] for idx in J
         ]
