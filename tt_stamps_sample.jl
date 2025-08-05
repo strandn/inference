@@ -72,6 +72,7 @@ function tt_stamps()
         for sampleid in 1:30
             println("Collecting sample $sampleid...")
             sample = Vector{Float64}(undef, d)
+            sampleidx = Vector{Int64}(undef, d)
 
             for count in 1:d
                 Renv = undef
@@ -93,22 +94,25 @@ function tt_stamps()
                 normi = psi[count] * oneslist
                 for i in count-1:-1:1
                     oneslist = ITensor(sites[i])
-                    oneslist[sites[i]=>sample[i]] = 1.0
+                    oneslist[sites[i]=>sampleidx[i]] = 1.0
                     normi *= psi[i] * oneslist
                 end
                 if count != d
                     normi *= Renv
                 end
 
-                while a != b
+                while true
                     mid = div(a + b, 2)
+                    if a == mid
+                        break
+                    end
                     ind = zeros(nbins)
                     ind[1:mid] .= 1.0
                     oneslist = ITensor(ind, sites[count])
                     cdfi = psi[count] * oneslist
                     for i in count-1:-1:1
                         oneslist = ITensor(sites[i])
-                        oneslist[sites[i]=>sample[i]] = 1.0
+                        oneslist[sites[i]=>sampleidx[i]] = 1.0
                         cdfi *= psi[i] * oneslist
                     end
                     if count != d
@@ -121,6 +125,7 @@ function tt_stamps()
                     end
                 end
                 sample[count] = grid[count][a]
+                sampleidx[count] = a
             end
 
             write(file, "$(sample[1]) $(sample[2]) $(sample[3]) $(sample[4]) $(sample[5]) $(sample[6]) $(sample[7]) $(sample[8]) $(sample[9])\n")
