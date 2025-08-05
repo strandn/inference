@@ -94,7 +94,7 @@ function dmrg_repressilator()
     m_idx = searchsortedfirst(grid[7], m_true)
     η_idx = searchsortedfirst(grid[8], η_true)
 
-    offset = neglogposterior(X10_idx, X20_idx, X30_idx, α1_idx, α2_idx, α3_idx, m_idx, η_idx)
+    offset = neglogposterior(X10_true, X20_true, X30_true, α1_true, α2_true, α3_true, m_true, η_true)
 
     println("Starting DMRG cross...")
     flush(stdout)
