@@ -172,12 +172,15 @@ end
 
 d = 4
 maxr = 100
-cutoff = 1.0e-4
-tol = 0.01
-maxiter = 10
+cutoff = 1.0e-6
+tol = 1.0e-4
+maxiter = 3
 
-start_time = time()
-dmrg_exoplanet()
-end_time = time()
-elapsed_time = end_time - start_time
-println("Elapsed time: $elapsed_time seconds")
+for _ in 1:2
+    start_time = time()
+    dmrg_exoplanet()
+    end_time = time()
+    elapsed_time = end_time - start_time
+    println("Elapsed time: $elapsed_time seconds")
+    flush(stdout)
+end

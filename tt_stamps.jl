@@ -176,8 +176,11 @@ maxr = 3
 tol = 0.01
 maxiter = 10
 
-start_time = time()
-tt_stamps()
-end_time = time()
-elapsed_time = end_time - start_time
-println("Elapsed time: $elapsed_time seconds")
+for _ in 1:2
+    start_time = time()
+    tt_stamps()
+    end_time = time()
+    elapsed_time = end_time - start_time
+    println("Elapsed time: $elapsed_time seconds")
+    flush(stdout)
+end

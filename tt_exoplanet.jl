@@ -171,13 +171,15 @@ function tt_exoplanet()
 end
 
 d = 4
-maxr = 100
-cutoff = 1.0e-4
-tol = 0.01
-maxiter = 10
+maxr = 30
+tol = 1.0e-4
+maxiter = 5
 
-start_time = time()
-tt_exoplanet()
-end_time = time()
-elapsed_time = end_time - start_time
-println("Elapsed time: $elapsed_time seconds")
+for _ in 1:2
+    start_time = time()
+    tt_exoplanet()
+    end_time = time()
+    elapsed_time = end_time - start_time
+    println("Elapsed time: $elapsed_time seconds")
+    flush(stdout)
+end
