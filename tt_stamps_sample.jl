@@ -1,6 +1,7 @@
 using Distributions
-
-include("tt_cross.jl")
+using ITensors
+using ITensorMPS
+using HDF5
 
 function hidalgo_like(x...)
     centers = [
@@ -75,9 +76,11 @@ function tt_stamps()
             for count in 1:d
                 Renv = undef
                 if count != d
-                    Renv = psi[d]
+                    oneslist = ITensor(ones(nbins), sites[d])
+                    Renv = psi[d] * oneslist
                     for i in d-1:-1:count+1
-                        Renv *= psi[i]
+                        oneslist = ITensor(ones(nbins), sites[i])
+                        Renv *= psi[i] * oneslist
                     end
                 end
                 u = rand()
@@ -86,38 +89,32 @@ function tt_stamps()
                 a = 1
                 b = nbins
 
-                oneslist = ITensor(sites[1])
-                oneslist[sites[1]=>sample[1]] = 1.0
-                normi = psi[1] * oneslist
-                for i in 2:count-1
+                oneslist = ITensor(ones(nbins), sites[count])
+                normi = psi[count] * oneslist
+                for i in count-1:-1:1
                     oneslist = ITensor(sites[i])
                     oneslist[sites[i]=>sample[i]] = 1.0
                     normi *= psi[i] * oneslist
                 end
-                oneslist = ITensor(ones(nbins), sites[count])
-                normi *= psi[count] * oneslist
                 if count != d
                     normi *= Renv
                 end
 
                 while a != b
                     mid = div(a + b, 2)
-                    oneslist = ITensor(sites[1])
-                    oneslist[sites[1]=>sample[1]] = 1.0
-                    cdfi = psi[1] * oneslist
-                    for i in 2:count-1
+                    ind = zeros(nbins)
+                    ind[1:mid] .= 1.0
+                    oneslist = ITensor(ind, sites[count])
+                    cdfi = psi[count] * oneslist
+                    for i in count-1:-1:1
                         oneslist = ITensor(sites[i])
                         oneslist[sites[i]=>sample[i]] = 1.0
                         cdfi *= psi[i] * oneslist
                     end
-                    ind = zeros(nbins)
-                    ind[1:mid] .= 1.0
-                    oneslist = ITensor(ind, sites[count])
-                    cdfi *= psi[count] * oneslist
                     if count != d
                         cdfi *= Renv
                     end
-                    if cdfi[] / cdfi[] < u
+                    if cdfi[] / normi[] < u
                         a = mid
                     else
                         b = mid
