@@ -99,6 +99,7 @@ end
 d = 9
 iter = 3
 
+start_time = time()
 tt_stamps()
 end_time = time()
 elapsed_time = end_time - start_time

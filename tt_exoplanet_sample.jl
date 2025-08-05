@@ -89,6 +89,7 @@ end
 d = 4
 iter = 5
 
+start_time = time()
 tt_exoplanet()
 end_time = time()
 elapsed_time = end_time - start_time
