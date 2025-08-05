@@ -2,28 +2,18 @@ using ITensors
 using ITensorMPS
 using HDF5
 
-function tt_stamps()
-    m1_dom = (50.0, 140.0)
-    m2_dom = (50.0, 140.0)
-    m3_dom = (50.0, 140.0)
-    ls1_dom = (-2.0, 5.0)
-    ls2_dom = (-2.0, 5.0)
-    ls3_dom = (-2.0, 5.0)
-    a1_dom = (-5.0, 5.0)
-    a2_dom = (-5.0, 5.0)
-    a3_dom = (-5.0, 5.0)
+function tt_exoplanet()
+    v0_dom = (-5.0, 5.0)
+    K_dom = (0.5, 20.0)
+    φ0_dom = (0.0, 2 * pi)
+    lnP_dom = (3.0, 5.0)
 
     nbins = 100
     grid = (
-        LinRange(m1_dom..., nbins + 1),
-        LinRange(m2_dom..., nbins + 1),
-        LinRange(m3_dom..., nbins + 1),
-        LinRange(ls1_dom..., nbins + 1),
-        LinRange(ls2_dom..., nbins + 1),
-        LinRange(ls3_dom..., nbins + 1),
-        LinRange(a1_dom..., nbins + 1),
-        LinRange(a2_dom..., nbins + 1),
-        LinRange(a3_dom..., nbins + 1)
+        LinRange(v0_dom..., nbins + 1),
+        LinRange(K_dom..., nbins + 1),
+        LinRange(φ0_dom..., nbins + 1),
+        LinRange(lnP_dom..., nbins + 1)
     )
 
     f = h5open("tt_cross_$iter.h5", "r")
@@ -31,7 +21,7 @@ function tt_stamps()
     close(f)
 
     sites = siteinds(psi)
-    open("tt_stamps_samples.txt", "w") do file
+    open("tt_exoplanet_samples.txt", "w") do file
         for sampleid in 1:30
             println("Collecting sample $sampleid...")
             sample = Vector{Float64}(undef, d)
@@ -91,15 +81,15 @@ function tt_stamps()
                 sampleidx[count] = a
             end
 
-            write(file, "$(sample[1]) $(sample[2]) $(sample[3]) $(sample[4]) $(sample[5]) $(sample[6]) $(sample[7]) $(sample[8]) $(sample[9])\n")
+            write(file, "$(sample[1]) $(sample[2]) $(sample[3]) $(sample[4])\n")
         end
     end
 end
 
-d = 9
-iter = 3
+d = 4
+iter = 5
 
-tt_stamps()
+tt_exoplanet()
 end_time = time()
 elapsed_time = end_time - start_time
 println("Elapsed time: $elapsed_time seconds")
