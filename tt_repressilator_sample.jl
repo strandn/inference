@@ -2,7 +2,7 @@ using ITensors
 using ITensorMPS
 using HDF5
 
-function dmrg_repressilator()
+function tt_repressilator()
     X10_dom = (0.5, 3.5)
     X20_dom = (0.5, 3.5)
     X30_dom = (0.5, 3.5)
@@ -24,7 +24,7 @@ function dmrg_repressilator()
         LinRange(η_dom..., nbins + 1)
     )
 
-    f = h5open("dmrg_cross_$iter.h5", "r")
+    f = h5open("tt_cross_$iter.h5", "r")
     psi = read(f, "factor", MPS)
     close(f)
 
@@ -89,7 +89,7 @@ function dmrg_repressilator()
     # println(LinearAlgebra.norm(varlist - cov0) / LinearAlgebra.norm(cov0))
     flush(stdout)
 
-    open("dmrg_repressilator_samples.txt", "w") do file
+    open("tt_repressilator_samples.txt", "w") do file
         for sampleid in 1:30
             println("Collecting sample $sampleid...")
             sample = Vector{Float64}(undef, d)
@@ -158,7 +158,7 @@ d = 8
 iter = 10
 
 start_time = time()
-dmrg_repressilator()
+tt_repressilator()
 end_time = time()
 elapsed_time = end_time - start_time
 println("Elapsed time: $elapsed_time seconds")
