@@ -219,7 +219,7 @@ function tt_repressilator()
 end
 
 d = 8
-iter = 1
+iter = 10
 
 start_time = time()
 tt_repressilator()
