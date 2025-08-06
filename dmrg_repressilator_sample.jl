@@ -29,6 +29,66 @@ function tt_repressilator()
     close(f)
 
     sites = siteinds(psi)
+    oneslist = [ITensor(ones(nbins), sites[i]) for i in 1:d]
+    norm = psi[1] * oneslist[1]
+    for i in 2:d
+        norm *= psi[i] * oneslist[i]
+    end
+    psi /= norm[]
+
+    domprod = (X10_dom[2] - X10_dom[1]) * (X20_dom[2] - X20_dom[1]) * (X30_dom[2] - X30_dom[1]) * (α1_dom[2] - α1_dom[1]) * (α2_dom[2] - α2_dom[1]) * (α3_dom[2] - α3_dom[1]) * (m_dom[2] - m_dom[1]) * (η_dom[2] - η_dom[1])
+    println(offset - log(norm[] * domprod / 100^d))
+
+    vec1list = [ITensor(collect(grid[i][1:nbins]), sites[i]) for i in 1:d]
+    meanlist = zeros(d)
+    for i in 1:d
+        mean = psi[1] * (i == 1 ? vec1list[1] : oneslist[1])
+        for k in 2:d
+            mean *= psi[k] * (i == k ? vec1list[k] : oneslist[k])
+        end
+        meanlist[i] = mean[]
+    end
+    println(meanlist)
+
+    # cov0 = undef
+    # open("repressilator0cov.txt", "r") do file
+    #     cov0 = eval(Meta.parse(readline(file)))
+    # end
+
+    vec2list = [ITensor(collect(grid[i][1:nbins] .- meanlist[i]), sites[i]) for i in 1:d]
+    vec22list = [ITensor(collect((grid[i][1:nbins] .- meanlist[i]).^2), sites[i]) for i in 1:d]
+    varlist = zeros(d, d)
+    for i in 1:d
+        for j in i:d
+            var = psi[1]
+            if i == 1
+                if i == j
+                    var *= vec22list[1]
+                else
+                    var *= vec2list[1]
+                end
+            else
+                var *= oneslist[1]
+            end
+            for k in 2:d
+                var *= psi[k]
+                if i == k || j == k
+                    if i == j
+                        var *= vec22list[k]
+                    else
+                        var *= vec2list[k]
+                    end
+                else
+                    var *= oneslist[k]
+                end
+            end
+            varlist[i, j] = varlist[j, i] = var[]
+        end
+    end
+    display(varlist)
+    # println(LinearAlgebra.norm(varlist - cov0) / LinearAlgebra.norm(cov0))
+    flush(stdout)
+
     open("dmrg_repressilator_samples.txt", "w") do file
         for sampleid in 1:30
             println("Collecting sample $sampleid...")
@@ -38,11 +98,11 @@ function tt_repressilator()
             for count in 1:d
                 Renv = undef
                 if count != d
-                    oneslist = ITensor(ones(nbins), sites[d])
-                    Renv = psi[d] * oneslist
+                    ones = ITensor(ones(nbins), sites[d])
+                    Renv = psi[d] * ones
                     for i in d-1:-1:count+1
-                        oneslist = ITensor(ones(nbins), sites[i])
-                        Renv *= psi[i] * oneslist
+                        ones = ITensor(ones(nbins), sites[i])
+                        Renv *= psi[i] * ones
                     end
                 end
                 u = rand()
@@ -51,12 +111,12 @@ function tt_repressilator()
                 a = 1
                 b = nbins
 
-                oneslist = ITensor(ones(nbins), sites[count])
-                normi = psi[count] * oneslist
+                ones = ITensor(ones(nbins), sites[count])
+                normi = psi[count] * ones
                 for i in count-1:-1:1
-                    oneslist = ITensor(sites[i])
-                    oneslist[sites[i]=>sampleidx[i]] = 1.0
-                    normi *= psi[i] * oneslist
+                    ones = ITensor(sites[i])
+                    ones[sites[i]=>sampleidx[i]] = 1.0
+                    normi *= psi[i] * ones
                 end
                 if count != d
                     normi *= Renv
@@ -69,12 +129,12 @@ function tt_repressilator()
                     end
                     ind = zeros(nbins)
                     ind[1:mid] .= 1.0
-                    oneslist = ITensor(ind, sites[count])
-                    cdfi = psi[count] * oneslist
+                    ones = ITensor(ind, sites[count])
+                    cdfi = psi[count] * ones
                     for i in count-1:-1:1
-                        oneslist = ITensor(sites[i])
-                        oneslist[sites[i]=>sampleidx[i]] = 1.0
-                        cdfi *= psi[i] * oneslist
+                        ones = ITensor(sites[i])
+                        ones[sites[i]=>sampleidx[i]] = 1.0
+                        cdfi *= psi[i] * ones
                     end
                     if count != d
                         cdfi *= Renv

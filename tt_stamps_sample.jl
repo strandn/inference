@@ -40,11 +40,11 @@ function tt_stamps()
             for count in 1:d
                 Renv = undef
                 if count != d
-                    oneslist = ITensor(ones(nbins), sites[d])
-                    Renv = psi[d] * oneslist
+                    ones = ITensor(ones(nbins), sites[d])
+                    Renv = psi[d] * ones
                     for i in d-1:-1:count+1
-                        oneslist = ITensor(ones(nbins), sites[i])
-                        Renv *= psi[i] * oneslist
+                        ones = ITensor(ones(nbins), sites[i])
+                        Renv *= psi[i] * ones
                     end
                 end
                 u = rand()
@@ -53,12 +53,12 @@ function tt_stamps()
                 a = 1
                 b = nbins
 
-                oneslist = ITensor(ones(nbins), sites[count])
-                normi = psi[count] * oneslist
+                ones = ITensor(ones(nbins), sites[count])
+                normi = psi[count] * ones
                 for i in count-1:-1:1
-                    oneslist = ITensor(sites[i])
-                    oneslist[sites[i]=>sampleidx[i]] = 1.0
-                    normi *= psi[i] * oneslist
+                    ones = ITensor(sites[i])
+                    ones[sites[i]=>sampleidx[i]] = 1.0
+                    normi *= psi[i] * ones
                 end
                 if count != d
                     normi *= Renv
@@ -71,12 +71,12 @@ function tt_stamps()
                     end
                     ind = zeros(nbins)
                     ind[1:mid] .= 1.0
-                    oneslist = ITensor(ind, sites[count])
-                    cdfi = psi[count] * oneslist
+                    ones = ITensor(ind, sites[count])
+                    cdfi = psi[count] * ones
                     for i in count-1:-1:1
-                        oneslist = ITensor(sites[i])
-                        oneslist[sites[i]=>sampleidx[i]] = 1.0
-                        cdfi *= psi[i] * oneslist
+                        ones = ITensor(sites[i])
+                        ones[sites[i]=>sampleidx[i]] = 1.0
+                        cdfi *= psi[i] * ones
                     end
                     if count != d
                         cdfi *= Renv
