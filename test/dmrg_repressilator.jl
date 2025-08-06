@@ -46,13 +46,6 @@ function dmrg_repressilator()
     tspan = (0.0, 30.0)
     nsteps = 50
 
-    X10_true = X20_true = X30_true = 2.0
-    α1_true = 10.0
-    α2_true = 15.0
-    α3_true = 20.0
-    m_true = 4.0
-    η_true = 1.0
-    
     data = []
     open("repressilator_data.txt", "r") do file
         for line in eachline(file)
@@ -64,6 +57,13 @@ function dmrg_repressilator()
     mu = [2.0, 2.0, 2.0, 15.0, 15.0, 15.0, 5.0, 5.0]
     sigma = [4.0, 4.0, 4.0, 25.0, 25.0, 25.0, 25.0, 25.0]
     neglogposterior(X10, X20, X30, α1, α2, α3, m, η) = V([X10, X20, X30, α1, α2, α3, m, η], tspan, nsteps, data, mu, sigma)
+
+    X10_true = X20_true = X30_true = 2.0
+    α1_true = 10.0
+    α2_true = 15.0
+    α3_true = 20.0
+    m_true = 4.0
+    η_true = 1.0
 
     X10_dom = (0.5, 3.5)
     X20_dom = (0.5, 3.5)
@@ -96,180 +96,6 @@ function dmrg_repressilator()
 
     offset = neglogposterior(X10_true, X20_true, X30_true, α1_true, α2_true, α3_true, m_true, η_true)
 
-    println("Outputting function slices...")
-    flush(stdout)
-
-    open("repressilator_slice1_1.txt", "w") do file
-        for i in 1:nbins
-            for j in 1:nbins
-                nlp = neglogposterior(grid[1][i], grid[2][j], grid[3][X30_idx], grid[4][α1_idx], grid[5][α2_idx], grid[6][α3_idx], grid[7][m_idx], grid[8][η_idx])
-                write(file, "$(grid[1][i]) $(grid[2][j]) $(exp(offset - nlp))\n")
-            end
-        end
-    end
-    open("repressilator_slice1_2.txt", "w") do file
-        for i in 1:nbins
-            for j in 1:nbins
-                nlp = neglogposterior(grid[1][X10_idx], grid[2][i], grid[3][j], grid[4][α1_idx], grid[5][α2_idx], grid[6][α3_idx], grid[7][m_idx], grid[8][η_idx])
-                write(file, "$(grid[2][i]) $(grid[3][j]) $(exp(offset - nlp))\n")
-            end
-        end
-    end
-    open("repressilator_slice1_3.txt", "w") do file
-        for i in 1:nbins
-            for j in 1:nbins
-                nlp = neglogposterior(grid[1][X10_idx], grid[2][X20_idx], grid[3][i], grid[4][j], grid[5][α2_idx], grid[6][α3_idx], grid[7][m_idx], grid[8][η_idx])
-                write(file, "$(grid[3][i]) $(grid[4][j]) $(exp(offset - nlp))\n")
-            end
-        end
-    end
-    open("repressilator_slice1_4.txt", "w") do file
-        for i in 1:nbins
-            for j in 1:nbins
-                nlp = neglogposterior(grid[1][X10_idx], grid[2][X20_idx], grid[3][X30_idx], grid[4][i], grid[5][j], grid[6][α3_idx], grid[7][m_idx], grid[8][η_idx])
-                write(file, "$(grid[4][i]) $(grid[5][j]) $(exp(offset - nlp))\n")
-            end
-        end
-    end
-    open("repressilator_slice1_5.txt", "w") do file
-        for i in 1:nbins
-            for j in 1:nbins
-                nlp = neglogposterior(grid[1][X10_idx], grid[2][X20_idx], grid[3][X30_idx], grid[4][α1_idx], grid[5][i], grid[6][j], grid[7][m_idx], grid[8][η_idx])
-                write(file, "$(grid[5][i]) $(grid[6][j]) $(exp(offset - nlp))\n")
-            end
-        end
-    end
-    open("repressilator_slice1_6.txt", "w") do file
-        for i in 1:nbins
-            for j in 1:nbins
-                nlp = neglogposterior(grid[1][X10_idx], grid[2][X20_idx], grid[3][X30_idx], grid[4][α1_idx], grid[5][α2_idx], grid[6][i], grid[7][j], grid[8][η_idx])
-                write(file, "$(grid[6][i]) $(grid[7][j]) $(exp(offset - nlp))\n")
-            end
-        end
-    end
-    open("repressilator_slice1_7.txt", "w") do file
-        for i in 1:nbins
-            for j in 1:nbins
-                nlp = neglogposterior(grid[1][X10_idx], grid[2][X20_idx], grid[3][X30_idx], grid[4][α1_idx], grid[5][α2_idx], grid[6][α3_idx], grid[7][i], grid[8][j])
-                write(file, "$(grid[7][i]) $(grid[8][j]) $(exp(offset - nlp))\n")
-            end
-        end
-    end
-
-    open("repressilator_slice2_1.txt", "w") do file
-        for i in 1:nbins
-            for j in 1:nbins
-                nlp = neglogposterior(grid[1][i], grid[2][j], grid[3][X30_idx], grid[4][α2_idx], grid[5][α3_idx], grid[6][α1_idx], grid[7][m_idx], grid[8][η_idx])
-                write(file, "$(grid[1][i]) $(grid[2][j]) $(exp(offset - nlp))\n")
-            end
-        end
-    end
-    open("repressilator_slice2_2.txt", "w") do file
-        for i in 1:nbins
-            for j in 1:nbins
-                nlp = neglogposterior(grid[1][X10_idx], grid[2][i], grid[3][j], grid[4][α2_idx], grid[5][α3_idx], grid[6][α1_idx], grid[7][m_idx], grid[8][η_idx])
-                write(file, "$(grid[2][i]) $(grid[3][j]) $(exp(offset - nlp))\n")
-            end
-        end
-    end
-    open("repressilator_slice2_3.txt", "w") do file
-        for i in 1:nbins
-            for j in 1:nbins
-                nlp = neglogposterior(grid[1][X10_idx], grid[2][X20_idx], grid[3][i], grid[4][j], grid[5][α3_idx], grid[6][α1_idx], grid[7][m_idx], grid[8][η_idx])
-                write(file, "$(grid[3][i]) $(grid[4][j]) $(exp(offset - nlp))\n")
-            end
-        end
-    end
-    open("repressilator_slice2_4.txt", "w") do file
-        for i in 1:nbins
-            for j in 1:nbins
-                nlp = neglogposterior(grid[1][X10_idx], grid[2][X20_idx], grid[3][X30_idx], grid[4][i], grid[5][j], grid[6][α1_idx], grid[7][m_idx], grid[8][η_idx])
-                write(file, "$(grid[4][i]) $(grid[5][j]) $(exp(offset - nlp))\n")
-            end
-        end
-    end
-    open("repressilator_slice2_5.txt", "w") do file
-        for i in 1:nbins
-            for j in 1:nbins
-                nlp = neglogposterior(grid[1][X10_idx], grid[2][X20_idx], grid[3][X30_idx], grid[4][α2_idx], grid[5][i], grid[6][j], grid[7][m_idx], grid[8][η_idx])
-                write(file, "$(grid[5][i]) $(grid[6][j]) $(exp(offset - nlp))\n")
-            end
-        end
-    end
-    open("repressilator_slice2_6.txt", "w") do file
-        for i in 1:nbins
-            for j in 1:nbins
-                nlp = neglogposterior(grid[1][X10_idx], grid[2][X20_idx], grid[3][X30_idx], grid[4][α2_idx], grid[5][α3_idx], grid[6][i], grid[7][j], grid[8][η_idx])
-                write(file, "$(grid[6][i]) $(grid[7][j]) $(exp(offset - nlp))\n")
-            end
-        end
-    end
-    open("repressilator_slice2_7.txt", "w") do file
-        for i in 1:nbins
-            for j in 1:nbins
-                nlp = neglogposterior(grid[1][X10_idx], grid[2][X20_idx], grid[3][X30_idx], grid[4][α2_idx], grid[5][α3_idx], grid[6][α1_idx], grid[7][i], grid[8][j])
-                write(file, "$(grid[7][i]) $(grid[8][j]) $(exp(offset - nlp))\n")
-            end
-        end
-    end
-
-    open("repressilator_slice3_1.txt", "w") do file
-        for i in 1:nbins
-            for j in 1:nbins
-                nlp = neglogposterior(grid[1][i], grid[2][j], grid[3][X30_idx], grid[4][α3_idx], grid[5][α1_idx], grid[6][α2_idx], grid[7][m_idx], grid[8][η_idx])
-                write(file, "$(grid[1][i]) $(grid[2][j]) $(exp(offset - nlp))\n")
-            end
-        end
-    end
-    open("repressilator_slice3_2.txt", "w") do file
-        for i in 1:nbins
-            for j in 1:nbins
-                nlp = neglogposterior(grid[1][X10_idx], grid[2][i], grid[3][j], grid[4][α3_idx], grid[5][α1_idx], grid[6][α2_idx], grid[7][m_idx], grid[8][η_idx])
-                write(file, "$(grid[2][i]) $(grid[3][j]) $(exp(offset - nlp))\n")
-            end
-        end
-    end
-    open("repressilator_slice3_3.txt", "w") do file
-        for i in 1:nbins
-            for j in 1:nbins
-                nlp = neglogposterior(grid[1][X10_idx], grid[2][X20_idx], grid[3][i], grid[4][j], grid[5][α1_idx], grid[6][α2_idx], grid[7][m_idx], grid[8][η_idx])
-                write(file, "$(grid[3][i]) $(grid[4][j]) $(exp(offset - nlp))\n")
-            end
-        end
-    end
-    open("repressilator_slice3_4.txt", "w") do file
-        for i in 1:nbins
-            for j in 1:nbins
-                nlp = neglogposterior(grid[1][X10_idx], grid[2][X20_idx], grid[3][X30_idx], grid[4][i], grid[5][j], grid[6][α2_idx], grid[7][m_idx], grid[8][η_idx])
-                write(file, "$(grid[4][i]) $(grid[5][j]) $(exp(offset - nlp))\n")
-            end
-        end
-    end
-    open("repressilator_slice3_5.txt", "w") do file
-        for i in 1:nbins
-            for j in 1:nbins
-                nlp = neglogposterior(grid[1][X10_idx], grid[2][X20_idx], grid[3][X30_idx], grid[4][α3_idx], grid[5][i], grid[6][j], grid[7][m_idx], grid[8][η_idx])
-                write(file, "$(grid[5][i]) $(grid[6][j]) $(exp(offset - nlp))\n")
-            end
-        end
-    end
-    open("repressilator_slice3_6.txt", "w") do file
-        for i in 1:nbins
-            for j in 1:nbins
-                nlp = neglogposterior(grid[1][X10_idx], grid[2][X20_idx], grid[3][X30_idx], grid[4][α3_idx], grid[5][α1_idx], grid[6][i], grid[7][j], grid[8][η_idx])
-                write(file, "$(grid[6][i]) $(grid[7][j]) $(exp(offset - nlp))\n")
-            end
-        end
-    end
-    open("repressilator_slice3_7.txt", "w") do file
-        for i in 1:nbins
-            for j in 1:nbins
-                nlp = neglogposterior(grid[1][X10_idx], grid[2][X20_idx], grid[3][X30_idx], grid[4][α3_idx], grid[5][α1_idx], grid[6][α2_idx], grid[7][i], grid[8][j])
-                write(file, "$(grid[7][i]) $(grid[8][j]) $(exp(offset - nlp))\n")
-            end
-        end
-    end
-
     println("Starting DMRG cross...")
     flush(stdout)
 
@@ -283,14 +109,111 @@ function dmrg_repressilator()
         [X10_idx, X20_idx, X30_idx, α2_idx, α3_idx, α1_idx, m_idx, η_idx],
         [X10_idx, X20_idx, X30_idx, α3_idx, α1_idx, α2_idx, m_idx, η_idx]
     ]
-    # dmrg_cross(A, maxr, cutoff, tol, maxiter)
-    dmrg_cross(A, maxr, cutoff, tol, maxiter, seedlist)
+    # psi = dmrg_cross(A, maxr, cutoff, tol, maxiter)
+    psi = dmrg_cross(A, maxr, cutoff, tol, maxiter, seedlist)
+
+    sites = siteinds(psi)
+    oneslist = [ITensor(ones(nbins), sites[i]) for i in 1:d]
+    norm = psi[1] * oneslist[1]
+    for i in 2:d
+        norm *= psi[i] * oneslist[i]
+    end
+    psi /= norm[]
+
+    domprod = (X10_dom[2] - X10_dom[1]) * (X20_dom[2] - X20_dom[1]) * (X30_dom[2] - X30_dom[1]) * (α1_dom[2] - α1_dom[1]) * (α2_dom[2] - α2_dom[1]) * (α3_dom[2] - α3_dom[1]) * (m_dom[2] - m_dom[1]) * (η_dom[2] - η_dom[1])
+    println(offset - log(norm[] * domprod / 100^d))
+
+    for pos in 1:d-1
+        Lenv = undef
+        Renv = undef
+        if pos != 1
+            Lenv = psi[1] * oneslist[1]
+            for i in 2:pos-1
+                Lenv *= psi[i] * oneslist[i]
+            end
+        end
+        if pos != d - 1
+            Renv = psi[d] * oneslist[d]
+            for i in d-1:-1:pos+2
+                Renv *= psi[i] * oneslist[i]
+            end
+        end
+        result = undef
+        if pos == 1
+            result = psi[1] * psi[2] * Renv
+        elseif pos + 1 == d
+            result = Lenv * psi[d - 1] * psi[d]
+        else
+            result = Lenv * psi[pos] * psi[pos + 1] * Renv
+        end
+        open("dmrg_repressilator_marginal_$pos.txt", "w") do file
+            for i in 1:nbins
+                for j in 1:nbins
+                    write(file, "$(grid[pos][i]) $(grid[pos + 1][j]) $(result[sites[pos] => i, sites[pos + 1] => j])\n")
+                end
+            end
+        end
+    end
+
+    vec1list = [ITensor(collect(grid[i][1:nbins]), sites[i]) for i in 1:d]
+    meanlist = zeros(d)
+    for i in 1:d
+        mean = psi[1] * (i == 1 ? vec1list[1] : oneslist[1])
+        for k in 2:d
+            mean *= psi[k] * (i == k ? vec1list[k] : oneslist[k])
+        end
+        meanlist[i] = mean[]
+    end
+    println(meanlist)
+
+    # cov0 = undef
+    # open("repressilator0cov.txt", "r") do file
+    #     cov0 = eval(Meta.parse(readline(file)))
+    # end
+
+    vec2list = [ITensor(collect(grid[i][1:nbins] .- meanlist[i]), sites[i]) for i in 1:d]
+    vec22list = [ITensor(collect((grid[i][1:nbins] .- meanlist[i]).^2), sites[i]) for i in 1:d]
+    varlist = zeros(d, d)
+    for i in 1:d
+        for j in i:d
+            var = psi[1]
+            if i == 1
+                if i == j
+                    var *= vec22list[1]
+                else
+                    var *= vec2list[1]
+                end
+            else
+                var *= oneslist[1]
+            end
+            for k in 2:d
+                var *= psi[k]
+                if i == k || j == k
+                    if i == j
+                        var *= vec22list[k]
+                    else
+                        var *= vec2list[k]
+                    end
+                else
+                    var *= oneslist[k]
+                end
+            end
+            varlist[i, j] = varlist[j, i] = var[]
+        end
+    end
+    display(varlist)
+    # println(LinearAlgebra.norm(varlist - cov0) / LinearAlgebra.norm(cov0))
+    flush(stdout)
 end
 
 d = 8
 maxr = 100
-cutoff = 1.0e-12
+cutoff = 0.001
 tol = 1.0e-4
 maxiter = 10
 
+start_time = time()
 dmrg_repressilator()
+end_time = time()
+elapsed_time = end_time - start_time
+println("Elapsed time: $elapsed_time seconds")
