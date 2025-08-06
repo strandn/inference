@@ -208,7 +208,7 @@ end
 
 d = 8
 maxr = 100
-cutoff = 0.01
+cutoff = 1.0e-4
 tol = 1.0e-4
 maxiter = 10
 
