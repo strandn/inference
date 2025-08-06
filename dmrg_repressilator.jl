@@ -109,8 +109,8 @@ function dmrg_repressilator()
         [X10_idx, X20_idx, X30_idx, α2_idx, α3_idx, α1_idx, m_idx, η_idx],
         [X10_idx, X20_idx, X30_idx, α3_idx, α1_idx, α2_idx, m_idx, η_idx]
     ]
-    # dmrg_cross(A, maxr, cutoff, tol, maxiter)
-    dmrg_cross(A, maxr, cutoff, tol, maxiter, seedlist)
+    # psi = dmrg_cross(A, maxr, cutoff, tol, maxiter)
+    psi = dmrg_cross(A, maxr, cutoff, tol, maxiter, seedlist)
 
     sites = siteinds(psi)
     oneslist = [ITensor(ones(nbins), sites[i]) for i in 1:d]
@@ -120,7 +120,7 @@ function dmrg_repressilator()
     end
     psi /= norm[]
 
-    domprod = (X10_dom[2] - X10_dom[1]) * (X20_dom[2] - X20_dom[1]) * (X30_dom[2] - X30_dom[1]) * (α1_dom[2] - α1_dom[1]) * (α2_dom[2] - α2_dom[1]) * (α3_dom[2] - α3_dom[1]) * (n_dom[2] - n_dom[1]) * (η_dom[2] - αη_dom[1])
+    domprod = (X10_dom[2] - X10_dom[1]) * (X20_dom[2] - X20_dom[1]) * (X30_dom[2] - X30_dom[1]) * (α1_dom[2] - α1_dom[1]) * (α2_dom[2] - α2_dom[1]) * (α3_dom[2] - α3_dom[1]) * (m_dom[2] - m_dom[1]) * (η_dom[2] - αη_dom[1])
     println(offset - log(norm[] * domprod / 100^d))
 
     for pos in 1:d-1
