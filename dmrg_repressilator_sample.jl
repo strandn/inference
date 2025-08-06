@@ -162,11 +162,11 @@ function dmrg_repressilator()
             for count in 1:d
                 Renv = undef
                 if count != d
-                    ones = ITensor(ones(nbins), sites[d])
-                    Renv = psi[d] * ones
+                    ind = ITensor(ones(nbins), sites[d])
+                    Renv = psi[d] * ind
                     for i in d-1:-1:count+1
-                        ones = ITensor(ones(nbins), sites[i])
-                        Renv *= psi[i] * ones
+                        ind = ITensor(ones(nbins), sites[i])
+                        Renv *= psi[i] * ind
                     end
                 end
                 u = rand()
@@ -175,12 +175,12 @@ function dmrg_repressilator()
                 a = 1
                 b = nbins
 
-                ones = ITensor(ones(nbins), sites[count])
-                normi = psi[count] * ones
+                ind = ITensor(ones(nbins), sites[count])
+                normi = psi[count] * ind
                 for i in count-1:-1:1
-                    ones = ITensor(sites[i])
-                    ones[sites[i]=>sampleidx[i]] = 1.0
-                    normi *= psi[i] * ones
+                    ind = ITensor(sites[i])
+                    ind[sites[i]=>sampleidx[i]] = 1.0
+                    normi *= psi[i] * ind
                 end
                 if count != d
                     normi *= Renv
@@ -191,14 +191,14 @@ function dmrg_repressilator()
                     if a == mid
                         break
                     end
-                    ind = zeros(nbins)
-                    ind[1:mid] .= 1.0
-                    ones = ITensor(ind, sites[count])
-                    cdfi = psi[count] * ones
+                    indvec = zeros(nbins)
+                    indvec[1:mid] .= 1.0
+                    ind = ITensor(indvec, sites[count])
+                    cdfi = psi[count] * ind
                     for i in count-1:-1:1
-                        ones = ITensor(sites[i])
-                        ones[sites[i]=>sampleidx[i]] = 1.0
-                        cdfi *= psi[i] * ones
+                        ind = ITensor(sites[i])
+                        ind[sites[i]=>sampleidx[i]] = 1.0
+                        cdfi *= psi[i] * ind
                     end
                     if count != d
                         cdfi *= Renv
