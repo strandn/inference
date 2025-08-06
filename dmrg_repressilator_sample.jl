@@ -2,6 +2,14 @@ using DifferentialEquations
 
 include("tt_cross.jl")
 
+function repressilator!(du, u, p, t)
+    X1, X2, X3 = u
+    α1, α2, α3, m, η = p
+    du[1] = α1 / (1 + X2 ^ m) - η * X1
+    du[2] = α2 / (1 + X3 ^ m) - η * X2
+    du[3] = α3 / (1 + X1 ^ m) - η * X3
+end
+
 function V(r, tspan, nsteps, data, mu, sigma)
     dt = (tspan[2] - tspan[1]) / nsteps
     X10 = r[1]
