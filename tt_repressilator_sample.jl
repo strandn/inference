@@ -1,6 +1,38 @@
-using ITensors
-using ITensorMPS
-using HDF5
+using DifferentialEquations
+
+include("tt_cross.jl")
+
+function V(r, tspan, nsteps, data, mu, sigma)
+    dt = (tspan[2] - tspan[1]) / nsteps
+    X10 = r[1]
+    X20 = r[2]
+    X30 = r[3]
+    α1 = r[4]
+    α2 = r[5]
+    α3 = r[6]
+    m = r[7]
+    η = r[8]
+    prob = ODEProblem(repressilator!, [X10, X20, X30], tspan, [α1, α2, α3, m, η])
+    obs = undef
+    try
+        sol = solve(prob, Tsit5(), saveat=dt)
+        if sol.retcode == ReturnCode.Success
+            obs = sol[1, :] + sol[2, :] + sol[3, :]
+        else
+            throw(ErrorException("ODE solver failed"))
+        end
+    catch e
+        obs = fill(Inf, nsteps + 1)
+    end
+
+    s2 = 0.25
+    diff = [X10, X20, X30, α1, α2, α3, m, η] - mu
+    result = 1 / 2 * sum((diff .^ 2) ./ sigma)
+    for i in 1:nsteps+1
+        result += 1 / 2 * log(2 * pi * s2) + (data[i] - obs[i]) ^ 2 / (2 * s2)
+    end
+    return result
+end
 
 function tt_repressilator()
     tspan = (0.0, 30.0)
