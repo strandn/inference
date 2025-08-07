@@ -218,7 +218,7 @@ function dmrg_repressilator()
 end
 
 d = 8
-nbins = 20
+nbins = 30
 iter = 10
 
 start_time = time()

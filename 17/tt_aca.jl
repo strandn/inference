@@ -22,10 +22,11 @@ mutable struct ResFunc{T, N}
     # Convergence threshhold (algorithm stops if the largest residual in the current iteration falls below this number)
     cutoff::T
     offset::T
+    periodicity::NTuple{N, Bool}
 
     # Constructor
-    function ResFunc(f, domain::NTuple{N, Tuple{T, T}}, cutoff::T) where {T, N}
-        new{T, N}(f, N, 0, domain, [[[T[]]]; [Vector{T}[] for _ in 2:N]], [[[T[]]]; [Vector{T}[] for _ in 2:N]], cutoff, 0.0)
+    function ResFunc(f, domain::NTuple{N, Tuple{T, T}}, cutoff::T, periodicity::NTuple{N, Bool}) where {T, N}
+        new{T, N}(f, N, 0, domain, [[[T[]]]; [Vector{T}[] for _ in 2:N]], [[[T[]]]; [Vector{T}[] for _ in 2:N]], cutoff, 0.0, periodicity)
     end
 end
 
@@ -182,10 +183,14 @@ function max_metropolis(F::ResFunc{T, N}, pivot::Vector{T}, n_samples::Int64, ju
         p_new = zeros(order)
         for k in 1:order
             p_new[k] = rand(Normal(chain[i - 1, k], jump_width * (ub[k] - lb[k])))
-            if p_new[k] < lb[k]
-                p_new[k] = lb[k] + abs(p_new[k] - lb[k])
-            elseif p_new[k] > ub[k]
-                p_new[k] = ub[k] - abs(p_new[k] - ub[k])
+            if(F.periodicity[k])
+                p_new[k] = mod(p_new[k] - lb[k], ub[k] - lb[k]) + lb[k]
+            else
+                if p_new[k] < lb[k]
+                    p_new[k] = lb[k] + abs(p_new[k] - lb[k])
+                elseif p_new[k] > ub[k]
+                    p_new[k] = ub[k] - abs(p_new[k] - ub[k])
+                end
             end
         end
 
