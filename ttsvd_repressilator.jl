@@ -169,38 +169,6 @@ function ttsvd_repressilator()
         end
     end
 
-    for pos in 1:d-1
-        Lenv = undef
-        Renv = undef
-        if pos != 1
-            Lenv = psi[1] * oneslist[1]
-            for i in 2:pos-1
-                Lenv *= psi[i] * oneslist[i]
-            end
-        end
-        if pos != d - 1
-            Renv = psi[d] * oneslist[d]
-            for i in d-1:-1:pos+2
-                Renv *= psi[i] * oneslist[i]
-            end
-        end
-        result = undef
-        if pos == 1
-            result = psi[1] * psi[2] * Renv
-        elseif pos + 1 == d
-            result = Lenv * psi[d - 1] * psi[d]
-        else
-            result = Lenv * psi[pos] * psi[pos + 1] * Renv
-        end
-        open("ttsvd_repressilator_marginal_$pos.txt", "w") do file
-            for i in 1:nbins
-                for j in 1:nbins
-                    write(file, "$(grid[pos][i]) $(grid[pos + 1][j]) $(result[sites[pos] => i, sites[pos + 1] => j])\n")
-                end
-            end
-        end
-    end
-
     vec1list = [ITensor(collect(grid[i][1:nbins]), sites[i]) for i in 1:d]
     meanlist = zeros(d)
     for i in 1:d
@@ -250,6 +218,70 @@ function ttsvd_repressilator()
     display(varlist)
     # println(LinearAlgebra.norm(varlist - cov0) / LinearAlgebra.norm(cov0))
     flush(stdout)
+
+    open("ttsvd_repressilator_samples.txt", "w") do file
+        for sampleid in 1:30
+            println("Collecting sample $sampleid...")
+            sample = Vector{Float64}(undef, d)
+            sampleidx = Vector{Int64}(undef, d)
+
+            for count in 1:d
+                Renv = undef
+                if count != d
+                    ind = ITensor(ones(nbins), sites[d])
+                    Renv = psi[d] * ind
+                    for i in d-1:-1:count+1
+                        ind = ITensor(ones(nbins), sites[i])
+                        Renv *= psi[i] * ind
+                    end
+                end
+                u = rand()
+                println("u_$count = $u")
+                flush(stdout)
+                a = 1
+                b = nbins
+
+                ind = ITensor(ones(nbins), sites[count])
+                normi = psi[count] * ind
+                for i in count-1:-1:1
+                    ind = ITensor(sites[i])
+                    ind[sites[i]=>sampleidx[i]] = 1.0
+                    normi *= psi[i] * ind
+                end
+                if count != d
+                    normi *= Renv
+                end
+
+                while true
+                    mid = div(a + b, 2)
+                    if a == mid
+                        break
+                    end
+                    indvec = zeros(nbins)
+                    indvec[1:mid] .= 1.0
+                    ind = ITensor(indvec, sites[count])
+                    cdfi = psi[count] * ind
+                    for i in count-1:-1:1
+                        ind = ITensor(sites[i])
+                        ind[sites[i]=>sampleidx[i]] = 1.0
+                        cdfi *= psi[i] * ind
+                    end
+                    if count != d
+                        cdfi *= Renv
+                    end
+                    if cdfi[] / normi[] < u
+                        a = mid
+                    else
+                        b = mid
+                    end
+                end
+                sample[count] = grid[count][a]
+                sampleidx[count] = a
+            end
+
+            write(file, "$(sample[1]) $(sample[2]) $(sample[3]) $(sample[4]) $(sample[5]) $(sample[6]) $(sample[7]) $(sample[8])\n")
+        end
+    end
 end
 
 d = 8
