@@ -221,4 +221,8 @@ end
 d = 8
 nbins = 10
 cutoff = 0.1
+start_time = time()
 ttsvd_repressilator()
+end_time = time()
+elapsed_time = end_time - start_time
+println("Elapsed time: $elapsed_time seconds")
