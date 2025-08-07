@@ -1,8 +1,70 @@
-using ITensors
-using ITensorMPS
-using HDF5
+using DifferentialEquations
 
-function tt_repressilator()
+include("tt_cross.jl")
+
+function repressilator!(du, u, p, t)
+    X1, X2, X3 = u
+    α1, α2, α3, m, η = p
+    du[1] = α1 / (1 + X2 ^ m) - η * X1
+    du[2] = α2 / (1 + X3 ^ m) - η * X2
+    du[3] = α3 / (1 + X1 ^ m) - η * X3
+end
+
+function V(r, tspan, nsteps, data, mu, sigma)
+    dt = (tspan[2] - tspan[1]) / nsteps
+    X10 = r[1]
+    X20 = r[2]
+    X30 = r[3]
+    α1 = r[4]
+    α2 = r[5]
+    α3 = r[6]
+    m = r[7]
+    η = r[8]
+    prob = ODEProblem(repressilator!, [X10, X20, X30], tspan, [α1, α2, α3, m, η])
+    obs = undef
+    try
+        sol = solve(prob, Tsit5(), saveat=dt)
+        if sol.retcode == ReturnCode.Success
+            obs = sol[1, :] + sol[2, :] + sol[3, :]
+        else
+            throw(ErrorException("ODE solver failed"))
+        end
+    catch e
+        obs = fill(Inf, nsteps + 1)
+    end
+
+    s2 = 0.25
+    diff = [X10, X20, X30, α1, α2, α3, m, η] - mu
+    result = 1 / 2 * sum((diff .^ 2) ./ sigma)
+    for i in 1:nsteps+1
+        result += 1 / 2 * log(2 * pi * s2) + (data[i] - obs[i]) ^ 2 / (2 * s2)
+    end
+    return result
+end
+
+function dmrg_repressilator()
+    tspan = (0.0, 30.0)
+    nsteps = 50
+
+    data = []
+    open("repressilator_data.txt", "r") do file
+        for line in eachline(file)
+            cols = split(line)
+            push!(data, parse(Float64, cols[6]))
+        end
+    end
+
+    mu = [2.0, 2.0, 2.0, 15.0, 15.0, 15.0, 5.0, 5.0]
+    sigma = [4.0, 4.0, 4.0, 25.0, 25.0, 25.0, 25.0, 25.0]
+    neglogposterior(X10, X20, X30, α1, α2, α3, m, η) = V([X10, X20, X30, α1, α2, α3, m, η], tspan, nsteps, data, mu, sigma)
+
+    X10_true = X20_true = X30_true = 2.0
+    α1_true = 10.0
+    α2_true = 15.0
+    α3_true = 20.0
+    m_true = 4.0
+    η_true = 1.0
+
     X10_dom = (0.5, 3.5)
     X20_dom = (0.5, 3.5)
     X30_dom = (0.5, 3.5)
@@ -12,7 +74,6 @@ function tt_repressilator()
     m_dom = (3.0, 5.0)
     η_dom = (0.95, 1.05)
 
-    nbins = 100
     grid = (
         LinRange(X10_dom..., nbins + 1),
         LinRange(X20_dom..., nbins + 1),
@@ -24,11 +85,73 @@ function tt_repressilator()
         LinRange(η_dom..., nbins + 1)
     )
 
+    offset = neglogposterior(X10_true, X20_true, X30_true, α1_true, α2_true, α3_true, m_true, η_true)
+
     f = h5open("dmrg_cross_$iter.h5", "r")
     psi = read(f, "factor", MPS)
     close(f)
 
     sites = siteinds(psi)
+    oneslist = [ITensor(ones(nbins), sites[i]) for i in 1:d]
+    norm = psi[1] * oneslist[1]
+    for i in 2:d
+        norm *= psi[i] * oneslist[i]
+    end
+    psi /= norm[]
+
+    domprod = (X10_dom[2] - X10_dom[1]) * (X20_dom[2] - X20_dom[1]) * (X30_dom[2] - X30_dom[1]) * (α1_dom[2] - α1_dom[1]) * (α2_dom[2] - α2_dom[1]) * (α3_dom[2] - α3_dom[1]) * (m_dom[2] - m_dom[1]) * (η_dom[2] - η_dom[1])
+    println(offset - log(norm[] * domprod / 100^d))
+
+    vec1list = [ITensor(collect(grid[i][1:nbins]), sites[i]) for i in 1:d]
+    meanlist = zeros(d)
+    for i in 1:d
+        mean = psi[1] * (i == 1 ? vec1list[1] : oneslist[1])
+        for k in 2:d
+            mean *= psi[k] * (i == k ? vec1list[k] : oneslist[k])
+        end
+        meanlist[i] = mean[]
+    end
+    println(meanlist)
+
+    # cov0 = undef
+    # open("repressilator0cov.txt", "r") do file
+    #     cov0 = eval(Meta.parse(readline(file)))
+    # end
+
+    vec2list = [ITensor(collect(grid[i][1:nbins] .- meanlist[i]), sites[i]) for i in 1:d]
+    vec22list = [ITensor(collect((grid[i][1:nbins] .- meanlist[i]).^2), sites[i]) for i in 1:d]
+    varlist = zeros(d, d)
+    for i in 1:d
+        for j in i:d
+            var = psi[1]
+            if i == 1
+                if i == j
+                    var *= vec22list[1]
+                else
+                    var *= vec2list[1]
+                end
+            else
+                var *= oneslist[1]
+            end
+            for k in 2:d
+                var *= psi[k]
+                if i == k || j == k
+                    if i == j
+                        var *= vec22list[k]
+                    else
+                        var *= vec2list[k]
+                    end
+                else
+                    var *= oneslist[k]
+                end
+            end
+            varlist[i, j] = varlist[j, i] = var[]
+        end
+    end
+    display(varlist)
+    # println(LinearAlgebra.norm(varlist - cov0) / LinearAlgebra.norm(cov0))
+    flush(stdout)
+
     open("dmrg_repressilator_samples.txt", "w") do file
         for sampleid in 1:30
             println("Collecting sample $sampleid...")
@@ -38,11 +161,11 @@ function tt_repressilator()
             for count in 1:d
                 Renv = undef
                 if count != d
-                    oneslist = ITensor(ones(nbins), sites[d])
-                    Renv = psi[d] * oneslist
+                    ind = ITensor(ones(nbins), sites[d])
+                    Renv = psi[d] * ind
                     for i in d-1:-1:count+1
-                        oneslist = ITensor(ones(nbins), sites[i])
-                        Renv *= psi[i] * oneslist
+                        ind = ITensor(ones(nbins), sites[i])
+                        Renv *= psi[i] * ind
                     end
                 end
                 u = rand()
@@ -51,12 +174,12 @@ function tt_repressilator()
                 a = 1
                 b = nbins
 
-                oneslist = ITensor(ones(nbins), sites[count])
-                normi = psi[count] * oneslist
+                ind = ITensor(ones(nbins), sites[count])
+                normi = psi[count] * ind
                 for i in count-1:-1:1
-                    oneslist = ITensor(sites[i])
-                    oneslist[sites[i]=>sampleidx[i]] = 1.0
-                    normi *= psi[i] * oneslist
+                    ind = ITensor(sites[i])
+                    ind[sites[i]=>sampleidx[i]] = 1.0
+                    normi *= psi[i] * ind
                 end
                 if count != d
                     normi *= Renv
@@ -67,14 +190,14 @@ function tt_repressilator()
                     if a == mid
                         break
                     end
-                    ind = zeros(nbins)
-                    ind[1:mid] .= 1.0
-                    oneslist = ITensor(ind, sites[count])
-                    cdfi = psi[count] * oneslist
+                    indvec = zeros(nbins)
+                    indvec[1:mid] .= 1.0
+                    ind = ITensor(indvec, sites[count])
+                    cdfi = psi[count] * ind
                     for i in count-1:-1:1
-                        oneslist = ITensor(sites[i])
-                        oneslist[sites[i]=>sampleidx[i]] = 1.0
-                        cdfi *= psi[i] * oneslist
+                        ind = ITensor(sites[i])
+                        ind[sites[i]=>sampleidx[i]] = 1.0
+                        cdfi *= psi[i] * ind
                     end
                     if count != d
                         cdfi *= Renv
@@ -95,10 +218,11 @@ function tt_repressilator()
 end
 
 d = 8
+nbins = 20
 iter = 10
 
 start_time = time()
-tt_repressilator()
+dmrg_repressilator()
 end_time = time()
 elapsed_time = end_time - start_time
 println("Elapsed time: $elapsed_time seconds")
