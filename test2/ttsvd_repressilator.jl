@@ -1,6 +1,6 @@
 using DifferentialEquations
-
-include("tt_cross.jl")
+using ITensors
+using ITensorMPS
 
 function repressilator!(du, u, p, t)
     X1, X2, X3 = u
@@ -42,7 +42,7 @@ function V(r, tspan, nsteps, data, mu, sigma)
     return result
 end
 
-function tt_repressilator()
+function ttsvd_repressilator()
     tspan = (0.0, 30.0)
     nsteps = 50
 
@@ -74,7 +74,6 @@ function tt_repressilator()
     m_dom = (3.0, 5.0)
     η_dom = (0.95, 1.05)
 
-    nbins = 100
     grid = (
         LinRange(X10_dom..., nbins + 1),
         LinRange(X20_dom..., nbins + 1),
@@ -85,32 +84,47 @@ function tt_repressilator()
         LinRange(m_dom..., nbins + 1),
         LinRange(η_dom..., nbins + 1)
     )
-    X10_idx = searchsortedfirst(grid[1], X10_true)
-    X20_idx = searchsortedfirst(grid[2], X20_true)
-    X30_idx = searchsortedfirst(grid[3], X30_true)
-    α1_idx = searchsortedfirst(grid[4], α1_true)
-    α2_idx = searchsortedfirst(grid[5], α2_true)
-    α3_idx = searchsortedfirst(grid[6], α3_true)
-    m_idx = searchsortedfirst(grid[7], m_true)
-    η_idx = searchsortedfirst(grid[8], η_true)
 
     offset = neglogposterior(X10_true, X20_true, X30_true, α1_true, α2_true, α3_true, m_true, η_true)
 
-    println("Starting TT cross...")
+    println("Populating tensor...")
+    flush(stdout)
+    
+    posterior(x...) = exp(offset - neglogposterior(x...))
+    A = zeros(Float64, nbins, nbins, nbins, nbins, nbins, nbins, nbins, nbins)
+    Threads.@threads for i1 in 1:nbins
+        for i2 in 1:nbins
+            for i3 in 1:nbins
+                for i4 in 1:nbins
+                    for i5 in 1:nbins
+                        for i6 in 1:nbins
+                            for i7 in 1:nbins
+                                for i8 in 1:nbins
+                                    A[i1, i2, i3, i4, i5, i6, i7, i8] = posterior(grid[1][i1], grid[2][i2], grid[3][i3], grid[4][i4], grid[5][i5], grid[6][i6], grid[7][i7], grid[8][i8])
+                                end
+                            end
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    psivec = Vector{ITensor}(undef, d)
+    sites = siteinds(nbins, d)
+
+    println("Computing posterior TT...\n")
     flush(stdout)
 
-    posterior(x...) = exp(offset - neglogposterior(x...))
-    A = ODEArray(posterior, grid)
-    # seedlist = [
-    #     [X10_idx, X20_idx, X30_idx, α1_idx, α2_idx, α3_idx, m_idx, η_idx]
-    # ]
-    seedlist = [
-        [X10_idx, X20_idx, X30_idx, α1_idx, α2_idx, α3_idx, m_idx, η_idx],
-        [X10_idx, X20_idx, X30_idx, α2_idx, α3_idx, α1_idx, m_idx, η_idx],
-        [X10_idx, X20_idx, X30_idx, α3_idx, α1_idx, α2_idx, m_idx, η_idx]
-    ]
-    # psi = tt_cross(A, maxr, tol, maxiter)
-    psi = tt_cross(A, maxr, tol, maxiter, seedlist)
+    psivec[1], S, Vt = svd(ITensor(A, sites...), sites[1]; cutoff=cutoff)
+    for i in 2:d-1
+        link = commonindex(psivec[i - 1], S)
+        psivec[i], S, Vt = svd(S * Vt, link, sites[i]; cutoff=cutoff)
+    end
+    psivec[d] = S * Vt
+
+    psi = MPS(psivec)
+    @show psi
 
     sites = siteinds(psi)
     oneslist = [ITensor(ones(nbins), sites[i]) for i in 1:d]
@@ -146,7 +160,39 @@ function tt_repressilator()
         else
             result = Lenv * psi[pos] * psi[pos + 1] * Renv
         end
-        open("tt_repressilator_marginal_$pos.txt", "w") do file
+        open("ttsvd_repressilator_marginal_$pos.txt", "w") do file
+            for i in 1:nbins
+                for j in 1:nbins
+                    write(file, "$(grid[pos][i]) $(grid[pos + 1][j]) $(result[sites[pos] => i, sites[pos + 1] => j])\n")
+                end
+            end
+        end
+    end
+
+    for pos in 1:d-1
+        Lenv = undef
+        Renv = undef
+        if pos != 1
+            Lenv = psi[1] * oneslist[1]
+            for i in 2:pos-1
+                Lenv *= psi[i] * oneslist[i]
+            end
+        end
+        if pos != d - 1
+            Renv = psi[d] * oneslist[d]
+            for i in d-1:-1:pos+2
+                Renv *= psi[i] * oneslist[i]
+            end
+        end
+        result = undef
+        if pos == 1
+            result = psi[1] * psi[2] * Renv
+        elseif pos + 1 == d
+            result = Lenv * psi[d - 1] * psi[d]
+        else
+            result = Lenv * psi[pos] * psi[pos + 1] * Renv
+        end
+        open("ttsvd_repressilator_marginal_$pos.txt", "w") do file
             for i in 1:nbins
                 for j in 1:nbins
                     write(file, "$(grid[pos][i]) $(grid[pos + 1][j]) $(result[sites[pos] => i, sites[pos + 1] => j])\n")
@@ -207,12 +253,10 @@ function tt_repressilator()
 end
 
 d = 8
-maxr = 160
-tol = 1.0e-4
-maxiter = 10
-
+nbins = 10
+cutoff = 0.001
 start_time = time()
-tt_repressilator()
+ttsvd_repressilator()
 end_time = time()
 elapsed_time = end_time - start_time
 println("Elapsed time: $elapsed_time seconds")
