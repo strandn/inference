@@ -110,19 +110,20 @@ function ttsvd_repressilator()
         end
     end
 
-    psi = Vector{ITensor}(undef, d)
+    psivec = Vector{ITensor}(undef, d)
     sites = siteinds(nbins, d)
 
     println("Computing posterior TT...\n")
     flush(stdout)
 
-    psi[1], S, Vt = svd(ITensor(A, sites...), sites[1]; cutoff=cutoff)
+    psivec[1], S, Vt = svd(ITensor(A, sites...), sites[1]; cutoff=cutoff)
     for i in 2:d-1
-        link = commonindex(psi[i - 1], S)
-        psi[i], S, Vt = svd(S * Vt, link, sites[i]; cutoff=cutoff)
+        link = commonindex(psivec[i - 1], S)
+        psivec[i], S, Vt = svd(S * Vt, link, sites[i]; cutoff=cutoff)
     end
-    psi[d] = S * Vt
+    psivec[d] = S * Vt
 
+    psi = MPS(psivec)
     @show MPS(psi)
 
     sites = siteinds(psi)
