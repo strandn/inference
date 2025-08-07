@@ -286,7 +286,7 @@ end
 
 d = 8
 nbins = 10
-cutoff = 0.001
+cutoff = 1.0e-6
 start_time = time()
 ttsvd_repressilator()
 end_time = time()
