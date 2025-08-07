@@ -86,7 +86,7 @@ function tt_stamps()
     psi /= norm[]
 
     domprod = (m1_dom[2] - m1_dom[1]) * (m2_dom[2] - m2_dom[1]) * (m3_dom[2] - m3_dom[1]) * (ls1_dom[2] - ls1_dom[1]) * (ls2_dom[2] - ls2_dom[1]) * (ls3_dom[2] - ls3_dom[1]) * (a1_dom[2] - a1_dom[1]) * (a2_dom[2] - a2_dom[1]) * (a3_dom[2] - a3_dom[1])
-    println(offset - log(norm[] * domprod / 100^d))
+    println(offset - log(norm[] * domprod / nbins^d))
 
     for pos in 1:d-1
         Lenv = undef

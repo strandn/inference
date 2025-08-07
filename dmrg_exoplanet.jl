@@ -85,7 +85,7 @@ function dmrg_exoplanet()
     psi /= norm[]
 
     domprod = (v0_dom[2] - v0_dom[1]) * (K_dom[2] - K_dom[1]) * (φ0_dom[2] - φ0_dom[1]) * (lnP_dom[2] - lnP_dom[1])
-    println(offset - log(norm[] * domprod / 100^d))
+    println(offset - log(norm[] * domprod / nbins^d))
 
     for pos in 1:d-1
         Lenv = undef
