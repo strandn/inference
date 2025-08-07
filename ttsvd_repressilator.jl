@@ -124,7 +124,7 @@ function ttsvd_repressilator()
     psivec[d] = S * Vt
 
     psi = MPS(psivec)
-    @show MPS(psi)
+    @show psi
 
     sites = siteinds(psi)
     oneslist = [ITensor(ones(nbins), sites[i]) for i in 1:d]
