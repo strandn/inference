@@ -127,7 +127,7 @@ function left_right_dmrgcross(input_tensor, rank::Vector{Int64}, row_idx, col_id
         not_converged = true
     end
 
-    U, S, V = maxrank == Inf ? svd(bond, sites[1]; cutoff=cutoff, lefttags=tags(links[1])) : svd(bond, sites[1]; cutoff=cutoff, maxdim=maxrank, lefttags=tags(links[1]))
+    U, S, V = maxrank == -1 ? svd(bond, sites[1]; cutoff=cutoff, lefttags=tags(links[1])) : svd(bond, sites[1]; cutoff=cutoff, maxdim=maxrank, lefttags=tags(links[1]))
     links[1] = commonind(U, S)
     rank[1] = ITensors.dim(links[1])
     println([S[i, i] for i in 1:rank[1]])
@@ -160,7 +160,7 @@ function left_right_dmrgcross(input_tensor, rank::Vector{Int64}, row_idx, col_id
             not_converged = true
         end
 
-        U, S, V = maxrank == Inf ? svd(bond, links[k - 1], sites[k]; cutoff=cutoff, lefttags=tags(links[k])) : svd(bond, links[k - 1], sites[k]; cutoff=cutoff, maxdim=maxrank, lefttags=tags(links[k]))
+        U, S, V = maxrank == -1 ? svd(bond, links[k - 1], sites[k]; cutoff=cutoff, lefttags=tags(links[k])) : svd(bond, links[k - 1], sites[k]; cutoff=cutoff, maxdim=maxrank, lefttags=tags(links[k]))
         links[k] = commonind(U, S)
         rank[k] = ITensors.dim(links[k])
         println([S[i, i] for i in 1:rank[k]])
@@ -215,7 +215,7 @@ function right_left_dmrgcross(input_tensor, rank::Vector{Int64}, row_idx, col_id
         not_converged = true
     end
 
-    U, S, V = maxrank == Inf ? svd(bond, sites[tensor_order]; cutoff=cutoff, lefttags=tags(links[tensor_order - 1])) : svd(bond, sites[tensor_order]; cutoff=cutoff, maxdim=maxrank, lefttags=tags(links[tensor_order - 1]))
+    U, S, V = maxrank == -1 ? svd(bond, sites[tensor_order]; cutoff=cutoff, lefttags=tags(links[tensor_order - 1])) : svd(bond, sites[tensor_order]; cutoff=cutoff, maxdim=maxrank, lefttags=tags(links[tensor_order - 1]))
     links[tensor_order - 1] = commonind(U, S)
     rank[tensor_order - 1] = ITensors.dim(links[tensor_order - 1])
     println([S[i, i] for i in 1:rank[tensor_order - 1]])
@@ -248,7 +248,7 @@ function right_left_dmrgcross(input_tensor, rank::Vector{Int64}, row_idx, col_id
             not_converged = true
         end
 
-        U, S, V = maxrank == Inf ? svd(bond, sites[k + 1], links[k + 1]; cutoff=cutoff, lefttags=tags(links[k])) : svd(bond, sites[k + 1], links[k + 1]; cutoff=cutoff, maxdim=maxrank, lefttags=tags(links[k]))
+        U, S, V = maxrank == -1 ? svd(bond, sites[k + 1], links[k + 1]; cutoff=cutoff, lefttags=tags(links[k])) : svd(bond, sites[k + 1], links[k + 1]; cutoff=cutoff, maxdim=maxrank, lefttags=tags(links[k]))
         links[k] = commonind(U, S)
         rank[k] = ITensors.dim(links[k])
         println([S[i, i] for i in 1:rank[k]])
