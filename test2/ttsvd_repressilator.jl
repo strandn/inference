@@ -285,8 +285,8 @@ function ttsvd_repressilator()
 end
 
 d = 8
-nbins = 10
-cutoff = 1.0e-6
+nbins = 20
+cutoff = 0.001
 start_time = time()
 ttsvd_repressilator()
 end_time = time()
