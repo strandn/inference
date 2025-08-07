@@ -165,7 +165,7 @@ function ttsvd_repressilator()
         else
             result = Lenv * psi[pos] * psi[pos + 1] * Renv
         end
-        open("tt_repressilator_marginal_$pos.txt", "w") do file
+        open("ttsvd_repressilator_marginal_$pos.txt", "w") do file
             for i in 1:nbins
                 for j in 1:nbins
                     write(file, "$(grid[pos][i]) $(grid[pos + 1][j]) $(result[sites[pos] => i, sites[pos + 1] => j])\n")
