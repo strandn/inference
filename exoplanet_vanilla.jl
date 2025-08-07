@@ -79,7 +79,7 @@ mpi_rank = MPI.Comm_rank(mpi_comm)
 mpi_size = MPI.Comm_size(mpi_comm)
 
 n_chains = 20
-n_samples = 10^8
+n_samples = 10^9
 jump_width = 0.02
 
 start_time = time()

@@ -110,7 +110,8 @@ function mcmc_mean_cov_parallel(neglogposterior;
         burnin::Int=1000,
         proposal_std::Float64=0.01,
         thin::Int=100,
-        rng::AbstractRNG=Random.GLOBAL_RNG) where {N}
+        rng::AbstractRNG=Random.GLOBAL_RNG,
+        periodicity::NTuple{N, Bool}) where {N}
 
     rank = MPI.Comm_rank(comm)
     nprocs = MPI.Comm_size(comm)
@@ -132,6 +133,8 @@ function mcmc_mean_cov_parallel(neglogposterior;
 
     all_local_samples = Matrix{Float64}(undef, 0, ndim)
 
+    sum_acc_ratio = 0.0
+
     for _ in 1:local_nchains
         x = uniform_sample(domain)
         fx = neglogposterior(x...)
@@ -140,13 +143,26 @@ function mcmc_mean_cov_parallel(neglogposterior;
         scale = [(b - a) for (a, b) in domain]
 
         sample_idx = 0
+        accepted = 0
         for step in 1:steps_needed
             x_prop = x .+ randn(rng, ndim) .* scale .* proposal_std
+            for k in 1:ndim
+                if(periodicity[k])
+                    x_prop[k] = mod(x_prop[k] - domain[k][1], domain[k][2] - domain[k][1]) + domain[k][1]
+                else
+                    if x_prop[k] < domain[k][1]
+                        x_prop[k] = domain[k][1] + abs(x_prop[k] - domain[k][1])
+                    elseif x_prop[k] > domain[k][2]
+                        x_prop[k] = domain[k][2] - abs(x_prop[k] - domain[k][2])
+                    end
+                end
+            end
             fx_prop = neglogposterior(x_prop...)
 
             log_accept_ratio = fx - fx_prop
             if log(rand(rng)) < log_accept_ratio
                 x, fx = x_prop, fx_prop
+                accepted += 1
             end
 
             if step > burnin && (step - burnin) % thin == 0
@@ -155,7 +171,12 @@ function mcmc_mean_cov_parallel(neglogposterior;
             end
         end
 
+        sum_acc_ratio += accepted / steps_needed
         all_local_samples = vcat(all_local_samples, chain_samples)
+    end
+    
+    if rank == 0
+        println("Average acceptance ratio: $(sum_acc_ratio / local_nchains)")
     end
 
     all_local_samples = reshape(all_local_samples, nsamples * local_nchains * ndim)
