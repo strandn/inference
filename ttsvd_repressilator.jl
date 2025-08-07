@@ -84,21 +84,13 @@ function ttsvd_repressilator()
         LinRange(m_dom..., nbins + 1),
         LinRange(η_dom..., nbins + 1)
     )
-    X10_idx = searchsortedfirst(grid[1], X10_true)
-    X20_idx = searchsortedfirst(grid[2], X20_true)
-    X30_idx = searchsortedfirst(grid[3], X30_true)
-    α1_idx = searchsortedfirst(grid[4], α1_true)
-    α2_idx = searchsortedfirst(grid[5], α2_true)
-    α3_idx = searchsortedfirst(grid[6], α3_true)
-    m_idx = searchsortedfirst(grid[7], m_true)
-    η_idx = searchsortedfirst(grid[8], η_true)
 
     offset = neglogposterior(X10_true, X20_true, X30_true, α1_true, α2_true, α3_true, m_true, η_true)
 
     println("Populating tensor...\n")
     
     posterior(x...) = exp(offset - neglogposterior(x...))
-    A = zeros(Float64, nbins, nbins, nbins, nbins)
+    A = zeros(Float64, nbins, nbins, nbins, nbins, nbins, nbins, nbins, nbins)
     Threads.@threads for i1 in 1:nbins
         for i2 in 1:nbins
             for i3 in 1:nbins
