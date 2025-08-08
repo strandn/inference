@@ -74,7 +74,6 @@ function tt_repressilator()
     m_dom = (3.0, 5.0)
     η_dom = (0.95, 1.05)
 
-    nbins = 100
     grid = (
         LinRange(X10_dom..., nbins + 1),
         LinRange(X20_dom..., nbins + 1),
@@ -219,7 +218,8 @@ function tt_repressilator()
 end
 
 d = 8
-iter = 7
+nbins = 100
+iter = 10
 
 start_time = time()
 tt_repressilator()
