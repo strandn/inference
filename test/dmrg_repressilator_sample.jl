@@ -103,6 +103,38 @@ function dmrg_repressilator()
     domprod = (X10_dom[2] - X10_dom[1]) * (X20_dom[2] - X20_dom[1]) * (X30_dom[2] - X30_dom[1]) * (α1_dom[2] - α1_dom[1]) * (α2_dom[2] - α2_dom[1]) * (α3_dom[2] - α3_dom[1]) * (m_dom[2] - m_dom[1]) * (η_dom[2] - η_dom[1])
     println(offset - log(norm[] * domprod / nbins^d))
 
+    for pos in 1:d-1
+        Lenv = undef
+        Renv = undef
+        if pos != 1
+            Lenv = psi[1] * oneslist[1]
+            for i in 2:pos-1
+                Lenv *= psi[i] * oneslist[i]
+            end
+        end
+        if pos != d - 1
+            Renv = psi[d] * oneslist[d]
+            for i in d-1:-1:pos+2
+                Renv *= psi[i] * oneslist[i]
+            end
+        end
+        result = undef
+        if pos == 1
+            result = psi[1] * psi[2] * Renv
+        elseif pos + 1 == d
+            result = Lenv * psi[d - 1] * psi[d]
+        else
+            result = Lenv * psi[pos] * psi[pos + 1] * Renv
+        end
+        open("dmrg_repressilator_marginal_$pos.txt", "w") do file
+            for i in 1:nbins
+                for j in 1:nbins
+                    write(file, "$(grid[pos][i]) $(grid[pos + 1][j]) $(result[sites[pos] => i, sites[pos + 1] => j])\n")
+                end
+            end
+        end
+    end
+
     vec1list = [ITensor(collect(grid[i][1:nbins]), sites[i]) for i in 1:d]
     meanlist = zeros(d)
     for i in 1:d
