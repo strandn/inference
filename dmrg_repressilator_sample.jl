@@ -219,7 +219,7 @@ function dmrg_repressilator()
 end
 
 d = 8
-iter = 10
+iter = 4
 
 start_time = time()
 dmrg_repressilator()
