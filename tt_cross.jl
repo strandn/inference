@@ -304,21 +304,34 @@ function tt_cross(input_tensor, maxrank::Int64, tol::Float64, n_iter_max::Int64,
     row_idx[1] = [[]]
     col_idx[tensor_order] = [[]]
 
+    if isempty(seedlist)
+        push!(seedlist, [rand(1:tensor_shape[i]) for i in 1:tensor_order])
+    end
+
     for k_col_idx in tensor_order-1:-1:1
         col_idx[k_col_idx] = []
-        for seed in seedlist
-            idx = seed[k_col_idx+1:tensor_order]
-            if !(idx in col_idx[k_col_idx])
-                push!(col_idx[k_col_idx], idx)
+        sortedlist = Vector(undef, length(seedlist))
+        for i in eachindex(seedlist)
+            sortedlist[i] = []
+            if k_col_idx == tensor_order - 1
+                for j in 1:tensor_shape[tensor_order]
+                    push!(sortedlist[i], (abs(j - seedlist[i][tensor_order]), [j]))
+                end
+            else
+                for j in 1:tensor_shape[k_col_idx + 1]
+                    for k in 1:rank[k_col_idx + 1]
+                        pivot = [j, col_idx[k_col_idx + 1][k]...]
+                        push!(sortedlist[i], (norm(pivot - seedlist[i][k_col_idx+1:tensor_order]), pivot))
+                    end
+                end
             end
+            sort!(sortedlist[i])
         end
-        count = 1
-        while length(col_idx[k_col_idx]) < rank[k_col_idx]
-            idx = [[mod(count - 1, tensor_shape[k_col_idx]) + 1]; col_idx[k_col_idx + 1][div(count - 1, tensor_shape[k_col_idx]) + 1]]
-            if !(idx in col_idx[k_col_idx])
-                push!(col_idx[k_col_idx], idx)
-            end
-            count = count + 1
+        countlist = fill(1, length(seedlist))
+        for i in 1:rank[k_col_idx]
+            seed_id = mod(i - 1, length(seedlist)) + 1
+            push!(col_idx[k_col_idx], sortedlist[seed_id][countlist[seed_id]][2])
+            countlist[seed_id] += 1
         end
     end
 
