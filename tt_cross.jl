@@ -328,12 +328,18 @@ function tt_cross(input_tensor, maxrank::Int64, tol::Float64, n_iter_max::Int64,
             sort!(sortedlist[i])
         end
         countlist = fill(1, length(seedlist))
-        for i in 1:rank[k_col_idx]
-            seed_id = mod(i - 1, length(seedlist)) + 1
-            push!(col_idx[k_col_idx], sortedlist[seed_id][countlist[seed_id]][2])
-            countlist[seed_id] += 1
+        idx = 1
+        while length(col_idx[k_col_idx]) < rank[k_col_idx]
+            seed_idx = mod(idx - 1, length(seedlist)) + 1
+            pivot = sortedlist[seed_idx][countlist[seed_idx]][2]
+            if !(pivot in col_idx[k_col_idx])
+                push!(col_idx[k_col_idx], pivot)
+            end
+            countlist[seed_idx] += 1
+            idx += 1
         end
     end
+    println(col_idx)
 
     iter = 0
 
