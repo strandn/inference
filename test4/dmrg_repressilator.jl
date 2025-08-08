@@ -207,10 +207,10 @@ end
 
 d = 8
 maxr = -1
-cutoff = 1.0e-5
+cutoff = 0.01
 tol = 1.0e-4
 maxiter = 10
-nbins = 30
+nbins = 40
 
 start_time = time()
 dmrg_repressilator()
