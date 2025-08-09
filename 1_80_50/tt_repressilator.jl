@@ -209,7 +209,7 @@ d = 8
 maxr = 80
 tol = 1.0e-4
 maxiter = 10
-nbins = 80
+nbins = 50
 
 start_time = time()
 tt_repressilator()
