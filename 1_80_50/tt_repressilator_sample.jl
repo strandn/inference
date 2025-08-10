@@ -219,7 +219,7 @@ end
 
 d = 8
 nbins = 50
-iter = 5
+iter = 9
 
 start_time = time()
 tt_repressilator()
