@@ -206,10 +206,10 @@ function tt_repressilator()
 end
 
 d = 8
-maxr = 100
+maxr = 200
 tol = 1.0e-4
-maxiter = 10
-nbins = 100
+maxiter = 20
+nbins = 50
 
 start_time = time()
 tt_repressilator()

@@ -386,6 +386,11 @@ function tt_cross(input_tensor, maxrank::Int64, tol::Float64, n_iter_max::Int64,
         f = h5open("tt_cross_$iter.h5", "w")
         write(f, "factor", factor_new)
         close(f)
+
+        open("tt_cross_$iter.txt", "w") do file
+            write(file, "$(row_idx)\n")
+            write(file, "$(col_idx)\n")
+        end
     end
 
     if iter >= n_iter_max
