@@ -102,6 +102,7 @@ function tt_repressilator()
     flush(stdout)
 end
 
+nbins = 50
 iter = 19
 
 start_time = time()
