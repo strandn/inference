@@ -388,8 +388,8 @@ function tt_cross(input_tensor, maxrank::Int64, tol::Float64, n_iter_max::Int64,
         close(f)
 
         open("tt_cross_$iter.txt", "w") do file
-            write(file, "$(row_idx)\n")
-            write(file, "$(col_idx)\n")
+            write(file, "$row_idx\n")
+            write(file, "$col_idx\n")
         end
     end
 
@@ -501,4 +501,18 @@ end
 
 function Base.getindex(A::ODEArray, elements::Int64...)
     return A.f([A.grid[i][elements[i]] for i in eachindex(elements)]...)
+end
+
+function to_continuous(A::ODEArray, row_idx, col_idx)
+    order = ndims(A)
+
+    I = Vector{Vector{Vector{Float64}}}(undef, order)
+    J = Vector{Vector{Vector{Float64}}}(undef, order)
+    I[1] = []
+    for i in 2:order
+        I[i] = [[A.grid[row[j]] for j in 1:i-1] for row in row_idx[i]]
+        J[i - 1] = [[A.grid[col[j]] for j in i:order] for col in col_idx[i - 1]]
+    end
+    J[order] = []
+    return I, J
 end
