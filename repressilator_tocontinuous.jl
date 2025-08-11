@@ -93,7 +93,7 @@ function tt_repressilator()
 
     row_idx = undef
     col_idx = undef
-    open("tt_cross_iter_$iter.txt", "r") do file
+    open("tt_cross_$iter.txt", "r") do file
         row_idx = eval(Meta.parse(readline(file)))
         col_idx = eval(Meta.parse(readline(file)))
     end
@@ -103,10 +103,6 @@ function tt_repressilator()
         write(file, "$IJ\n")
         write(file, "$offset\n")
     end
-    norm, _, _ = compute_norm(F)
-    println("norm = $norm")
-    println(F.offset - log(norm))
-    flush(stdout)
 end
 
 nbins = 50

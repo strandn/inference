@@ -510,8 +510,8 @@ function to_continuous(A::ODEArray, row_idx, col_idx)
     J = Vector{Vector{Vector{Float64}}}(undef, order)
     I[1] = []
     for i in 2:order
-        I[i] = [[A.grid[row[j]] for j in 1:i-1] for row in row_idx[i]]
-        J[i - 1] = [[A.grid[col[j]] for j in i:order] for col in col_idx[i - 1]]
+        I[i] = [[A.grid[j][row[j]] for j in 1:i-1] for row in row_idx[i]]
+        J[i - 1] = [[A.grid[j][col[j - i + 1]] for j in i:order] for col in col_idx[i - 1]]
     end
     J[order] = []
     return I, J
