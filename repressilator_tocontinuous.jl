@@ -59,6 +59,13 @@ function tt_repressilator()
     sigma = [4.0, 4.0, 4.0, 25.0, 25.0, 25.0, 25.0, 25.0]
     neglogposterior(X10, X20, X30, α1, α2, α3, m, η) = V([X10, X20, X30, α1, α2, α3, m, η], tspan, nsteps, data, mu, sigma)
 
+    X10_true = X20_true = X30_true = 2.0
+    α1_true = 10.0
+    α2_true = 15.0
+    α3_true = 20.0
+    m_true = 4.0
+    η_true = 1.0
+
     X10_dom = (0.5, 3.5)
     X20_dom = (0.5, 3.5)
     X30_dom = (0.5, 3.5)
