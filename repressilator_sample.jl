@@ -67,7 +67,7 @@ function aca_repressilator()
     m_dom = (3.0, 5.0)
     η_dom = (0.95, 1.05)
 
-    F = ResFunc(neglogposterior, (X10_dom, X20_dom, X30_dom, α1_dom, α2_dom, α3_dom, m_dom, η_dom), 0.0)
+    F = ResFunc(neglogposterior, (X10_dom, X20_dom, X30_dom, α1_dom, α2_dom, α3_dom, m_dom, η_dom), 0.0, fill(false, d))
 
     open("repressilator_IJ.txt", "r") do file
         F.I, F.J = eval(Meta.parse(readline(file)))
@@ -92,7 +92,7 @@ function aca_repressilator()
         LinRange(η_dom..., nbins + 1)
     )
 
-    for count in 1:7
+    for count in 1:d-1
         dens = compute_marginal(F, integrals, skeleton, links, count)
         open("repressilator_marginal_$count.txt", "w") do file
             for i in 1:nbins
@@ -111,6 +111,8 @@ function aca_repressilator()
         end
     end
 end
+
+d = 8
 
 start_time = time()
 aca_repressilator()
