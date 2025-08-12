@@ -505,7 +505,7 @@ function increase_resolution(input_tensor, row_idx, col_idx, factor::Int64)
     AIJ = zeros(rank[1], rank[1])
     for lidx in 1:rank[1]
         for ridx in 1:rank[1]
-            idx = [row_idx[2][lidx]; col_idx[1][ridx]]
+            idx = ([row_idx[2][lidx]; col_idx[1][ridx]] .- 1) * factor .+ 1
             AIJ[lidx, ridx] = input_tensor[idx...]
         end
     end
@@ -529,7 +529,7 @@ function increase_resolution(input_tensor, row_idx, col_idx, factor::Int64)
         AIJ = zeros(rank[k], rank[k])
         for lidx in 1:rank[k]
             for ridx in 1:rank[k]
-                idx = [row_idx[k + 1][lidx]; col_idx[k][ridx]]
+                idx = ([row_idx[k + 1][lidx]; col_idx[k][ridx]] .- 1) * factor .+ 1
                 AIJ[lidx, ridx] = input_tensor[idx...]
             end
         end
