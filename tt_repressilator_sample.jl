@@ -87,9 +87,19 @@ function tt_repressilator()
 
     offset = neglogposterior(X10_true, X20_true, X30_true, α1_true, α2_true, α3_true, m_true, η_true)
 
-    f = h5open("tt_cross_$iter.h5", "r")
-    psi = read(f, "factor", MPS)
-    close(f)
+    # f = h5open("tt_cross_$iter.h5", "r")
+    # psi = read(f, "factor", MPS)
+    # close(f)
+
+    posterior(x...) = exp(offset - neglogposterior(x...))
+    A = ODEArray(posterior, grid)
+    row_idx = undef
+    col_idx = undef
+    open("tt_cross_$iter.txt", "r") do file
+        row_idx = eval(Meta.parse(readline(file)))
+        col_idx = eval(Meta.parse(readline(file)))
+    end
+    psi = increase_resolution(A, row_idx, col_idx, 1)
 
     sites = siteinds(psi)
     oneslist = [ITensor(ones(nbins), sites[i]) for i in 1:d]

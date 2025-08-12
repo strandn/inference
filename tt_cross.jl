@@ -482,6 +482,74 @@ function maxvol(A::Matrix{Float64})
     return row_idx
 end
 
+function increase_resolution(input_tensor, row_idx, col_idx, factor::Int64)
+    tensor_shape = size(input_tensor)
+    tensor_order = ndims(input_tensor)
+
+    rank = [length(row_idx[i]) for i in 2:tensor_order]
+    links = Vector{Index}(undef, tensor_order - 1)
+
+    sites = [siteind(tensor_shape[i], i) for i in 1:tensor_order]
+    psi = Vector{ITensor}(undef, tensor_order)
+
+    links[1] = Index(rank[1], "Link,l=1")
+    psi[1] = ITensor(sites[1], links[1])
+
+    for i in 1:tensor_shape[1]
+        for ridx in 1:rank[1]
+            idx = [[i]; (col_idx[1][ridx] .- 1) * factor .+ 1]
+            psi[1][sites[1]=>i, links[1]=>ridx] = input_tensor[idx...]
+        end
+    end
+
+    AIJ = zeros(rank[1], rank[1])
+    for lidx in 1:rank[1]
+        for ridx in 1:rank[1]
+            idx = [row_idx[2][lidx]; col_idx[1][ridx]]
+            AIJ[lidx, ridx] = input_tensor[idx...]
+        end
+    end
+    AIJinv = inv(AIJ)
+    psi[1] *= ITensor(AIJinv, links[1], links[1]')
+    noprime!(psi[1])
+
+    for k in 2:tensor_order-1
+        links[k] = Index(rank[k], "Link,l=$k")
+        psi[k] = ITensor(sites[k], links[k - 1], links[k])
+
+        for i in 1:tensor_shape[k]
+            for lidx in 1:rank[k - 1]
+                for ridx in 1:rank[k]
+                    idx = [(row_idx[k][lidx] .- 1) * factor .+ 1; [i]; (col_idx[k][ridx] .- 1) * factor .+ 1]
+                    psi[k][sites[k]=>i, links[k - 1]=>lidx, links[k]=>ridx] = input_tensor[idx...]
+                end
+            end
+        end
+
+        AIJ = zeros(rank[k], rank[k])
+        for lidx in 1:rank[k]
+            for ridx in 1:rank[k]
+                idx = [row_idx[k + 1][lidx]; col_idx[k][ridx]]
+                AIJ[lidx, ridx] = input_tensor[idx...]
+            end
+        end
+        AIJinv = inv(AIJ)
+        psi[k] *= ITensor(AIJinv, links[k], links[k]')
+        noprime!(psi[k])
+    end
+
+    psi[tensor_order] = ITensor(sites[tensor_order], links[tensor_order - 1])
+        
+    for i in 1:tensor_shape[tensor_order]
+        for lidx in 1:rank[tensor_order - 1]
+            idx = [(row_idx[order][lidx] .- 1) * factor .+ 1; [i]]
+            psi[tensor_order][sites[tensor_order]=>i, lp=>links[tensor_order - 1]] = input_tensor[idx...]
+        end
+    end
+
+    return orthogonalize(MPS(psi), 1)
+end
+
 mutable struct ODEArray{T, N} <: AbstractArray{T, N}
     f
     grid::NTuple{N, LinRange{T, Int64}}
