@@ -127,7 +127,7 @@ function left_right_dmrgcross(input_tensor, rank::Vector{Int64}, row_idx, col_id
         not_converged = true
     end
 
-    U, S, V = svd(bond, sites[1]; cutoff=cutoff, maxdim=maxrank, lefttags=tags(links[1]))
+    U, S, V = maxrank == -1 ? svd(bond, sites[1]; cutoff=cutoff, lefttags=tags(links[1])) : svd(bond, sites[1]; cutoff=cutoff, maxdim=maxrank, lefttags=tags(links[1]))
     links[1] = commonind(U, S)
     rank[1] = ITensors.dim(links[1])
     println([S[i, i] for i in 1:rank[1]])
@@ -160,7 +160,7 @@ function left_right_dmrgcross(input_tensor, rank::Vector{Int64}, row_idx, col_id
             not_converged = true
         end
 
-        U, S, V = svd(bond, links[k - 1], sites[k]; cutoff=cutoff, maxdim=maxrank, lefttags=tags(links[k]))
+        U, S, V = maxrank == -1 ? svd(bond, links[k - 1], sites[k]; cutoff=cutoff, lefttags=tags(links[k])) : svd(bond, links[k - 1], sites[k]; cutoff=cutoff, maxdim=maxrank, lefttags=tags(links[k]))
         links[k] = commonind(U, S)
         rank[k] = ITensors.dim(links[k])
         println([S[i, i] for i in 1:rank[k]])
@@ -215,7 +215,7 @@ function right_left_dmrgcross(input_tensor, rank::Vector{Int64}, row_idx, col_id
         not_converged = true
     end
 
-    U, S, V = svd(bond, sites[tensor_order]; cutoff=cutoff, maxdim=maxrank, lefttags=tags(links[tensor_order - 1]))
+    U, S, V = maxrank == -1 ? svd(bond, sites[tensor_order]; cutoff=cutoff, lefttags=tags(links[tensor_order - 1])) : svd(bond, sites[tensor_order]; cutoff=cutoff, maxdim=maxrank, lefttags=tags(links[tensor_order - 1]))
     links[tensor_order - 1] = commonind(U, S)
     rank[tensor_order - 1] = ITensors.dim(links[tensor_order - 1])
     println([S[i, i] for i in 1:rank[tensor_order - 1]])
@@ -248,7 +248,7 @@ function right_left_dmrgcross(input_tensor, rank::Vector{Int64}, row_idx, col_id
             not_converged = true
         end
 
-        U, S, V = svd(bond, sites[k + 1], links[k + 1]; cutoff=cutoff, maxdim=maxrank, lefttags=tags(links[k]))
+        U, S, V = maxrank == -1 ? svd(bond, sites[k + 1], links[k + 1]; cutoff=cutoff, lefttags=tags(links[k])) : svd(bond, sites[k + 1], links[k + 1]; cutoff=cutoff, maxdim=maxrank, lefttags=tags(links[k]))
         links[k] = commonind(U, S)
         rank[k] = ITensors.dim(links[k])
         println([S[i, i] for i in 1:rank[k]])
@@ -304,21 +304,39 @@ function tt_cross(input_tensor, maxrank::Int64, tol::Float64, n_iter_max::Int64,
     row_idx[1] = [[]]
     col_idx[tensor_order] = [[]]
 
+    if isempty(seedlist)
+        push!(seedlist, [rand(1:tensor_shape[i]) for i in 1:tensor_order])
+    end
+
     for k_col_idx in tensor_order-1:-1:1
         col_idx[k_col_idx] = []
-        for seed in seedlist
-            idx = seed[k_col_idx+1:tensor_order]
-            if !(idx in col_idx[k_col_idx])
-                push!(col_idx[k_col_idx], idx)
+        sortedlist = Vector(undef, length(seedlist))
+        for i in eachindex(seedlist)
+            sortedlist[i] = []
+            if k_col_idx == tensor_order - 1
+                for j in 1:tensor_shape[tensor_order]
+                    push!(sortedlist[i], (abs(j - seedlist[i][tensor_order]), [j]))
+                end
+            else
+                for j in 1:tensor_shape[k_col_idx + 1]
+                    for k in 1:rank[k_col_idx + 1]
+                        pivot = [j, col_idx[k_col_idx + 1][k]...]
+                        push!(sortedlist[i], (norm(pivot - seedlist[i][k_col_idx+1:tensor_order]), pivot))
+                    end
+                end
             end
+            sort!(sortedlist[i])
         end
-        count = 1
+        countlist = fill(1, length(seedlist))
+        idx = 1
         while length(col_idx[k_col_idx]) < rank[k_col_idx]
-            idx = [[mod(count - 1, tensor_shape[k_col_idx]) + 1]; col_idx[k_col_idx + 1][div(count - 1, tensor_shape[k_col_idx]) + 1]]
-            if !(idx in col_idx[k_col_idx])
-                push!(col_idx[k_col_idx], idx)
+            seed_idx = mod(idx - 1, length(seedlist)) + 1
+            pivot = sortedlist[seed_idx][countlist[seed_idx]][2]
+            if !(pivot in col_idx[k_col_idx])
+                push!(col_idx[k_col_idx], pivot)
             end
-            count = count + 1
+            countlist[seed_idx] += 1
+            idx += 1
         end
     end
 
@@ -368,6 +386,11 @@ function tt_cross(input_tensor, maxrank::Int64, tol::Float64, n_iter_max::Int64,
         f = h5open("tt_cross_$iter.h5", "w")
         write(f, "factor", factor_new)
         close(f)
+
+        open("tt_cross_$iter.txt", "w") do file
+            write(file, "$row_idx\n")
+            write(file, "$col_idx\n")
+        end
     end
 
     if iter >= n_iter_max
@@ -459,6 +482,74 @@ function maxvol(A::Matrix{Float64})
     return row_idx
 end
 
+function increase_resolution(input_tensor, row_idx, col_idx, factor::Int64)
+    tensor_shape = size(input_tensor)
+    tensor_order = ndims(input_tensor)
+
+    rank = [length(row_idx[i]) for i in 2:tensor_order]
+    links = Vector{Index}(undef, tensor_order - 1)
+
+    sites = [siteind(tensor_shape[i], i) for i in 1:tensor_order]
+    psi = Vector{ITensor}(undef, tensor_order)
+
+    links[1] = Index(rank[1], "Link,l=1")
+    psi[1] = ITensor(sites[1], links[1])
+
+    for i in 1:tensor_shape[1]
+        for ridx in 1:rank[1]
+            idx = [[i]; (col_idx[1][ridx] .- 1) * factor .+ 1]
+            psi[1][sites[1]=>i, links[1]=>ridx] = input_tensor[idx...]
+        end
+    end
+
+    AIJ = zeros(rank[1], rank[1])
+    for lidx in 1:rank[1]
+        for ridx in 1:rank[1]
+            idx = ([row_idx[2][lidx]; col_idx[1][ridx]] .- 1) * factor .+ 1
+            AIJ[lidx, ridx] = input_tensor[idx...]
+        end
+    end
+    AIJinv = inv(AIJ)
+    psi[1] *= ITensor(AIJinv, links[1], links[1]')
+    noprime!(psi[1])
+
+    for k in 2:tensor_order-1
+        links[k] = Index(rank[k], "Link,l=$k")
+        psi[k] = ITensor(sites[k], links[k - 1], links[k])
+
+        for i in 1:tensor_shape[k]
+            for lidx in 1:rank[k - 1]
+                for ridx in 1:rank[k]
+                    idx = [(row_idx[k][lidx] .- 1) * factor .+ 1; [i]; (col_idx[k][ridx] .- 1) * factor .+ 1]
+                    psi[k][sites[k]=>i, links[k - 1]=>lidx, links[k]=>ridx] = input_tensor[idx...]
+                end
+            end
+        end
+
+        AIJ = zeros(rank[k], rank[k])
+        for lidx in 1:rank[k]
+            for ridx in 1:rank[k]
+                idx = ([row_idx[k + 1][lidx]; col_idx[k][ridx]] .- 1) * factor .+ 1
+                AIJ[lidx, ridx] = input_tensor[idx...]
+            end
+        end
+        AIJinv = inv(AIJ)
+        psi[k] *= ITensor(AIJinv, links[k], links[k]')
+        noprime!(psi[k])
+    end
+
+    psi[tensor_order] = ITensor(sites[tensor_order], links[tensor_order - 1])
+        
+    for i in 1:tensor_shape[tensor_order]
+        for lidx in 1:rank[tensor_order - 1]
+            idx = [(row_idx[tensor_order][lidx] .- 1) * factor .+ 1; [i]]
+            psi[tensor_order][sites[tensor_order]=>i, links[tensor_order - 1]=>lidx] = input_tensor[idx...]
+        end
+    end
+
+    return orthogonalize(MPS(psi), 1)
+end
+
 mutable struct ODEArray{T, N} <: AbstractArray{T, N}
     f
     grid::NTuple{N, LinRange{T, Int64}}
@@ -478,4 +569,18 @@ end
 
 function Base.getindex(A::ODEArray, elements::Int64...)
     return A.f([A.grid[i][elements[i]] for i in eachindex(elements)]...)
+end
+
+function to_continuous(A::ODEArray, row_idx, col_idx)
+    order = ndims(A)
+
+    I = Vector{Vector{Vector{Float64}}}(undef, order)
+    J = Vector{Vector{Vector{Float64}}}(undef, order)
+    I[1] = []
+    J[1] = []
+    for i in 2:order
+        I[i] = [[A.grid[j][row[j]] for j in 1:i-1] for row in row_idx[i]]
+        J[i] = [[A.grid[j][col[j - i + 1]] for j in i:order] for col in col_idx[i - 1]]
+    end
+    return I, J
 end
