@@ -77,8 +77,27 @@ function tt_exoplanet()
                         b = mid
                     end
                 end
-                sample[count] = grid[count][a]
-                sampleidx[count] = a
+
+                indvec = zeros(nbins)
+                indvec[1:b] .= 1.0
+                ind = ITensor(indvec, sites[count])
+                cdfi_b = psi[count] * ind
+                for i in count-1:-1:1
+                    ind = ITensor(sites[i])
+                    ind[sites[i]=>sampleidx[i]] = 1.0
+                    cdfi_b *= psi[i] * ind
+                end
+                if count != d
+                    cdfi_b *= Renv
+                end
+
+                if abs(cdfi[] / normi[] - u) < abs(cdfi_b[] / normi[] - u)
+                    sample[count] = grid[count][a]
+                    sampleidx[count] = a
+                else
+                    sample[count] = grid[count][b]
+                    sampleidx[count] = b
+                end
             end
 
             write(file, "$(sample[1]) $(sample[2]) $(sample[3]) $(sample[4])\n")

@@ -87,19 +87,19 @@ function tt_repressilator()
 
     offset = neglogposterior(X10_true, X20_true, X30_true, α1_true, α2_true, α3_true, m_true, η_true)
 
-    # f = h5open("tt_cross_$iter.h5", "r")
-    # psi = read(f, "factor", MPS)
-    # close(f)
+    f = h5open("tt_cross_$iter.h5", "r")
+    psi = read(f, "factor", MPS)
+    close(f)
 
-    posterior(x...) = exp(offset - neglogposterior(x...))
-    A = ODEArray(posterior, grid)
-    row_idx = undef
-    col_idx = undef
-    open("tt_cross_$iter.txt", "r") do file
-        row_idx = eval(Meta.parse(readline(file)))
-        col_idx = eval(Meta.parse(readline(file)))
-    end
-    psi = increase_resolution(A, row_idx, col_idx, 1)
+    # posterior(x...) = exp(offset - neglogposterior(x...))
+    # A = ODEArray(posterior, grid)
+    # row_idx = undef
+    # col_idx = undef
+    # open("tt_cross_$iter.txt", "r") do file
+    #     row_idx = eval(Meta.parse(readline(file)))
+    #     col_idx = eval(Meta.parse(readline(file)))
+    # end
+    # psi = increase_resolution(A, row_idx, col_idx, 1)
 
     sites = siteinds(psi)
     oneslist = [ITensor(ones(nbins), sites[i]) for i in 1:d]
@@ -218,8 +218,27 @@ function tt_repressilator()
                         b = mid
                     end
                 end
-                sample[count] = grid[count][a]
-                sampleidx[count] = a
+                
+                indvec = zeros(nbins)
+                indvec[1:b] .= 1.0
+                ind = ITensor(indvec, sites[count])
+                cdfi_b = psi[count] * ind
+                for i in count-1:-1:1
+                    ind = ITensor(sites[i])
+                    ind[sites[i]=>sampleidx[i]] = 1.0
+                    cdfi_b *= psi[i] * ind
+                end
+                if count != d
+                    cdfi_b *= Renv
+                end
+
+                if abs(cdfi[] / normi[] - u) < abs(cdfi_b[] / normi[] - u)
+                    sample[count] = grid[count][a]
+                    sampleidx[count] = a
+                else
+                    sample[count] = grid[count][b]
+                    sampleidx[count] = b
+                end
             end
 
             write(file, "$(sample[1]) $(sample[2]) $(sample[3]) $(sample[4]) $(sample[5]) $(sample[6]) $(sample[7]) $(sample[8])\n")
