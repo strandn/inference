@@ -543,7 +543,7 @@ function increase_resolution(input_tensor, row_idx, col_idx, factor::Int64)
     for i in 1:tensor_shape[tensor_order]
         for lidx in 1:rank[tensor_order - 1]
             idx = [(row_idx[tensor_order][lidx] .- 1) * factor .+ 1; [i]]
-            psi[tensor_order][sites[tensor_order]=>i, lp=>links[tensor_order - 1]] = input_tensor[idx...]
+            psi[tensor_order][sites[tensor_order]=>i, links[tensor_order - 1]=>lidx] = input_tensor[idx...]
         end
     end
 
