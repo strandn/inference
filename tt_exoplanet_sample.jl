@@ -54,6 +54,7 @@ function tt_exoplanet()
                     normi *= Renv
                 end
 
+                cdfi = 0.0
                 while true
                     mid = div(a + b, 2)
                     if a == mid
