@@ -31,7 +31,7 @@ function V(r, tspan, nsteps, data, mu, sigma)
     end
 
     s2 = 12.25
-    diff = [X10, X20, X30, α1, α2, α3, m, η] - mu
+    diff = [x0, y0, a, b, c, d] - mu
     result = 1 / 2 * sum((diff .^ 2) ./ sigma)
     for i in 1:nsteps+1
         result += 1 / 2 * log(2 * pi * s2) + (data[i] - obs[i]) ^ 2 / (2 * s2)
