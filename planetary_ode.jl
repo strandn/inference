@@ -69,12 +69,12 @@ function aca_planetary()
     sigma = [1.0, 1.0, 1.0, 1.0, 25.0, 25.0]
     neglogposterior(qx0, qy0, px0, py0, m, k) = V([qx0, qy0, px0, py0, m, k], tspan, nsteps, data1, data2, mu, sigma)
 
-    qx0_dom = (-2.0, 4.0)
-    qy0_dom = (-2.0, 4.0)
-    px0_dom = (-2.0, 4.0)
-    py0_dom = (-2.0, 4.0)
-    m_dom = (0.1, 10.0)
-    k_dom = (0.1, 10.0)
+    qx0_dom = (0.95, 1.1)
+    qy0_dom = (0.1, 0.4)
+    px0_dom = (-0.05, 0.7)
+    py0_dom = (-0.4, 4.0)
+    m_dom = (0.1, 4.5)
+    k_dom = (0.1, 4.5)
 
     F = ResFunc(neglogposterior, (qx0_dom, qy0_dom, px0_dom, py0_dom, m_dom, k_dom), cutoff, Tuple(fill(false, d)))
 
