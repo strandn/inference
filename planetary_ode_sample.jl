@@ -76,7 +76,7 @@ function aca_planetary()
     m_dom = (0.1, 4.5)
     k_dom = (0.1, 4.5)
 
-    F = ResFunc(neglogposterior, (qx0_dom, qy0_dom, px0_dom, py0_dom, m_dom, k_dom), cutoff, Tuple(fill(false, d)))
+    F = ResFunc(neglogposterior, (qx0_dom, qy0_dom, px0_dom, py0_dom, m_dom, k_dom), 0.0, Tuple(fill(false, d)))
 
     open("planetary_IJ.txt", "r") do file
         F.I, F.J = eval(Meta.parse(readline(file)))
