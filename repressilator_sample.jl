@@ -80,28 +80,28 @@ function aca_repressilator()
     println()
     flush(stdout)
 
-    nbins = 100
-    grid = (
-        LinRange(X10_dom..., nbins + 1),
-        LinRange(X20_dom..., nbins + 1),
-        LinRange(X30_dom..., nbins + 1),
-        LinRange(α1_dom..., nbins + 1),
-        LinRange(α2_dom..., nbins + 1),
-        LinRange(α3_dom..., nbins + 1),
-        LinRange(m_dom..., nbins + 1),
-        LinRange(η_dom..., nbins + 1)
-    )
+    # nbins = 100
+    # grid = (
+    #     LinRange(X10_dom..., nbins + 1),
+    #     LinRange(X20_dom..., nbins + 1),
+    #     LinRange(X30_dom..., nbins + 1),
+    #     LinRange(α1_dom..., nbins + 1),
+    #     LinRange(α2_dom..., nbins + 1),
+    #     LinRange(α3_dom..., nbins + 1),
+    #     LinRange(m_dom..., nbins + 1),
+    #     LinRange(η_dom..., nbins + 1)
+    # )
 
-    for count in 1:d-1
-        dens = compute_marginal(F, integrals, skeleton, links, count)
-        open("repressilator_marginal_$count.txt", "w") do file
-            for i in 1:nbins
-                for j in 1:nbins
-                    write(file, "$(grid[count][i]) $(grid[count + 1][j]) $(dens[i, j] / norm)\n")
-                end
-            end
-        end
-    end
+    # for count in 1:d-1
+    #     dens = compute_marginal(F, integrals, skeleton, links, count)
+    #     open("repressilator_marginal_$count.txt", "w") do file
+    #         for i in 1:nbins
+    #             for j in 1:nbins
+    #                 write(file, "$(grid[count][i]) $(grid[count + 1][j]) $(dens[i, j] / norm)\n")
+    #             end
+    #         end
+    #     end
+    # end
 
     open("repressilator_samples.txt", "w") do file
         for i in 1:30
