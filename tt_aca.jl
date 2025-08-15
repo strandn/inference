@@ -138,100 +138,122 @@ function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, 
                 end
             end
 
-            Rk = deepcopy(reslist)
-            Rk_sign = deepcopy(signlist)
-            u = []
-            v = []
-            u_sign = []
-            v_sign = []
-            r_first = length(F.I[count + 1]) + 1
-            nsamples = n_chains_total * n_samples
-            while r < rank[count]
-                ik = 0
-                dk = Inf
-                dk_sign = 1
-                for i in 1:nsamples
-                    if Rk[i] < dk
-                        ik = i
-                        dk = Rk[i]
-                        dk_sign = Rk_sign[i]
-                    end
-                end
-                Ri = zeros(nsamples)
-                Rj = zeros(nsamples)
-                Ri_sign = ones(Int64, nsamples)
-                Rj_sign = ones(Int64, nsamples)
-                for i in 1:nsamples
-                    arg = [xylist[i][1:F.pos]; xylist[ik][F.pos+1:order]]
-                    Ri[i], Ri_sign[i] = F.f(arg) - F.offset
-                    arg = [xylist[ik][1:F.pos]; xylist[i][F.pos+1:order]]
-                    Rj[i], Rj_sign[i] = F.f(arg) - F.offset
-                end
-                for l in 1:r-r_first
+            idx = argmin(reslist)
+            xy = xylist[idx, :]
+            MPI.Bcast!(xy, 0, mpi_comm)
+            offset_delta = 0.0
+            if isempty(F.I[count + 1]) || F.f(xy...) < F.offset
+                offset_new = [F.f(xy...)]
+                MPI.Bcast!(offset_new, 0, mpi_comm)
+                offset_delta = offset_new[] - F.offset
+                F.offset = offset_new[]
+            end
+            reslist .-= offset_delta
+
+            new_pivots = []
+            npivots = [0]
+
+            if mpi_rank == 0
+                Rk = deepcopy(reslist)
+                Rk_sign = deepcopy(signlist)
+                u = []
+                v = []
+                u_sign = []
+                v_sign = []
+                r_first = length(F.I[count + 1]) + 1
+                nsamples = n_chains_total * n_samples
+                while r < rank[count]
+                    ik = 0
+                    dk = Inf
+                    dk_sign = 1
                     for i in 1:nsamples
-                        arg1 = -Ri[i]
-                        arg2 = -u[l][i] - v[l][ik]
-                        arglarge = max(arg1, arg2)
-
-                        sign1 = Ri_sign[i]
-                        sign2 = u_sign[l][i] * v_sign[l][ik]
-
-                        delta = sign1 * exp(arg1 - arglarge) - sign2 * exp(arg2 - arglarge)
-                        Ri[i] = -arglarge - log(abs(delta) + eps())
-                        Ri_sign[i] = ifelse(delta < 0.0, -1, 1)
-
-                        arg1 = -Rj[i]
-                        arg2 = -v[l][i] - u[l][ik]
-                        arglarge = max(arg1, arg2)
-
-                        sign1 = Rj_sign[i]
-                        sign2 = v_sign[l][i] * u_sign[l][ik]
-
-                        delta = sign1 * exp(arg1 - arglarge) - sign2 * exp(arg2 - arglarge)
-                        Rj[i] = -arglarge - log(abs(delta) + eps())
-                        Rj_sign[i] = ifelse(delta < 0.0, -1, 1)
+                        if Rk[i] < dk
+                            ik = i
+                            dk = Rk[i]
+                            dk_sign = Rk_sign[i]
+                        end
                     end
-                end
-                Rj .-= dk
-                Rj_sign .*= dk_sign
-                push!(u, deepcopy(Ri))
-                push!(v, deepcopy(Rj))
-                push!(u_sign, deepcopy(Ri_sign))
-                push!(v_sign, deepcopy(Rj_sign))
+                    Ri = zeros(nsamples)
+                    Rj = zeros(nsamples)
+                    Ri_sign = ones(Int64, nsamples)
+                    Rj_sign = ones(Int64, nsamples)
+                    for i in 1:nsamples
+                        arg = [xylist[i, 1:F.pos]; xylist[ik, F.pos+1:order]]
+                        # Ri[i] = F.f(arg...) - F.offset
+                        Ri[i], Ri_sign[i] = F(arg...)
+                        arg = [xylist[ik, 1:F.pos]; xylist[i, F.pos+1:order]]
+                        # Rj[i] = F.f(arg...) - F.offset
+                        Rj[i], Rj_sign[i] = F(arg...)
+                    end
+                    for l in 1:r-r_first
+                        for i in 1:nsamples
+                            arg1 = -Ri[i]
+                            arg2 = -u[l][i] - v[l][ik]
+                            arglarge = max(arg1, arg2)
 
-                xy = [xylist[ik]]
-                MPI.Bcast!(xy, 0, mpi_comm)
-                if isempty(F.I[count + 1]) || F.f(xy[]...) < F.offset
-                    offset_new = [F.f(xy[]...)]
-                    MPI.Bcast!(offset_new, 0, mpi_comm)
-                    F.offset = offset_new[]
-                end
-                lnres_new, _ = F(xy[]...)
-                res_new = [exp(-lnres_new)]
-                MPI.Bcast!(res_new, 0, mpi_comm)
-                if res_new[] < F.cutoff
-                    break
-                end
-                updateIJ(F, xy[])
-                if mpi_rank == 0
-                    println("rank = $r res = $(res_new[]) xy = $(xy[]) offset = $(F.offset)")
+                            sign1 = Ri_sign[i]
+                            sign2 = u_sign[l][i] * v_sign[l][ik]
+
+                            delta = sign1 * exp(arg1 - arglarge) - sign2 * exp(arg2 - arglarge)
+                            Ri[i] = -arglarge - log(abs(delta) + eps())
+                            Ri_sign[i] = ifelse(delta < 0.0, -1, 1)
+
+                            arg1 = -Rj[i]
+                            arg2 = -v[l][i] - u[l][ik]
+                            arglarge = max(arg1, arg2)
+
+                            sign1 = Rj_sign[i]
+                            sign2 = v_sign[l][i] * u_sign[l][ik]
+
+                            delta = sign1 * exp(arg1 - arglarge) - sign2 * exp(arg2 - arglarge)
+                            Rj[i] = -arglarge - log(abs(delta) + eps())
+                            Rj_sign[i] = ifelse(delta < 0.0, -1, 1)
+                        end
+                    end
+                    Rj .-= dk
+                    Rj_sign .*= dk_sign
+                    push!(u, deepcopy(Ri))
+                    push!(v, deepcopy(Rj))
+                    push!(u_sign, deepcopy(Ri_sign))
+                    push!(v_sign, deepcopy(Rj_sign))
+
+                    xy = xylist[ik, :]
+                    # nlres_new, _ = F(xy...)
+                    # res_new = [exp(-nlres_new)]
+                    res_new = [exp(-dk)]
+                    if res_new[] < F.cutoff
+                        break
+                    end
+                    push!(new_pivots, xy)
+                    npivots[] += 1
+                    println("rank = $r res = $(res_new[]) xy = $xy offset = $(F.offset)")
                     flush(stdout)
+
+                    for i in 1:nsamples
+                        arg1 = -Rk[i]
+                        arg2 = -u[r - r_first + 1][i] - v[r - r_first + 1][i]
+                        arglarge = max(arg1, arg2)
+
+                        sign1 = Rk_sign[i]
+                        sign2 = u_sign[r - r_first + 1][i] * v_sign[r - r_first + 1][i]
+
+                        delta = sign1 * exp(arg1 - arglarge) - sign2 * exp(arg2 - arglarge)
+                        Rk[i] = -arglarge - log(abs(delta) + eps())
+                        Rk_sign[i] = ifelse(delta < 0.0, -1, 1)
+                    end
+
+                    r += 1
                 end
+            end
 
-                for i in 1:nsamples
-                    arg1 = -Rk[i]
-                    arg2 = -u[r - r_first + 1][i] - v[r - r_first + 1][i]
-                    arglarge = max(arg1, arg2)
-
-                    sign1 = Rk_sign[i]
-                    sign2 = u_sign[r - r_first + 1][i] * v_sign[r - r_first + 1][i]
-
-                    delta = sign1 * exp(arg1 - arglarge) - sign2 * exp(arg2 - arglarge)
-                    Rk[i] = -arglarge - log(abs(delta) + eps())
-                    Rk_sign[i] = ifelse(delta < 0.0, -1, 1)
+            MPI.Bcast!(npivots, 0, mpi_comm)
+            for i in 1:npivots[]
+                xy = zeros(order)
+                if mpi_rank == 0
+                    xy = new_pivots[i]
                 end
-
-                r += 1
+                MPI.Bcast!(xy, 0, mpi_comm)
+                updateIJ(F, Tuple(xy))
             end
         end
     end
@@ -255,8 +277,8 @@ function max_metropolis(F::ResFunc{T, N}, pivot::Vector{T}, n_samples::Int64, ju
         for k in 1:order
             chain_xy[1, k] = rand() * (ub[k] - lb[k]) + lb[k]
         end
-        fx, _ = F(pivot..., chain_xy[1, :]...)  # Call once
-        if isfinite(fx)
+        chain_res[1], chain_sign[1] = F(pivot..., chain_xy[1, :]...)  # Call once
+        if isfinite(chain_res[1])
             break
         end
     end
@@ -300,7 +322,7 @@ function max_metropolis(F::ResFunc{T, N}, pivot::Vector{T}, n_samples::Int64, ju
         end
     end
 
-    return chain_xy, chain_res, chain_sign
+    return [repeat(pivot', size(chain_xy, 1)) chain_xy], chain_res, chain_sign
 end
 
 # Approximates normalization constant, or partition function (if F is a Boltzmann distribution)
