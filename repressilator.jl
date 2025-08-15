@@ -97,7 +97,7 @@ d = 8
 maxr = 10
 n_chains = 20
 n_samples = 1000
-jump_width = 0.01
+jump_width = 0.002
 cutoff = 1.0e-4
 
 start_time = time()
