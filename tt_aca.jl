@@ -150,6 +150,12 @@ function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, 
             end
             reslist .-= offset_delta
 
+            nlres_new, _ = F(xy...)
+            res_new = [exp(-nlres_new)]
+            if res_new[] < F.cutoff
+                break
+            end
+
             new_pivots = []
             npivots = [0]
 
