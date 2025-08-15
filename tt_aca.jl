@@ -279,6 +279,10 @@ function max_metropolis(F::ResFunc{T, N}, pivot::Vector{T}, n_samples::Int64, ju
         arg_old = [pivot; [chain_xy[i - 1, k] for k in 1:order]]
         arg_new = [pivot; [p_new[k] for k in 1:order]]
         log_acceptance_prob = -Inf
+        f_old = 0.0
+        f_new = 0.0
+        sign_old = 1
+        sign_new = 1
         if isfinite(F.f(arg_new...))
             f_old, sign_old = F(arg_old...)
             f_new, sign_new = F(arg_new...)
