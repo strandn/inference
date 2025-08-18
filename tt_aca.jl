@@ -138,10 +138,14 @@ function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, 
                 end
             end
 
-            # println(reslist)
+            println(length(reslist))
+            resxy = [(reslist[i], xylist[i]) for i in eachindex(reslist)]
+            sort!(resxy)
+            for i in 1:30
+                println(resxy[i])
+            end
 
             idx = argmin(reslist)
-            # println(idx)
             println(reslist[idx])
             xy = xylist[idx, :]
             MPI.Bcast!(xy, 0, mpi_comm)
