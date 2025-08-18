@@ -106,7 +106,7 @@ function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, 
         signlist = ones(Int64, n_chains_total * n_samples)
         res_new = 0.0
         r = length(F.I[count + 1]) + 1
-        while r < rank[count]
+        while r <= rank[count]
             # Determine number of tasks for the current process
             elements_per_task = div(n_chains_total, mpi_size)
             # Extra tasks to be carried out by the root process at the end
@@ -142,7 +142,7 @@ function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, 
 
             idx = argmin(reslist)
             # println(idx)
-            # println(reslist[idx])
+            println(reslist[idx])
             xy = xylist[idx, :]
             MPI.Bcast!(xy, 0, mpi_comm)
             offset_delta = 0.0
@@ -153,7 +153,7 @@ function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, 
                 F.offset = offset_new[]
             end
             reslist .-= offset_delta
-            # println(reslist[idx])
+            println(reslist[idx])
 
             nlres_new, _ = F(xy...)
             res_new = [exp(-nlres_new)]
@@ -174,7 +174,7 @@ function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, 
                 v_sign = []
                 r_first = length(F.I[count + 1]) + 1
                 nsamples = n_chains_total * n_samples
-                while r < rank[count]
+                while r <= rank[count]
                     ik = 0
                     dk = Inf
                     dk_sign = 1
