@@ -138,13 +138,6 @@ function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, 
                 end
             end
 
-            println(length(reslist))
-            resxy = [(reslist[i], xylist[i]) for i in eachindex(reslist)]
-            sort!(resxy)
-            for i in 1:30
-                println(resxy[i])
-            end
-
             idx = argmin(reslist)
             println(reslist[idx])
             xy = xylist[idx, :]
@@ -179,6 +172,13 @@ function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, 
                 r_first = length(F.I[count + 1]) + 1
                 nsamples = n_chains_total * n_samples
                 while r <= rank[count]
+                    println(length(Rk))
+                    resxy = [(Rk[i], xylist[i, :]) for i in eachindex(Rk)]
+                    sort!(resxy)
+                    for i in 1:30
+                        println(resxy[i])
+                    end
+
                     ik = 0
                     dk = Inf
                     dk_sign = 1
