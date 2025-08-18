@@ -138,7 +138,11 @@ function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, 
                 end
             end
 
+            # println(reslist)
+
             idx = argmin(reslist)
+            # println(idx)
+            # println(reslist[idx])
             xy = xylist[idx, :]
             MPI.Bcast!(xy, 0, mpi_comm)
             offset_delta = 0.0
@@ -149,9 +153,11 @@ function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, 
                 F.offset = offset_new[]
             end
             reslist .-= offset_delta
+            # println(reslist[idx])
 
             nlres_new, _ = F(xy...)
             res_new = [exp(-nlres_new)]
+            MPI.Bcast!(res_new, 0, mpi_comm)
             if res_new[] < F.cutoff
                 break
             end
@@ -279,11 +285,18 @@ function max_metropolis(F::ResFunc{T, N}, pivot::Vector{T}, n_samples::Int64, ju
     chain_res = zeros(n_samples)
     chain_sign = ones(Int64, n_samples)
 
+    f_old = 0.0
+    f_new = 0.0
+    sign_old = 1
+    sign_new = 1
+
     while true
         for k in 1:order
             chain_xy[1, k] = rand() * (ub[k] - lb[k]) + lb[k]
         end
-        chain_res[1], chain_sign[1] = F(pivot..., chain_xy[1, :]...)  # Call once
+        f_old, sign_old = F(pivot..., chain_xy[1, :]...)  # Call once
+        chain_res[1] = f_old
+        chain_sign[1] = sign_old
         if isfinite(chain_res[1])
             break
         end
@@ -307,10 +320,6 @@ function max_metropolis(F::ResFunc{T, N}, pivot::Vector{T}, n_samples::Int64, ju
         arg_old = [pivot; [chain_xy[i - 1, k] for k in 1:order]]
         arg_new = [pivot; [p_new[k] for k in 1:order]]
         log_acceptance_prob = -Inf
-        f_old = 0.0
-        f_new = 0.0
-        sign_old = 1
-        sign_new = 1
         if isfinite(F.f(arg_new...))
             f_old, sign_old = F(arg_old...)
             f_new, sign_new = F(arg_new...)
