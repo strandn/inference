@@ -175,7 +175,7 @@ function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, 
                     println(length(Rk))
                     resxy = [(Rk[i], xylist[i, :]) for i in eachindex(Rk)]
                     sort!(resxy)
-                    for i in 1:30
+                    for i in 1:1000
                         println(resxy[i])
                     end
 
