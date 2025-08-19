@@ -106,7 +106,8 @@ function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, 
         signlist = ones(Int64, n_chains_total * n_samples)
         res_new = 0.0
         r = length(F.I[count + 1]) + 1
-        while r <= rank[count]
+        # while r <= rank[count]
+        while r <= 1
             # Determine number of tasks for the current process
             elements_per_task = div(n_chains_total, mpi_size)
             # Extra tasks to be carried out by the root process at the end
@@ -139,7 +140,7 @@ function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, 
             end
 
             idx = argmin(reslist)
-            println(reslist[idx])
+            # println(reslist[idx])
             xy = xylist[idx, :]
             MPI.Bcast!(xy, 0, mpi_comm)
             offset_delta = 0.0
@@ -150,7 +151,7 @@ function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, 
                 F.offset = offset_new[]
             end
             reslist .-= offset_delta
-            println(reslist[idx])
+            # println(reslist[idx])
 
             nlres_new, _ = F(xy...)
             res_new = [exp(-nlres_new)]
@@ -356,7 +357,7 @@ function compute_norm(F::ResFunc{T, N}) where {T, N}
     integrals[1] = ITensor(links[1])
     for j in 1:npivots[1]
         f(x) = expnegf(F, x, F.J[2][j]...)
-        integrals[1][links[1]=>j] = quadgk(f, F.domain[1]...; maxevals=1000)[1]
+        integrals[1][links[1]=>j] = quadgk(f, F.domain[1]...; maxevals=100)[1]
     end
     result = integrals[1]
     println("i = 1\n")
@@ -386,7 +387,7 @@ function compute_norm(F::ResFunc{T, N}) where {T, N}
         for j in 1:npivots[i - 1]
             for k in 1:npivots[i]
                 f(x) = expnegf(F, F.I[i][j]..., x, F.J[i + 1][k]...)
-                integrals[i][links[i - 1]'=>j, links[i]=>k] = quadgk(f, F.domain[i]...; maxevals=1000)[1]
+                integrals[i][links[i - 1]'=>j, links[i]=>k] = quadgk(f, F.domain[i]...; maxevals=100)[1]
             end
         end
         println("\ni = $i\n")
@@ -414,7 +415,7 @@ function compute_norm(F::ResFunc{T, N}) where {T, N}
     integrals[order] = ITensor(links[order - 1]')
     for j in 1:npivots[order - 1]
         f(x) = expnegf(F, F.I[order][j]..., x)
-        integrals[order][links[order - 1]'=>j] = quadgk(f, F.domain[order]...; maxevals=1000)[1]
+        integrals[order][links[order - 1]'=>j] = quadgk(f, F.domain[order]...; maxevals=100)[1]
     end
     println("\ni = $order\n")
     println(integrals[order])
@@ -448,14 +449,14 @@ function compute_mu(F::ResFunc{T, N}, integrals::Vector{ITensor}, skeleton::Vect
         result = ITensor(links[1])
         for j in 1:npivots[1]
             f(x) = x * expnegf(F, x, F.J[2][j]...)
-            result[links[1]=>j] = quadgk(f, F.domain[1]...; maxevals=1000)[1]
+            result[links[1]=>j] = quadgk(f, F.domain[1]...; maxevals=100)[1]
         end
         result *= Renv
     elseif pos == order
         result = ITensor(links[order - 1]')
         for j in 1:npivots[order - 1]
             f(x) = x * expnegf(F, F.I[order][j]..., x)
-            result[links[order - 1]'=>j] = quadgk(f, F.domain[order]...; maxevals=1000)[1]
+            result[links[order - 1]'=>j] = quadgk(f, F.domain[order]...; maxevals=100)[1]
         end
         result *= Lenv
     else
@@ -463,7 +464,7 @@ function compute_mu(F::ResFunc{T, N}, integrals::Vector{ITensor}, skeleton::Vect
         for j in 1:npivots[pos - 1]
             for k in 1:npivots[pos]
                 f(x) = x * expnegf(F, F.I[pos][j]..., x, F.J[pos + 1][k]...)
-                result[links[pos - 1]'=>j, links[pos]=>k] = quadgk(f, F.domain[pos]...; maxevals=1000)[1]
+                result[links[pos - 1]'=>j, links[pos]=>k] = quadgk(f, F.domain[pos]...; maxevals=100)[1]
             end
         end
         result *= Lenv * Renv
@@ -480,20 +481,20 @@ function compute_cov(F::ResFunc{T, N}, integrals::Vector{ITensor}, skeleton::Vec
         result1 = ITensor(links[1])
         for j in 1:npivots[1]
             f(x) = (pos1 == pos2 ? (x - mu[1])^2 : (x - mu[1])) * expnegf(F, x, F.J[2][j]...)
-            result1[links[1]=>j] = quadgk(f, F.domain[1]...; maxevals=1000)[1]
+            result1[links[1]=>j] = quadgk(f, F.domain[1]...; maxevals=100)[1]
         end
     elseif pos1 == order
         result1 = ITensor(links[order - 1]')
         for j in 1:npivots[order - 1]
             f(x) = (pos1 == pos2 ? (x - mu[order])^2 : (x - mu[order])) * expnegf(F, F.I[order][j]..., x)
-            result1[links[order - 1]'=>j] = quadgk(f, F.domain[order]...; maxevals=1000)[1]
+            result1[links[order - 1]'=>j] = quadgk(f, F.domain[order]...; maxevals=100)[1]
         end
     else
         result1 = ITensor(links[pos1 - 1]', links[pos1])
         for j in 1:npivots[pos1 - 1]
             for k in 1:npivots[pos1]
                 f(x) = (pos1 == pos2 ? (x - mu[pos1])^2 : (x - mu[pos1])) * expnegf(F, F.I[pos1][j]..., x, F.J[pos1 + 1][k]...)
-                result1[links[pos1 - 1]'=>j, links[pos1]=>k] = quadgk(f, F.domain[pos1]...; maxevals=1000)[1]
+                result1[links[pos1 - 1]'=>j, links[pos1]=>k] = quadgk(f, F.domain[pos1]...; maxevals=100)[1]
             end
         end
     end
@@ -504,20 +505,20 @@ function compute_cov(F::ResFunc{T, N}, integrals::Vector{ITensor}, skeleton::Vec
             result2 = ITensor(links[1])
             for j in 1:npivots[1]
                 f(x) = (x - mu[1]) * expnegf(F, x, F.J[2][j]...)
-                result2[links[1]=>j] = quadgk(f, F.domain[1]...; maxevals=1000)[1]
+                result2[links[1]=>j] = quadgk(f, F.domain[1]...; maxevals=100)[1]
             end
         elseif pos2 == order
             result2 = ITensor(links[order - 1]')
             for j in 1:npivots[order - 1]
                 f(x) = (x - mu[order]) * expnegf(F, F.I[order][j]..., x)
-                result2[links[order - 1]'=>j] = quadgk(f, F.domain[order]...; maxevals=1000)[1]
+                result2[links[order - 1]'=>j] = quadgk(f, F.domain[order]...; maxevals=100)[1]
             end
         else
             result2 = ITensor(links[pos2 - 1]', links[pos2])
             for j in 1:npivots[pos2 - 1]
                 for k in 1:npivots[pos2]
                     f(x) = (x - mu[pos2]) * expnegf(F, F.I[pos2][j]..., x, F.J[pos2 + 1][k]...)
-                    result2[links[pos2 - 1]'=>j, links[pos2]=>k] = quadgk(f, F.domain[pos2]...; maxevals=1000)[1]
+                    result2[links[pos2 - 1]'=>j, links[pos2]=>k] = quadgk(f, F.domain[pos2]...; maxevals=100)[1]
                 end
             end
         end
@@ -549,7 +550,7 @@ function sample_from_tt(F::ResFunc{T, N}, integrals::Vector{ITensor}, skeleton::
     npivots = [length(F.I[i]) for i in 2:order]
     sample = Vector{T}(undef, order)
 
-    rel_tol = 1.0e-3
+    rel_tol = 0.01
 
     for count in 1:order
         Renv = undef
@@ -568,12 +569,12 @@ function sample_from_tt(F::ResFunc{T, N}, integrals::Vector{ITensor}, skeleton::
         normi = undef
         if count == order
             f1(x) = expnegf(F, sample[1:order-1]..., x)
-            normi = quadgk(f1, F.domain[count]...; maxevals=1000)[1]
+            normi = quadgk(f1, F.domain[count]...; maxevals=100)[1]
         else
             normi = ITensor(links[count])
             for j in 1:npivots[count]
                 f1i(x) = count == 1 ? expnegf(F, x, F.J[2][j]...) : expnegf(F, sample[1:count-1]..., x, F.J[count + 1][j]...)
-                normi[links[count]=>j] = quadgk(f1i, F.domain[count]...; maxevals=1000)[1]
+                normi[links[count]=>j] = quadgk(f1i, F.domain[count]...; maxevals=100)[1]
             end
             normi *= Renv
         end
@@ -583,12 +584,12 @@ function sample_from_tt(F::ResFunc{T, N}, integrals::Vector{ITensor}, skeleton::
             cdfi = undef
             if count == order
                 f2(x) = expnegf(F, sample[1:order-1]..., x)
-                cdfi = quadgk(f2, F.domain[count][1], mid; maxevals=1000)[1]
+                cdfi = quadgk(f2, F.domain[count][1], mid; maxevals=100)[1]
             else
                 cdfi = ITensor(links[count])
                 for j in 1:npivots[count]
                     f2i(x) = count == 1 ? expnegf(F, x, F.J[2][j]...) : expnegf(F, sample[1:count-1]..., x, F.J[count + 1][j]...)
-                    cdfi[links[count]=>j] = quadgk(f2i, F.domain[count][1], mid; maxevals=1000)[1]
+                    cdfi[links[count]=>j] = quadgk(f2i, F.domain[count][1], mid; maxevals=100)[1]
                 end
                 cdfi *= Renv
             end
