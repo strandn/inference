@@ -104,7 +104,7 @@ function aca_repressilator()
     # end
 
     open("repressilator_samples.txt", "w") do file
-        for i in 1:100
+        for i in 1:500
             println("Collecting sample $i...")
             sample = sample_from_tt(F, integrals, skeleton, links)
             write(file, "$(sample[1]) $(sample[2]) $(sample[3]) $(sample[4]) $(sample[5]) $(sample[6]) $(sample[7]) $(sample[8])\n")
