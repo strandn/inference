@@ -295,7 +295,6 @@ function tt_cross(input_tensor, maxrank::Int64, tol::Float64, n_iter_max::Int64,
         end
         rank[i] = min(left, right, maxrank)
     end
-    println(rank)
 
     row_idx = Vector(undef, tensor_order)
     col_idx = Vector(undef, tensor_order)
@@ -332,6 +331,7 @@ function tt_cross(input_tensor, maxrank::Int64, tol::Float64, n_iter_max::Int64,
                 end
                 idx += 1
             end
+            rank[k_col_idx] = length(col_idx[k_col_idx])
         end
         # sortedlist = Vector(undef, length(seedlist))
         # for i in eachindex(seedlist)
@@ -362,6 +362,7 @@ function tt_cross(input_tensor, maxrank::Int64, tol::Float64, n_iter_max::Int64,
         #     idx += 1
         # end
     end
+    println(rank)
 
     iter = 0
 
