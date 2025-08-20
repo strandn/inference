@@ -167,26 +167,15 @@ function tt_repressilator()
     end
 
     # vec1list = [ITensor(grid_full[i], sites[i]) for i in 1:d]
-    println(1)
-    println(grid[1])
-    println(sites[1])
-    println(ITensor(grid[1], sites[1]))
     vec1list = [ITensor(grid[i], sites[i]) for i in 1:d]
-    println(2)
     meanlist = zeros(d)
-    println(3)
     for i in 1:d
         mean = psi[1] * (i == 1 ? vec1list[1] : oneslist[1])
-        println("4 $i")
         for k in 2:d
             mean *= psi[k] * (i == k ? vec1list[k] : oneslist[k])
-            println("5 $i $k")
         end
         meanlist[i] = mean[]
-        println("6 $i")
     end
-    println(meanlist)
-    println(7)
 
     # cov0 = undef
     # open("repressilator0cov.txt", "r") do file
