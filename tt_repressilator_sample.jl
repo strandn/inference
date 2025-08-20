@@ -181,6 +181,7 @@ function tt_repressilator()
         end
         meanlist[i] = mean[]
     end
+    println(meanlist)
 
     # cov0 = undef
     # open("repressilator0cov.txt", "r") do file
@@ -313,7 +314,7 @@ end
 d = 8
 nbins = 100
 nsamples = 10^4
-iter = 1
+iter = 10
 
 start_time = time()
 tt_repressilator()
