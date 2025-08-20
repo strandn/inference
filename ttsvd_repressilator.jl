@@ -58,13 +58,6 @@ function ttsvd_repressilator()
     sigma = [4.0, 4.0, 4.0, 25.0, 25.0, 25.0, 25.0, 25.0]
     neglogposterior(X10, X20, X30, α1, α2, α3, m, η) = V([X10, X20, X30, α1, α2, α3, m, η], tspan, nsteps, data, mu, sigma)
 
-    X10_true = X20_true = X30_true = 2.0
-    α1_true = 10.0
-    α2_true = 15.0
-    α3_true = 20.0
-    m_true = 4.0
-    η_true = 1.0
-
     X10_dom = (0.5, 3.5)
     X20_dom = (0.5, 3.5)
     X30_dom = (0.5, 3.5)
@@ -85,14 +78,11 @@ function ttsvd_repressilator()
         collect(LinRange(η_dom..., nbins + 1))
     )
 
-    offset = neglogposterior(X10_true, X20_true, X30_true, α1_true, α2_true, α3_true, m_true, η_true)
-
     println("Populating tensor...")
     flush(stdout)
     
-    posterior(x...) = exp(offset - neglogposterior(x...))
-    A = zeros(Float64, nbins + 1, nbins + 1, nbins + 1, nbins + 1, nbins + 1, nbins + 1, nbins + 1, nbins + 1)
-    Threads.@threads for i1 in 1:nbins+1
+    nlA = zeros(Float64, nbins + 1, nbins + 1, nbins + 1, nbins + 1, nbins + 1, nbins + 1, nbins + 1, nbins + 1)
+    for i1 in 1:nbins+1
         for i2 in 1:nbins+1
             for i3 in 1:nbins+1
                 for i4 in 1:nbins+1
@@ -100,7 +90,7 @@ function ttsvd_repressilator()
                         for i6 in 1:nbins+1
                             for i7 in 1:nbins+1
                                 for i8 in 1:nbins+1
-                                    A[i1, i2, i3, i4, i5, i6, i7, i8] = posterior(grid[1][i1], grid[2][i2], grid[3][i3], grid[4][i4], grid[5][i5], grid[6][i6], grid[7][i7], grid[8][i8])
+                                    nlA[i1, i2, i3, i4, i5, i6, i7, i8] = neglogposterior(grid[1][i1], grid[2][i2], grid[3][i3], grid[4][i4], grid[5][i5], grid[6][i6], grid[7][i7], grid[8][i8])
                                 end
                             end
                         end
@@ -109,6 +99,11 @@ function ttsvd_repressilator()
             end
         end
     end
+
+    offset = minimum(nlA)
+
+    A = zeros(Float64, nbins + 1, nbins + 1, nbins + 1, nbins + 1, nbins + 1, nbins + 1, nbins + 1, nbins + 1)
+    A[:, :, :, :, :, :, :, :] = exp(offset - nlA[:, :, :, :, :, :, :, :])
 
     psivec = Vector{ITensor}(undef, d)
     sites = siteinds(nbins + 1, d)
