@@ -75,14 +75,14 @@ function ttsvd_repressilator()
     η_dom = (0.95, 1.05)
 
     grid = (
-        LinRange(X10_dom..., nbins + 1),
-        LinRange(X20_dom..., nbins + 1),
-        LinRange(X30_dom..., nbins + 1),
-        LinRange(α1_dom..., nbins + 1),
-        LinRange(α2_dom..., nbins + 1),
-        LinRange(α3_dom..., nbins + 1),
-        LinRange(m_dom..., nbins + 1),
-        LinRange(η_dom..., nbins + 1)
+        collect(LinRange(X10_dom..., nbins + 1)),
+        collect(LinRange(X20_dom..., nbins + 1)),
+        collect(LinRange(X30_dom..., nbins + 1)),
+        collect(LinRange(α1_dom..., nbins + 1)),
+        collect(LinRange(α2_dom..., nbins + 1)),
+        collect(LinRange(α3_dom..., nbins + 1)),
+        collect(LinRange(m_dom..., nbins + 1)),
+        collect(LinRange(η_dom..., nbins + 1))
     )
 
     offset = neglogposterior(X10_true, X20_true, X30_true, α1_true, α2_true, α3_true, m_true, η_true)
@@ -169,7 +169,7 @@ function ttsvd_repressilator()
         end
     end
 
-    vec1list = [ITensor(collect(grid[i][1:nbins]), sites[i]) for i in 1:d]
+    vec1list = [ITensor(grid[i][1:nbins], sites[i]) for i in 1:d]
     meanlist = zeros(d)
     for i in 1:d
         mean = psi[1] * (i == 1 ? vec1list[1] : oneslist[1])
@@ -185,8 +185,8 @@ function ttsvd_repressilator()
     #     cov0 = eval(Meta.parse(readline(file)))
     # end
 
-    vec2list = [ITensor(collect(grid[i][1:nbins] .- meanlist[i]), sites[i]) for i in 1:d]
-    vec22list = [ITensor(collect((grid[i][1:nbins] .- meanlist[i]).^2), sites[i]) for i in 1:d]
+    vec2list = [ITensor(grid[i][1:nbins] .- meanlist[i], sites[i]) for i in 1:d]
+    vec22list = [ITensor((grid[i][1:nbins] .- meanlist[i]).^2, sites[i]) for i in 1:d]
     varlist = zeros(d, d)
     for i in 1:d
         for j in i:d
@@ -220,7 +220,7 @@ function ttsvd_repressilator()
     flush(stdout)
 
     open("ttsvd_repressilator_samples.txt", "w") do file
-        for sampleid in 1:30
+        for sampleid in 1:1000
             println("Collecting sample $sampleid...")
             sample = Vector{Float64}(undef, d)
             sampleidx = Vector{Int64}(undef, d)
@@ -252,6 +252,7 @@ function ttsvd_repressilator()
                     normi *= Renv
                 end
 
+                cdfi = 0.0
                 while true
                     mid = div(a + b, 2)
                     if a == mid
@@ -275,8 +276,27 @@ function ttsvd_repressilator()
                         b = mid
                     end
                 end
-                sample[count] = grid[count][a]
-                sampleidx[count] = a
+                
+                indvec = zeros(dim(sites[count]))
+                indvec[1:b] .= 1.0
+                ind = ITensor(indvec, sites[count])
+                cdfi_b = psi[count] * ind
+                for i in count-1:-1:1
+                    ind = ITensor(sites[i])
+                    ind[sites[i]=>sampleidx[i]] = 1.0
+                    cdfi_b *= psi[i] * ind
+                end
+                if count != d
+                    cdfi_b *= Renv
+                end
+
+                if abs(cdfi[] / normi[] - u) < abs(cdfi_b[] / normi[] - u)
+                    sample[count] = grid[count][a]
+                    sampleidx[count] = a
+                else
+                    sample[count] = grid[count][b]
+                    sampleidx[count] = b
+                end
             end
 
             write(file, "$(sample[1]) $(sample[2]) $(sample[3]) $(sample[4]) $(sample[5]) $(sample[6]) $(sample[7]) $(sample[8])\n")
@@ -285,8 +305,8 @@ function ttsvd_repressilator()
 end
 
 d = 8
-nbins = 20
-cutoff = 0.1
+nbins = 10
+cutoff = 1.0e-6
 start_time = time()
 ttsvd_repressilator()
 end_time = time()

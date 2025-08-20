@@ -110,9 +110,16 @@ function tt_repressilator()
     for i in 1:d
         for border in borders[i]
             first = searchsortedlast(grid_full[i], border[1])
+            if first == 0
+                first = 1
+            end
             last = searchsortedfirst(grid_full[i], border[2])
+            if last == nbins + 1
+                last = nbins
+            end
             append!(grid[i], grid_full[i][first:last])
         end
+        unique!(grid[i])
         sort!(grid[i])
     end
 
@@ -146,9 +153,9 @@ function tt_repressilator()
 
     psi = tt_cross(A, maxr, tol, maxiter)
     # psi = tt_cross(A, maxr, tol, maxiter, seedlist)
+    @show psi
 
     sites = siteinds(psi)
-    println(sites)
     oneslist = [ITensor(ones(dim(sites[i])), sites[i]) for i in 1:d]
     norm = psi[1] * oneslist[1]
     for i in 2:d
