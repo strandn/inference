@@ -167,7 +167,12 @@ function tt_repressilator()
     end
 
     # vec1list = [ITensor(grid_full[i], sites[i]) for i in 1:d]
+    for i in 1:d
+        println(length(grid[i]))
+        println(sites[i])
+    end
     vec1list = [ITensor(grid[i], sites[i]) for i in 1:d]
+    println("done")
     meanlist = zeros(d)
     for i in 1:d
         mean = psi[1] * (i == 1 ? vec1list[1] : oneslist[1])
@@ -308,7 +313,7 @@ end
 d = 8
 nbins = 100
 nsamples = 10^4
-iter = 10
+iter = 1
 
 start_time = time()
 tt_repressilator()
