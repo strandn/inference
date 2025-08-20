@@ -1,4 +1,6 @@
 using DifferentialEquations
+using StatsBase
+using Clustering
 
 include("tt_cross.jl")
 
@@ -58,13 +60,6 @@ function tt_repressilator()
     sigma = [4.0, 4.0, 4.0, 25.0, 25.0, 25.0, 25.0, 25.0]
     neglogposterior(X10, X20, X30, α1, α2, α3, m, η) = V([X10, X20, X30, α1, α2, α3, m, η], tspan, nsteps, data, mu, sigma)
 
-    X10_true = X20_true = X30_true = 2.0
-    α1_true = 10.0
-    α2_true = 15.0
-    α3_true = 20.0
-    m_true = 4.0
-    η_true = 1.0
-
     X10_dom = (0.5, 3.5)
     X20_dom = (0.5, 3.5)
     X30_dom = (0.5, 3.5)
@@ -74,32 +69,58 @@ function tt_repressilator()
     m_dom = (3.0, 5.0)
     η_dom = (0.95, 1.05)
 
-    grid = (
-        LinRange(X10_dom..., nbins + 1),
-        LinRange(X20_dom..., nbins + 1),
-        LinRange(X30_dom..., nbins + 1),
-        LinRange(α1_dom..., nbins + 1),
-        LinRange(α2_dom..., nbins + 1),
-        LinRange(α3_dom..., nbins + 1),
-        LinRange(m_dom..., nbins + 1),
-        LinRange(η_dom..., nbins + 1)
+    grid_full = (
+        collect(LinRange(X10_dom..., nbins + 1)),
+        collect(LinRange(X20_dom..., nbins + 1)),
+        collect(LinRange(X30_dom..., nbins + 1)),
+        collect(LinRange(α1_dom..., nbins + 1)),
+        collect(LinRange(α2_dom..., nbins + 1)),
+        collect(LinRange(α3_dom..., nbins + 1)),
+        collect(LinRange(m_dom..., nbins + 1)),
+        collect(LinRange(η_dom..., nbins + 1))
     )
 
-    offset = neglogposterior(X10_true, X20_true, X30_true, α1_true, α2_true, α3_true, m_true, η_true)
+    samples = zeros(nsamples, d)
+    open("vanilla_samples.txt", "r") do file
+        for i in 1:nsamples
+            sample = eval(Meta.parse(readline(file)))
+            samples[i, :] = sample
+        end
+    end
+    R = kmeans(samples', 3)
+    borders = []
+    for i in 1:d
+        if i == 4 || i == 5 || i == 6
+            clusterborders = []
+            for j in 1:3
+                idx = findall(x -> x == j, assignments(R))
+                avg = mean(samples[idx, i])
+                sd = std(samples[idx, i])
+                push!(clusterborders, (avg - 5 * sd, avg + 5 * sd))
+            end
+            push!(borders, clusterborders)
+        else
+            avg = mean(samples[:, i])
+            sd = std(samples[:, i])
+            push!(borders, [(avg - 5 * sd, avg + 5 * sd)])
+        end
+    end
+
+    grid = Tuple([[] for _ in 1:d])
+    for i in 1:d
+        for border in borders[i]
+            first = searchsortedlast(grid_full[i], border[1])
+            last = searchsortedfirst(grid_full[i], border[2])
+            append!(grid[i], grid_full[i][first:last])
+        end
+        sort!(grid[i])
+    end
+
+    offset = neglogposterior(samples[1, :]...)
 
     f = h5open("tt_cross_$iter.h5", "r")
     psi = read(f, "factor", MPS)
     close(f)
-
-    # posterior(x...) = exp(offset - neglogposterior(x...))
-    # A = ODEArray(posterior, grid)
-    # row_idx = undef
-    # col_idx = undef
-    # open("tt_cross_$iter.txt", "r") do file
-    #     row_idx = eval(Meta.parse(readline(file)))
-    #     col_idx = eval(Meta.parse(readline(file)))
-    # end
-    # psi = increase_resolution(A, row_idx, col_idx, 1)
 
     sites = siteinds(psi)
     oneslist = [ITensor(ones(nbins), sites[i]) for i in 1:d]
@@ -112,7 +133,41 @@ function tt_repressilator()
     domprod = (X10_dom[2] - X10_dom[1]) * (X20_dom[2] - X20_dom[1]) * (X30_dom[2] - X30_dom[1]) * (α1_dom[2] - α1_dom[1]) * (α2_dom[2] - α2_dom[1]) * (α3_dom[2] - α3_dom[1]) * (m_dom[2] - m_dom[1]) * (η_dom[2] - η_dom[1])
     println(offset - log(norm[] * domprod / nbins^d))
 
-    vec1list = [ITensor(collect(grid[i][1:nbins]), sites[i]) for i in 1:d]
+    for pos in 1:d-1
+        Lenv = undef
+        Renv = undef
+        if pos != 1
+            Lenv = psi[1] * oneslist[1]
+            for i in 2:pos-1
+                Lenv *= psi[i] * oneslist[i]
+            end
+        end
+        if pos != d - 1
+            Renv = psi[d] * oneslist[d]
+            for i in d-1:-1:pos+2
+                Renv *= psi[i] * oneslist[i]
+            end
+        end
+        result = undef
+        if pos == 1
+            result = psi[1] * psi[2] * Renv
+        elseif pos + 1 == d
+            result = Lenv * psi[d - 1] * psi[d]
+        else
+            result = Lenv * psi[pos] * psi[pos + 1] * Renv
+        end
+        open("tt_repressilator_marginal_$pos.txt", "w") do file
+            for i in 1:nbins
+                for j in 1:nbins
+                    write(file, "$(grid_full[pos][i]) $(grid_full[pos + 1][j]) $(result[sites[pos]=>i, sites[pos+1]=>j])\n")
+                    # write(file, "$(grid[pos][i]) $(grid[pos + 1][j]) $(result[sites[pos]=>i, sites[pos+1]=>j])\n")
+                end
+            end
+        end
+    end
+
+    vec1list = [ITensor(grid_full[i][1:nbins], sites[i]) for i in 1:d]
+    # vec1list = [ITensor(grid[i][1:nbins], sites[i]) for i in 1:d]
     meanlist = zeros(d)
     for i in 1:d
         mean = psi[1] * (i == 1 ? vec1list[1] : oneslist[1])
@@ -128,8 +183,10 @@ function tt_repressilator()
     #     cov0 = eval(Meta.parse(readline(file)))
     # end
 
-    vec2list = [ITensor(collect(grid[i][1:nbins] .- meanlist[i]), sites[i]) for i in 1:d]
-    vec22list = [ITensor(collect((grid[i][1:nbins] .- meanlist[i]).^2), sites[i]) for i in 1:d]
+    vec2list = [ITensor(grid_full[i][1:nbins] .- meanlist[i], sites[i]) for i in 1:d]
+    vec22list = [ITensor((grid_full[i][1:nbins] .- meanlist[i]).^2, sites[i]) for i in 1:d]
+    # vec2list = [ITensor(grid[i][1:nbins] .- meanlist[i], sites[i]) for i in 1:d]
+    # vec22list = [ITensor((grid[i][1:nbins] .- meanlist[i]).^2, sites[i]) for i in 1:d]
     varlist = zeros(d, d)
     for i in 1:d
         for j in i:d
