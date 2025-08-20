@@ -265,7 +265,7 @@ end
 
 d = 8
 maxr = -1
-cutoff = 1.0-6
+cutoff = 1.0-4
 tol = 1.0e-4
 maxiter = 10
 nbins = 10
