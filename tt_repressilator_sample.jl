@@ -96,13 +96,13 @@ function tt_repressilator()
                 idx = findall(x -> x == j, assignments(R))
                 avg = mean(samples[idx, i])
                 sd = std(samples[idx, i])
-                push!(clusterborders, (avg - 6 * sd, avg + 6 * sd))
+                push!(clusterborders, (avg - 5 * sd, avg + 5 * sd))
             end
             push!(borders, clusterborders)
         else
             avg = mean(samples[:, i])
             sd = std(samples[:, i])
-            push!(borders, [(avg - 6 * sd, avg + 6 * sd)])
+            push!(borders, [(avg - 5 * sd, avg + 5 * sd)])
         end
     end
 
