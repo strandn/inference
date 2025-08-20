@@ -550,7 +550,7 @@ function sample_from_tt(F::ResFunc{T, N}, integrals::Vector{ITensor}, skeleton::
     npivots = [length(F.I[i]) for i in 2:order]
     sample = Vector{T}(undef, order)
 
-    rel_tol = 0.01
+    rel_tol = 0.001
 
     for count in 1:order
         Renv = undef
