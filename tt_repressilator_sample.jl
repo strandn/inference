@@ -110,11 +110,19 @@ function tt_repressilator()
     for i in 1:d
         for border in borders[i]
             first = searchsortedlast(grid_full[i], border[1])
+            if first == 0
+                first = 1
+            end
             last = searchsortedfirst(grid_full[i], border[2])
+            if last == nbins + 1
+                last = nbins
+            end
             append!(grid[i], grid_full[i][first:last])
         end
+        unique!(grid[i])
         sort!(grid[i])
     end
+    println([length(g) for g in grid])
 
     offset = neglogposterior(samples[1, :]...)
 
