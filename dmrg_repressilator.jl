@@ -58,13 +58,6 @@ function dmrg_repressilator()
     sigma = [4.0, 4.0, 4.0, 25.0, 25.0, 25.0, 25.0, 25.0]
     neglogposterior(X10, X20, X30, α1, α2, α3, m, η) = V([X10, X20, X30, α1, α2, α3, m, η], tspan, nsteps, data, mu, sigma)
 
-    X10_true = X20_true = X30_true = 2.0
-    α1_true = 10.0
-    α2_true = 15.0
-    α3_true = 20.0
-    m_true = 4.0
-    η_true = 1.0
-
     X10_dom = (0.5, 3.5)
     X20_dom = (0.5, 3.5)
     X30_dom = (0.5, 3.5)
@@ -75,44 +68,25 @@ function dmrg_repressilator()
     η_dom = (0.95, 1.05)
 
     grid = (
-        LinRange(X10_dom..., nbins + 1),
-        LinRange(X20_dom..., nbins + 1),
-        LinRange(X30_dom..., nbins + 1),
-        LinRange(α1_dom..., nbins + 1),
-        LinRange(α2_dom..., nbins + 1),
-        LinRange(α3_dom..., nbins + 1),
-        LinRange(m_dom..., nbins + 1),
-        LinRange(η_dom..., nbins + 1)
+        collect(LinRange(X10_dom..., nbins + 1)),
+        collect(LinRange(X20_dom..., nbins + 1)),
+        collect(LinRange(X30_dom..., nbins + 1)),
+        collect(LinRange(α1_dom..., nbins + 1)),
+        collect(LinRange(α2_dom..., nbins + 1)),
+        collect(LinRange(α3_dom..., nbins + 1)),
+        collect(LinRange(m_dom..., nbins + 1)),
+        collect(LinRange(η_dom..., nbins + 1))
     )
-    X10_idx = searchsortedfirst(grid[1], X10_true)
-    X20_idx = searchsortedfirst(grid[2], X20_true)
-    X30_idx = searchsortedfirst(grid[3], X30_true)
-    α1_idx = searchsortedfirst(grid[4], α1_true)
-    α2_idx = searchsortedfirst(grid[5], α2_true)
-    α3_idx = searchsortedfirst(grid[6], α3_true)
-    m_idx = searchsortedfirst(grid[7], m_true)
-    η_idx = searchsortedfirst(grid[8], η_true)
-
-    offset = neglogposterior(X10_true, X20_true, X30_true, α1_true, α2_true, α3_true, m_true, η_true)
 
     println("Starting DMRG cross...")
     flush(stdout)
 
-    posterior(x...) = exp(offset - neglogposterior(x...))
+    posterior(x...) = exp(-neglogposterior(x...))
     A = ODEArray(posterior, grid)
-    # seedlist = [
-    #     [X10_idx, X20_idx, X30_idx, α1_idx, α2_idx, α3_idx, m_idx, η_idx]
-    # ]
-    seedlist = [
-        [X10_idx, X20_idx, X30_idx, α1_idx, α2_idx, α3_idx, m_idx, η_idx],
-        [X10_idx, X20_idx, X30_idx, α2_idx, α3_idx, α1_idx, m_idx, η_idx],
-        [X10_idx, X20_idx, X30_idx, α3_idx, α1_idx, α2_idx, m_idx, η_idx]
-    ]
-    # psi = dmrg_cross(A, maxr, cutoff, tol, maxiter)
-    psi = dmrg_cross(A, maxr, cutoff, tol, maxiter, seedlist)
+    psi = dmrg_cross(A, maxr, cutoff, tol, maxiter)
 
     sites = siteinds(psi)
-    oneslist = [ITensor(ones(nbins), sites[i]) for i in 1:d]
+    oneslist = [ITensor(ones(nbins + 1), sites[i]) for i in 1:d]
     norm = psi[1] * oneslist[1]
     for i in 2:d
         norm *= psi[i] * oneslist[i]
@@ -146,15 +120,15 @@ function dmrg_repressilator()
             result = Lenv * psi[pos] * psi[pos + 1] * Renv
         end
         open("dmrg_repressilator_marginal_$pos.txt", "w") do file
-            for i in 1:nbins
-                for j in 1:nbins
+            for i in 1:nbins+1
+                for j in 1:nbins+1
                     write(file, "$(grid[pos][i]) $(grid[pos + 1][j]) $(result[sites[pos] => i, sites[pos + 1] => j])\n")
                 end
             end
         end
     end
 
-    vec1list = [ITensor(collect(grid[i][1:nbins]), sites[i]) for i in 1:d]
+    vec1list = [ITensor(grid[i], sites[i]) for i in 1:d]
     meanlist = zeros(d)
     for i in 1:d
         mean = psi[1] * (i == 1 ? vec1list[1] : oneslist[1])
@@ -170,8 +144,8 @@ function dmrg_repressilator()
     #     cov0 = eval(Meta.parse(readline(file)))
     # end
 
-    vec2list = [ITensor(collect(grid[i][1:nbins] .- meanlist[i]), sites[i]) for i in 1:d]
-    vec22list = [ITensor(collect((grid[i][1:nbins] .- meanlist[i]).^2), sites[i]) for i in 1:d]
+    vec2list = [ITensor(grid[i] .- meanlist[i], sites[i]) for i in 1:d]
+    vec22list = [ITensor((grid[i] .- meanlist[i]).^2, sites[i]) for i in 1:d]
     varlist = zeros(d, d)
     for i in 1:d
         for j in i:d
@@ -203,14 +177,98 @@ function dmrg_repressilator()
     display(varlist)
     # println(LinearAlgebra.norm(varlist - cov0) / LinearAlgebra.norm(cov0))
     flush(stdout)
+
+    open("dmrg_repressilator_samples.txt", "w") do file
+        for sampleid in 1:1000
+            println("Collecting sample $sampleid...")
+            sample = Vector{Float64}(undef, d)
+            sampleidx = Vector{Int64}(undef, d)
+
+            for count in 1:d
+                Renv = undef
+                if count != d
+                    ind = ITensor(ones(nbins + 1), sites[d])
+                    Renv = psi[d] * ind
+                    for i in d-1:-1:count+1
+                        ind = ITensor(ones(nbins + 1), sites[i])
+                        Renv *= psi[i] * ind
+                    end
+                end
+                u = rand()
+                println("u_$count = $u")
+                flush(stdout)
+                a = 1
+                b = nbins + 1
+
+                ind = ITensor(ones(nbins + 1), sites[count])
+                normi = psi[count] * ind
+                for i in count-1:-1:1
+                    ind = ITensor(sites[i])
+                    ind[sites[i]=>sampleidx[i]] = 1.0
+                    normi *= psi[i] * ind
+                end
+                if count != d
+                    normi *= Renv
+                end
+
+                cdfi = 0.0
+                while true
+                    mid = div(a + b, 2)
+                    if a == mid
+                        break
+                    end
+                    indvec = zeros(nbins + 1)
+                    indvec[1:mid] .= 1.0
+                    ind = ITensor(indvec, sites[count])
+                    cdfi = psi[count] * ind
+                    for i in count-1:-1:1
+                        ind = ITensor(sites[i])
+                        ind[sites[i]=>sampleidx[i]] = 1.0
+                        cdfi *= psi[i] * ind
+                    end
+                    if count != d
+                        cdfi *= Renv
+                    end
+                    if cdfi[] / normi[] < u
+                        a = mid
+                    else
+                        b = mid
+                    end
+                end
+                
+                indvec = zeros(dim(sites[count]))
+                indvec[1:b] .= 1.0
+                ind = ITensor(indvec, sites[count])
+                cdfi_b = psi[count] * ind
+                for i in count-1:-1:1
+                    ind = ITensor(sites[i])
+                    ind[sites[i]=>sampleidx[i]] = 1.0
+                    cdfi_b *= psi[i] * ind
+                end
+                if count != d
+                    cdfi_b *= Renv
+                end
+
+                if abs(cdfi[] / normi[] - u) < abs(cdfi_b[] / normi[] - u)
+                    sample[count] = grid[count][a]
+                    sampleidx[count] = a
+                else
+                    sample[count] = grid[count][b]
+                    sampleidx[count] = b
+                end
+            end
+
+            write(file, "$(sample[1]) $(sample[2]) $(sample[3]) $(sample[4]) $(sample[5]) $(sample[6]) $(sample[7]) $(sample[8])\n")
+        end
+    end
 end
 
 d = 8
-maxr = 100
-cutoff = 0.01
+maxr = -1
+cutoff = 1.0-6
 tol = 1.0e-4
 maxiter = 10
-nbins = 100
+nbins = 10
 
 start_time = time()
 dmrg_repressilator()
