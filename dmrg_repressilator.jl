@@ -94,7 +94,7 @@ function dmrg_repressilator()
     psi /= norm[]
 
     domprod = (X10_dom[2] - X10_dom[1]) * (X20_dom[2] - X20_dom[1]) * (X30_dom[2] - X30_dom[1]) * (α1_dom[2] - α1_dom[1]) * (α2_dom[2] - α2_dom[1]) * (α3_dom[2] - α3_dom[1]) * (m_dom[2] - m_dom[1]) * (η_dom[2] - η_dom[1])
-    println(offset - log(norm[] * domprod / nbins^d))
+    println(-log(norm[] * domprod / nbins^d))
 
     for pos in 1:d-1
         Lenv = undef
