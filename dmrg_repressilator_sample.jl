@@ -93,6 +93,7 @@ function dmrg_repressilator()
     close(f)
 
     sites = siteinds(psi)
+    println(sites)
     oneslist = [ITensor(ones(nbins), sites[i]) for i in 1:d]
     norm = psi[1] * oneslist[1]
     for i in 2:d
