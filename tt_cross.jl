@@ -585,7 +585,8 @@ mutable struct ODEArray{T, N} <: AbstractArray{T, N}
 end
 
 function Base.size(A::ODEArray)
-    return Tuple([length(elt) - 1 for elt in A.grid])
+    # return Tuple([length(elt) - 1 for elt in A.grid])
+    return Tuple([length(elt) for elt in A.grid])
 end
 
 function Base.ndims(A::ODEArray)
