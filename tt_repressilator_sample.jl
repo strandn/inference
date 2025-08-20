@@ -305,8 +305,9 @@ function tt_repressilator()
 end
 
 d = 8
-nbins = 50
-iter = 19
+nbins = 100
+nsamples = 10^4
+iter = 10
 
 start_time = time()
 tt_repressilator()
