@@ -182,8 +182,8 @@ function tt_repressilator()
             result = Lenv * psi[pos] * psi[pos + 1] * Renv
         end
         open("tt_repressilator_marginal_$pos.txt", "w") do file
-            for i in 1:dim(sites[i])
-                for j in 1:dim(sites[j])
+            for i in 1:dim(sites[pos])
+                for j in 1:dim(sites[pos+1])
                     # write(file, "$(grid_full[pos][i]) $(grid_full[pos + 1][j]) $(result[sites[pos]=>i, sites[pos+1]=>j])\n")
                     write(file, "$(grid[pos][i]) $(grid[pos + 1][j]) $(result[sites[pos]=>i, sites[pos+1]=>j])\n")
                 end
