@@ -159,15 +159,15 @@ function tt_repressilator()
         open("tt_repressilator_marginal_$pos.txt", "w") do file
             for i in 1:nbins
                 for j in 1:nbins
-                    write(file, "$(grid_full[pos][i]) $(grid_full[pos + 1][j]) $(result[sites[pos]=>i, sites[pos+1]=>j])\n")
-                    # write(file, "$(grid[pos][i]) $(grid[pos + 1][j]) $(result[sites[pos]=>i, sites[pos+1]=>j])\n")
+                    # write(file, "$(grid_full[pos][i]) $(grid_full[pos + 1][j]) $(result[sites[pos]=>i, sites[pos+1]=>j])\n")
+                    write(file, "$(grid[pos][i]) $(grid[pos + 1][j]) $(result[sites[pos]=>i, sites[pos+1]=>j])\n")
                 end
             end
         end
     end
 
-    vec1list = [ITensor(grid_full[i][1:nbins], sites[i]) for i in 1:d]
-    # vec1list = [ITensor(grid[i][1:nbins], sites[i]) for i in 1:d]
+    # vec1list = [ITensor(grid_full[i][1:nbins], sites[i]) for i in 1:d]
+    vec1list = [ITensor(grid[i][1:nbins], sites[i]) for i in 1:d]
     meanlist = zeros(d)
     for i in 1:d
         mean = psi[1] * (i == 1 ? vec1list[1] : oneslist[1])
@@ -183,10 +183,10 @@ function tt_repressilator()
     #     cov0 = eval(Meta.parse(readline(file)))
     # end
 
-    vec2list = [ITensor(grid_full[i][1:nbins] .- meanlist[i], sites[i]) for i in 1:d]
-    vec22list = [ITensor((grid_full[i][1:nbins] .- meanlist[i]).^2, sites[i]) for i in 1:d]
-    # vec2list = [ITensor(grid[i][1:nbins] .- meanlist[i], sites[i]) for i in 1:d]
-    # vec22list = [ITensor((grid[i][1:nbins] .- meanlist[i]).^2, sites[i]) for i in 1:d]
+    # vec2list = [ITensor(grid_full[i][1:nbins] .- meanlist[i], sites[i]) for i in 1:d]
+    # vec22list = [ITensor((grid_full[i][1:nbins] .- meanlist[i]).^2, sites[i]) for i in 1:d]
+    vec2list = [ITensor(grid[i][1:nbins] .- meanlist[i], sites[i]) for i in 1:d]
+    vec22list = [ITensor((grid[i][1:nbins] .- meanlist[i]).^2, sites[i]) for i in 1:d]
     varlist = zeros(d, d)
     for i in 1:d
         for j in i:d
@@ -291,12 +291,12 @@ function tt_repressilator()
                 end
 
                 if abs(cdfi[] / normi[] - u) < abs(cdfi_b[] / normi[] - u)
-                    sample[count] = grid_full[count][a]
-                    # sample[count] = grid[count][a]
+                    # sample[count] = grid_full[count][a]
+                    sample[count] = grid[count][a]
                     sampleidx[count] = a
                 else
-                    sample[count] = grid_full[count][b]
-                    # sample[count] = grid[count][b]
+                    # sample[count] = grid_full[count][b]
+                    sample[count] = grid[count][b]
                     sampleidx[count] = b
                 end
             end
