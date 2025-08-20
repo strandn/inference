@@ -106,7 +106,7 @@ function tt_repressilator()
         end
     end
 
-    grid = Tuple([[] for _ in 1:d])
+    grid = Tuple([Float64[] for _ in 1:d])
     for i in 1:d
         for border in borders[i]
             first = searchsortedlast(grid_full[i], border[1])
