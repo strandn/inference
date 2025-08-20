@@ -122,6 +122,7 @@ function tt_repressilator()
         unique!(grid[i])
         sort!(grid[i])
     end
+    println([length(g) for g in grid])
 
     offset = neglogposterior(samples[1, :]...)
 
