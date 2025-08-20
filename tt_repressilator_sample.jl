@@ -168,6 +168,9 @@ function tt_repressilator()
 
     # vec1list = [ITensor(grid_full[i], sites[i]) for i in 1:d]
     println(1)
+    println(grid[1])
+    println(sites[1])
+    println(ITensor(grid[1], sites[1]))
     vec1list = [ITensor(grid[i], sites[i]) for i in 1:d]
     println(2)
     meanlist = zeros(d)
