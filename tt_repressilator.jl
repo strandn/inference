@@ -184,13 +184,15 @@ function tt_repressilator()
         open("tt_repressilator_marginal_$pos.txt", "w") do file
             for i in 1:nbins
                 for j in 1:nbins
-                    write(file, "$(grid[pos][i]) $(grid[pos + 1][j]) $(result[sites[pos] => i, sites[pos + 1] => j])\n")
+                    write(file, "$(grid_full[pos][i]) $(grid_full[pos + 1][j]) $(result[sites[pos]=>i, sites[pos+1]=>j])\n")
+                    # write(file, "$(grid[pos][i]) $(grid[pos + 1][j]) $(result[sites[pos]=>i, sites[pos+1]=>j])\n")
                 end
             end
         end
     end
 
-    vec1list = [ITensor(grid[i][1:nbins], sites[i]) for i in 1:d]
+    vec1list = [ITensor(grid_full[i][1:nbins], sites[i]) for i in 1:d]
+    # vec1list = [ITensor(grid[i][1:nbins], sites[i]) for i in 1:d]
     meanlist = zeros(d)
     for i in 1:d
         mean = psi[1] * (i == 1 ? vec1list[1] : oneslist[1])
