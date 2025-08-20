@@ -123,7 +123,7 @@ function tt_repressilator()
     close(f)
 
     sites = siteinds(psi)
-    oneslist = [ITensor(ones(nbins), sites[i]) for i in 1:d]
+    oneslist = [ITensor(ones(dim(sites[i])), sites[i]) for i in 1:d]
     norm = psi[1] * oneslist[1]
     for i in 2:d
         norm *= psi[i] * oneslist[i]
@@ -157,8 +157,8 @@ function tt_repressilator()
             result = Lenv * psi[pos] * psi[pos + 1] * Renv
         end
         open("tt_repressilator_marginal_$pos.txt", "w") do file
-            for i in 1:nbins
-                for j in 1:nbins
+            for i in 1:dim(sites[i])
+                for j in 1:dim(sites[j])
                     # write(file, "$(grid_full[pos][i]) $(grid_full[pos + 1][j]) $(result[sites[pos]=>i, sites[pos+1]=>j])\n")
                     write(file, "$(grid[pos][i]) $(grid[pos + 1][j]) $(result[sites[pos]=>i, sites[pos+1]=>j])\n")
                 end
@@ -166,8 +166,8 @@ function tt_repressilator()
         end
     end
 
-    # vec1list = [ITensor(grid_full[i][1:nbins], sites[i]) for i in 1:d]
-    vec1list = [ITensor(grid[i][1:nbins], sites[i]) for i in 1:d]
+    # vec1list = [ITensor(grid_full[i], sites[i]) for i in 1:d]
+    vec1list = [ITensor(grid[i], sites[i]) for i in 1:d]
     meanlist = zeros(d)
     for i in 1:d
         mean = psi[1] * (i == 1 ? vec1list[1] : oneslist[1])
@@ -183,10 +183,10 @@ function tt_repressilator()
     #     cov0 = eval(Meta.parse(readline(file)))
     # end
 
-    # vec2list = [ITensor(grid_full[i][1:nbins] .- meanlist[i], sites[i]) for i in 1:d]
-    # vec22list = [ITensor((grid_full[i][1:nbins] .- meanlist[i]).^2, sites[i]) for i in 1:d]
-    vec2list = [ITensor(grid[i][1:nbins] .- meanlist[i], sites[i]) for i in 1:d]
-    vec22list = [ITensor((grid[i][1:nbins] .- meanlist[i]).^2, sites[i]) for i in 1:d]
+    # vec2list = [ITensor(grid_full[i] .- meanlist[i], sites[i]) for i in 1:d]
+    # vec22list = [ITensor((grid_full[i] .- meanlist[i]).^2, sites[i]) for i in 1:d]
+    vec2list = [ITensor(grid[i] .- meanlist[i], sites[i]) for i in 1:d]
+    vec22list = [ITensor((grid[i] .- meanlist[i]).^2, sites[i]) for i in 1:d]
     varlist = zeros(d, d)
     for i in 1:d
         for j in i:d
@@ -228,10 +228,10 @@ function tt_repressilator()
             for count in 1:d
                 Renv = undef
                 if count != d
-                    ind = ITensor(ones(nbins), sites[d])
+                    ind = ITensor(ones(dim(sites[d])), sites[d])
                     Renv = psi[d] * ind
                     for i in d-1:-1:count+1
-                        ind = ITensor(ones(nbins), sites[i])
+                        ind = ITensor(ones(dim(sites[i])), sites[i])
                         Renv *= psi[i] * ind
                     end
                 end
@@ -239,9 +239,9 @@ function tt_repressilator()
                 println("u_$count = $u")
                 flush(stdout)
                 a = 1
-                b = nbins
+                b = dim(sites[count])
 
-                ind = ITensor(ones(nbins), sites[count])
+                ind = ITensor(ones(dim(sites[count])), sites[count])
                 normi = psi[count] * ind
                 for i in count-1:-1:1
                     ind = ITensor(sites[i])
@@ -258,7 +258,7 @@ function tt_repressilator()
                     if a == mid
                         break
                     end
-                    indvec = zeros(nbins)
+                    indvec = zeros(dim(sites[count]))
                     indvec[1:mid] .= 1.0
                     ind = ITensor(indvec, sites[count])
                     cdfi = psi[count] * ind
@@ -277,7 +277,7 @@ function tt_repressilator()
                     end
                 end
                 
-                indvec = zeros(nbins)
+                indvec = zeros(dim(sites[count]))
                 indvec[1:b] .= 1.0
                 ind = ITensor(indvec, sites[count])
                 cdfi_b = psi[count] * ind

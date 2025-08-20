@@ -148,7 +148,7 @@ function tt_repressilator()
     # psi = tt_cross(A, maxr, tol, maxiter, seedlist)
 
     sites = siteinds(psi)
-    oneslist = [ITensor(ones(nbins), sites[i]) for i in 1:d]
+    oneslist = [ITensor(ones(dim(sites[i])), sites[i]) for i in 1:d]
     norm = psi[1] * oneslist[1]
     for i in 2:d
         norm *= psi[i] * oneslist[i]
@@ -182,8 +182,8 @@ function tt_repressilator()
             result = Lenv * psi[pos] * psi[pos + 1] * Renv
         end
         open("tt_repressilator_marginal_$pos.txt", "w") do file
-            for i in 1:nbins
-                for j in 1:nbins
+            for i in 1:dim(sites[i])
+                for j in 1:dim(sites[j])
                     # write(file, "$(grid_full[pos][i]) $(grid_full[pos + 1][j]) $(result[sites[pos]=>i, sites[pos+1]=>j])\n")
                     write(file, "$(grid[pos][i]) $(grid[pos + 1][j]) $(result[sites[pos]=>i, sites[pos+1]=>j])\n")
                 end
@@ -191,8 +191,8 @@ function tt_repressilator()
         end
     end
 
-    # vec1list = [ITensor(grid_full[i][1:nbins], sites[i]) for i in 1:d]
-    vec1list = [ITensor(grid[i][1:nbins], sites[i]) for i in 1:d]
+    # vec1list = [ITensor(grid_full[i], sites[i]) for i in 1:d]
+    vec1list = [ITensor(grid[i], sites[i]) for i in 1:d]
     meanlist = zeros(d)
     for i in 1:d
         mean = psi[1] * (i == 1 ? vec1list[1] : oneslist[1])
@@ -208,10 +208,10 @@ function tt_repressilator()
     #     cov0 = eval(Meta.parse(readline(file)))
     # end
 
-    # vec2list = [ITensor(grid_full[i][1:nbins] .- meanlist[i], sites[i]) for i in 1:d]
-    # vec22list = [ITensor((grid_full[i][1:nbins] .- meanlist[i]).^2, sites[i]) for i in 1:d]
-    vec2list = [ITensor(grid[i][1:nbins] .- meanlist[i], sites[i]) for i in 1:d]
-    vec22list = [ITensor((grid[i][1:nbins] .- meanlist[i]).^2, sites[i]) for i in 1:d]
+    # vec2list = [ITensor(grid_full[i] .- meanlist[i], sites[i]) for i in 1:d]
+    # vec22list = [ITensor((grid_full[i] .- meanlist[i]).^2, sites[i]) for i in 1:d]
+    vec2list = [ITensor(grid[i] .- meanlist[i], sites[i]) for i in 1:d]
+    vec22list = [ITensor((grid[i] .- meanlist[i]).^2, sites[i]) for i in 1:d]
     varlist = zeros(d, d)
     for i in 1:d
         for j in i:d
