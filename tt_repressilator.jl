@@ -104,6 +104,7 @@ function tt_repressilator()
             sd = std(samples[:, i])
             push!(borders, [(avg - 5 * sd, avg + 5 * sd)])
         end
+        println(borders[i])
     end
 
     grid = Tuple([Float64[] for _ in 1:d])
@@ -152,8 +153,8 @@ function tt_repressilator()
         end
     end
 
-    psi = tt_cross(A, maxr, tol, maxiter)
-    # psi = tt_cross(A, maxr, tol, maxiter, seedlist)
+    # psi = tt_cross(A, maxr, tol, maxiter)
+    psi = tt_cross(A, maxr, tol, maxiter, seedlist)
     @show psi
 
     sites = siteinds(psi)
