@@ -91,15 +91,15 @@ function ttsvd_repressilator()
     flush(stdout)
     
     posterior(x...) = exp(offset - neglogposterior(x...))
-    A = zeros(Float64, nbins, nbins, nbins, nbins, nbins, nbins, nbins, nbins)
-    Threads.@threads for i1 in 1:nbins
-        for i2 in 1:nbins
-            for i3 in 1:nbins
-                for i4 in 1:nbins
-                    for i5 in 1:nbins
-                        for i6 in 1:nbins
-                            for i7 in 1:nbins
-                                for i8 in 1:nbins
+    A = zeros(Float64, nbins + 1, nbins + 1, nbins + 1, nbins + 1, nbins + 1, nbins + 1, nbins + 1, nbins + 1)
+    Threads.@threads for i1 in 1:nbins+1
+        for i2 in 1:nbins+1
+            for i3 in 1:nbins+1
+                for i4 in 1:nbins+1
+                    for i5 in 1:nbins+1
+                        for i6 in 1:nbins+1
+                            for i7 in 1:nbins+1
+                                for i8 in 1:nbins+1
                                     A[i1, i2, i3, i4, i5, i6, i7, i8] = posterior(grid[1][i1], grid[2][i2], grid[3][i3], grid[4][i4], grid[5][i5], grid[6][i6], grid[7][i7], grid[8][i8])
                                 end
                             end
@@ -111,7 +111,7 @@ function ttsvd_repressilator()
     end
 
     psivec = Vector{ITensor}(undef, d)
-    sites = siteinds(nbins, d)
+    sites = siteinds(nbins + 1, d)
 
     println("Computing posterior TT...\n")
     flush(stdout)
@@ -127,7 +127,7 @@ function ttsvd_repressilator()
     @show psi
 
     sites = siteinds(psi)
-    oneslist = [ITensor(ones(nbins), sites[i]) for i in 1:d]
+    oneslist = [ITensor(ones(nbins + 1), sites[i]) for i in 1:d]
     norm = psi[1] * oneslist[1]
     for i in 2:d
         norm *= psi[i] * oneslist[i]
@@ -161,15 +161,15 @@ function ttsvd_repressilator()
             result = Lenv * psi[pos] * psi[pos + 1] * Renv
         end
         open("ttsvd_repressilator_marginal_$pos.txt", "w") do file
-            for i in 1:nbins
-                for j in 1:nbins
+            for i in 1:nbins+1
+                for j in 1:nbins+1
                     write(file, "$(grid[pos][i]) $(grid[pos + 1][j]) $(result[sites[pos] => i, sites[pos + 1] => j])\n")
                 end
             end
         end
     end
 
-    vec1list = [ITensor(grid[i][1:nbins], sites[i]) for i in 1:d]
+    vec1list = [ITensor(grid[i], sites[i]) for i in 1:d]
     meanlist = zeros(d)
     for i in 1:d
         mean = psi[1] * (i == 1 ? vec1list[1] : oneslist[1])
@@ -185,8 +185,8 @@ function ttsvd_repressilator()
     #     cov0 = eval(Meta.parse(readline(file)))
     # end
 
-    vec2list = [ITensor(grid[i][1:nbins] .- meanlist[i], sites[i]) for i in 1:d]
-    vec22list = [ITensor((grid[i][1:nbins] .- meanlist[i]).^2, sites[i]) for i in 1:d]
+    vec2list = [ITensor(grid[i] .- meanlist[i], sites[i]) for i in 1:d]
+    vec22list = [ITensor((grid[i] .- meanlist[i]).^2, sites[i]) for i in 1:d]
     varlist = zeros(d, d)
     for i in 1:d
         for j in i:d
@@ -228,10 +228,10 @@ function ttsvd_repressilator()
             for count in 1:d
                 Renv = undef
                 if count != d
-                    ind = ITensor(ones(nbins), sites[d])
+                    ind = ITensor(ones(nbins + 1), sites[d])
                     Renv = psi[d] * ind
                     for i in d-1:-1:count+1
-                        ind = ITensor(ones(nbins), sites[i])
+                        ind = ITensor(ones(nbins + 1), sites[i])
                         Renv *= psi[i] * ind
                     end
                 end
@@ -239,9 +239,9 @@ function ttsvd_repressilator()
                 println("u_$count = $u")
                 flush(stdout)
                 a = 1
-                b = nbins
+                b = nbins + 1
 
-                ind = ITensor(ones(nbins), sites[count])
+                ind = ITensor(ones(nbins + 1), sites[count])
                 normi = psi[count] * ind
                 for i in count-1:-1:1
                     ind = ITensor(sites[i])
@@ -258,7 +258,7 @@ function ttsvd_repressilator()
                     if a == mid
                         break
                     end
-                    indvec = zeros(nbins)
+                    indvec = zeros(nbins + 1)
                     indvec[1:mid] .= 1.0
                     ind = ITensor(indvec, sites[count])
                     cdfi = psi[count] * ind
