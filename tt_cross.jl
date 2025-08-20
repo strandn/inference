@@ -295,6 +295,7 @@ function tt_cross(input_tensor, maxrank::Int64, tol::Float64, n_iter_max::Int64,
         end
         rank[i] = min(left, right, maxrank)
     end
+    println(rank)
 
     row_idx = Vector(undef, tensor_order)
     col_idx = Vector(undef, tensor_order)
