@@ -109,23 +109,23 @@ function tt_repressilator()
         println(borders[i])
     end
 
-    grid = Tuple([Float64[] for _ in 1:d])
-    for i in 1:d
-        for border in borders[i]
-            first = searchsortedlast(grid_full[i], border[1])
-            if first == 0
-                first = 1
-            end
-            last = searchsortedfirst(grid_full[i], border[2])
-            if last == nbins + 1
-                last = nbins
-            end
-            append!(grid[i], grid_full[i][first:last])
-        end
-        unique!(grid[i])
-        sort!(grid[i])
-    end
-    println([length(g) for g in grid])
+    # grid = Tuple([Float64[] for _ in 1:d])
+    # for i in 1:d
+    #     for border in borders[i]
+    #         first = searchsortedlast(grid_full[i], border[1])
+    #         if first == 0
+    #             first = 1
+    #         end
+    #         last = searchsortedfirst(grid_full[i], border[2])
+    #         if last == nbins + 1
+    #             last = nbins
+    #         end
+    #         append!(grid[i], grid_full[i][first:last])
+    #     end
+    #     unique!(grid[i])
+    #     sort!(grid[i])
+    # end
+    # println([length(g) for g in grid])
 
     offset = neglogposterior(samples[1, :]...)
 
@@ -139,14 +139,18 @@ function tt_repressilator()
     seedlist = zeros(Int64, nsamples, d)
     for i in 1:nsamples
         for j in 1:d
-            hi = searchsortedfirst(grid[j], samples[i, j])
+            hi = searchsortedfirst(grid_full[j], samples[i, j])
+            # hi = searchsortedfirst(grid[j], samples[i, j])
             if hi == 1
                 seedlist[i, j] = 1
-            elseif hi == length(grid[j]) + 1
-                seedlist[i, j] = length(grid[j])
+            elseif hi == length(grid_full[j]) + 1
+                seedlist[i, j] = length(grid_full[j])
+            # elseif hi == length(grid[j]) + 1
+            #     seedlist[i, j] = length(grid[j])
             else
                 lo = hi - 1
-                if abs(grid[j][lo] - samples[i, j]) < abs(grid[j][hi] - samples[i, j])
+                if abs(grid_full[j][lo] - samples[i, j]) < abs(grid_full[j][hi] - samples[i, j])
+                # if abs(grid[j][lo] - samples[i, j]) < abs(grid[j][hi] - samples[i, j])
                     seedlist[i, j] = lo
                 else
                     seedlist[i, j] = hi
