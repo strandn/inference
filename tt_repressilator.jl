@@ -1,6 +1,7 @@
 using DifferentialEquations
 using StatsBase
 using Clustering
+using DelimitedFiles
 
 include("tt_cross.jl")
 
@@ -82,12 +83,12 @@ function tt_repressilator()
 
     samples = zeros(nsamples, d)
     # open("vanilla_samples.txt", "r") do file
-    open("tt_repressilator_coarse_samples.txt", "r") do file
-        for i in 1:nsamples
-            sample = eval(Meta.parse(readline(file)))
-            samples[i, :] = sample
-        end
-    end
+    #     for i in 1:nsamples
+    #         sample = eval(Meta.parse(readline(file)))
+    #         samples[i, :] = sample
+    #     end
+    # end
+    samples = readdlm("tt_repressilator_coarse_samples.txt")
     R = kmeans(samples', 3)
     borders = []
     for i in 1:d
