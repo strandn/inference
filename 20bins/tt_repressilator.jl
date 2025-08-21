@@ -81,7 +81,7 @@ function tt_repressilator()
         collect(LinRange(η_dom..., nbins + 1))
     )
 
-    samples = readdlm("tt_repressilator_coarse_samples.txt")
+    samples = readdlm("tt_repressilator_samples.txt")
     R = kmeans(samples', 3)
     borders = []
     for i in 1:d
