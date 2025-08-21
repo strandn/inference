@@ -248,6 +248,92 @@ function tt_repressilator()
     display(varlist)
     # println(LinearAlgebra.norm(varlist - cov0) / LinearAlgebra.norm(cov0))
     flush(stdout)
+
+    open("tt_repressilator_samples.txt", "w") do file
+        for sampleid in 1:30
+            println("Collecting sample $sampleid...")
+            sample = Vector{Float64}(undef, d)
+            sampleidx = Vector{Int64}(undef, d)
+
+            for count in 1:d
+                Renv = undef
+                if count != d
+                    ind = ITensor(ones(dim(sites[d])), sites[d])
+                    Renv = psi[d] * ind
+                    for i in d-1:-1:count+1
+                        ind = ITensor(ones(dim(sites[i])), sites[i])
+                        Renv *= psi[i] * ind
+                    end
+                end
+                u = rand()
+                println("u_$count = $u")
+                flush(stdout)
+                a = 1
+                b = dim(sites[count])
+
+                ind = ITensor(ones(dim(sites[count])), sites[count])
+                normi = psi[count] * ind
+                for i in count-1:-1:1
+                    ind = ITensor(sites[i])
+                    ind[sites[i]=>sampleidx[i]] = 1.0
+                    normi *= psi[i] * ind
+                end
+                if count != d
+                    normi *= Renv
+                end
+
+                cdfi = 0.0
+                while true
+                    mid = div(a + b, 2)
+                    if a == mid
+                        break
+                    end
+                    indvec = zeros(dim(sites[count]))
+                    indvec[1:mid] .= 1.0
+                    ind = ITensor(indvec, sites[count])
+                    cdfi = psi[count] * ind
+                    for i in count-1:-1:1
+                        ind = ITensor(sites[i])
+                        ind[sites[i]=>sampleidx[i]] = 1.0
+                        cdfi *= psi[i] * ind
+                    end
+                    if count != d
+                        cdfi *= Renv
+                    end
+                    if cdfi[] / normi[] < u
+                        a = mid
+                    else
+                        b = mid
+                    end
+                end
+                
+                indvec = zeros(dim(sites[count]))
+                indvec[1:b] .= 1.0
+                ind = ITensor(indvec, sites[count])
+                cdfi_b = psi[count] * ind
+                for i in count-1:-1:1
+                    ind = ITensor(sites[i])
+                    ind[sites[i]=>sampleidx[i]] = 1.0
+                    cdfi_b *= psi[i] * ind
+                end
+                if count != d
+                    cdfi_b *= Renv
+                end
+
+                if abs(cdfi[] / normi[] - u) < abs(cdfi_b[] / normi[] - u)
+                    # sample[count] = grid_full[count][a]
+                    sample[count] = grid[count][a]
+                    sampleidx[count] = a
+                else
+                    # sample[count] = grid_full[count][b]
+                    sample[count] = grid[count][b]
+                    sampleidx[count] = b
+                end
+            end
+
+            write(file, "$(sample[1]) $(sample[2]) $(sample[3]) $(sample[4]) $(sample[5]) $(sample[6]) $(sample[7]) $(sample[8])\n")
+        end
+    end
 end
 
 d = 8
