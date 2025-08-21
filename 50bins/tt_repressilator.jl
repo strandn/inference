@@ -321,12 +321,10 @@ function tt_repressilator()
                 end
 
                 if abs(cdfi[] / normi[] - u) < abs(cdfi_b[] / normi[] - u)
-                    # sample[count] = grid_full[count][a]
-                    sample[count] = grid[count][a]
+                    sample[count] = grid_full[count][a]
                     sampleidx[count] = a
                 else
-                    # sample[count] = grid_full[count][b]
-                    sample[count] = grid[count][b]
+                    sample[count] = grid_full[count][b]
                     sampleidx[count] = b
                 end
             end
