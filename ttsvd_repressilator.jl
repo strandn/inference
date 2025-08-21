@@ -103,7 +103,7 @@ function ttsvd_repressilator()
     offset = minimum(nlA)
 
     A = zeros(Float64, nbins + 1, nbins + 1, nbins + 1, nbins + 1, nbins + 1, nbins + 1, nbins + 1, nbins + 1)
-    A[:, :, :, :, :, :, :, :] = exp(offset - nlA[:, :, :, :, :, :, :, :])
+    A[:, :, :, :, :, :, :, :] = exp(offset .- nlA[:, :, :, :, :, :, :, :])
 
     psivec = Vector{ITensor}(undef, d)
     sites = siteinds(nbins + 1, d)
