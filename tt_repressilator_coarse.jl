@@ -260,7 +260,7 @@ end
 d = 8
 maxr = 500
 tol = 1.0e-4
-maxiter = 10
+maxiter = 1
 nbins = 10
 
 start_time = time()
