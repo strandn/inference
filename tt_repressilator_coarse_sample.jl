@@ -78,12 +78,9 @@ function tt_repressilator()
         collect(LinRange(η_dom..., nbins + 1))
     )
 
-    println("Starting TT cross...")
-    flush(stdout)
-
-    posterior(x...) = exp(-neglogposterior(x...))
-    A = ODEArray(posterior, grid)
-    psi = tt_cross(A, maxr, tol, maxiter)
+    f = h5open("tt_cross_$iter.h5", "r")
+    psi = read(f, "factor", MPS)
+    close(f)
 
     sites = siteinds(psi)
     oneslist = [ITensor(ones(nbins + 1), sites[i]) for i in 1:d]
@@ -258,10 +255,8 @@ function tt_repressilator()
 end
 
 d = 8
-maxr = 500
-tol = 1.0e-4
-maxiter = 1
 nbins = 10
+iter = 1
 
 start_time = time()
 tt_repressilator()
