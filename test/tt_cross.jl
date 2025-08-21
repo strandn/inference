@@ -2,6 +2,7 @@ using ITensors
 using ITensorMPS
 using LinearAlgebra
 using HDF5
+using Random
 
 function dmrg_cross(input_tensor, maxrank::Int64, cutoff::Float64, tol::Float64, n_iter_max::Int64, seedlist::Vector{Vector{Int64}}=Vector{Int64}[])
     tensor_shape = size(input_tensor)
@@ -278,7 +279,7 @@ function right_left_dmrgcross(input_tensor, rank::Vector{Int64}, row_idx, col_id
     return not_converged
 end
 
-function tt_cross(input_tensor, maxrank::Int64, tol::Float64, n_iter_max::Int64, seedlist::Vector{Vector{Int64}}=Vector{Int64}[])
+function tt_cross(input_tensor, maxrank::Int64, tol::Float64, n_iter_max::Int64, seedlist::Matrix{Int64}=Matrix{Int64}(undef,0,0))
     tensor_shape = size(input_tensor)
     tensor_order = ndims(input_tensor)
 
@@ -295,53 +296,79 @@ function tt_cross(input_tensor, maxrank::Int64, tol::Float64, n_iter_max::Int64,
         rank[i] = min(left, right, maxrank)
     end
 
-    sites = [siteind(tensor_shape[i], i) for i in 1:tensor_order]
-    factor_old = randomMPS(sites)
-    factor_new = randomMPS(sites; linkdims=rank)
-
     row_idx = Vector(undef, tensor_order)
     col_idx = Vector(undef, tensor_order)
     row_idx[1] = [[]]
     col_idx[tensor_order] = [[]]
 
-    if isempty(seedlist)
-        push!(seedlist, [rand(1:tensor_shape[i]) for i in 1:tensor_order])
-    end
-
     for k_col_idx in tensor_order-1:-1:1
         col_idx[k_col_idx] = []
-        sortedlist = Vector(undef, length(seedlist))
-        for i in eachindex(seedlist)
-            sortedlist[i] = []
+        if isempty(seedlist)
+            idxlist = []
             if k_col_idx == tensor_order - 1
                 for j in 1:tensor_shape[tensor_order]
-                    push!(sortedlist[i], (abs(j - seedlist[i][tensor_order]), [j]))
+                    push!(idxlist, [j])
                 end
             else
                 for j in 1:tensor_shape[k_col_idx + 1]
                     for k in 1:rank[k_col_idx + 1]
                         pivot = [j, col_idx[k_col_idx + 1][k]...]
-                        push!(sortedlist[i], (norm(pivot - seedlist[i][k_col_idx+1:tensor_order]), pivot))
+                        push!(idxlist, pivot)
                     end
                 end
             end
-            sort!(sortedlist[i])
-        end
-        countlist = fill(1, length(seedlist))
-        idx = 1
-        while length(col_idx[k_col_idx]) < rank[k_col_idx]
-            seed_idx = mod(idx - 1, length(seedlist)) + 1
-            pivot = sortedlist[seed_idx][countlist[seed_idx]][2]
-            if !(pivot in col_idx[k_col_idx])
+            shuffle!(idxlist)
+            for i in 1:rank[k_col_idx]
+                pivot = idxlist[i]
                 push!(col_idx[k_col_idx], pivot)
             end
-            countlist[seed_idx] += 1
-            idx += 1
+        else
+            idx = 1
+            while length(col_idx[k_col_idx]) < rank[k_col_idx] && idx <= size(seedlist, 1)
+                pivot = seedlist[idx, k_col_idx+1:tensor_order]
+                if !(pivot in col_idx[k_col_idx])
+                    push!(col_idx[k_col_idx], pivot)
+                end
+                idx += 1
+            end
+            rank[k_col_idx] = length(col_idx[k_col_idx])
         end
+        # sortedlist = Vector(undef, length(seedlist))
+        # for i in eachindex(seedlist)
+        #     sortedlist[i] = []
+        #     if k_col_idx == tensor_order - 1
+        #         for j in 1:tensor_shape[tensor_order]
+        #             push!(sortedlist[i], (abs(j - seedlist[i][tensor_order]), [j]))
+        #         end
+        #     else
+        #         for j in 1:tensor_shape[k_col_idx + 1]
+        #             for k in 1:rank[k_col_idx + 1]
+        #                 pivot = [j, col_idx[k_col_idx + 1][k]...]
+        #                 push!(sortedlist[i], (norm(pivot - seedlist[i][k_col_idx+1:tensor_order]), pivot))
+        #             end
+        #         end
+        #     end
+        #     sort!(sortedlist[i])
+        # end
+        # countlist = fill(1, length(seedlist))
+        # idx = 1
+        # while length(col_idx[k_col_idx]) < rank[k_col_idx]
+        #     seed_idx = mod(idx - 1, length(seedlist)) + 1
+        #     pivot = sortedlist[seed_idx][countlist[seed_idx]][2]
+        #     if !(pivot in col_idx[k_col_idx])
+        #         push!(col_idx[k_col_idx], pivot)
+        #     end
+        #     countlist[seed_idx] += 1
+        #     idx += 1
+        # end
     end
+    println(rank)
 
     iter = 0
 
+    sites = [siteind(tensor_shape[i], i) for i in 1:tensor_order]
+    factor_old = randomMPS(sites)
+    factor_new = randomMPS(sites; linkdims=rank)
     error = ITensorMPS.dist(factor_new, factor_old) / norm(factor_new)
     for iter in 1:n_iter_max
         if error < tol
@@ -552,15 +579,16 @@ end
 
 mutable struct ODEArray{T, N} <: AbstractArray{T, N}
     f
-    grid::NTuple{N, LinRange{T, Int64}}
+    grid::NTuple{N, Vector{T}}
 
-    function ODEArray(f, grid::NTuple{N, LinRange{T, Int64}}) where {T, N}
+    function ODEArray(f, grid::NTuple{N, Vector{T}}) where {T, N}
         new{T, N}(f, grid)
     end
 end
 
 function Base.size(A::ODEArray)
-    return Tuple([length(elt) - 1 for elt in A.grid])
+    # return Tuple([length(elt) - 1 for elt in A.grid])
+    return Tuple([length(elt) for elt in A.grid])
 end
 
 function Base.ndims(A::ODEArray)

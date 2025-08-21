@@ -58,13 +58,6 @@ function ttsvd_repressilator()
     sigma = [4.0, 4.0, 4.0, 25.0, 25.0, 25.0, 25.0, 25.0]
     neglogposterior(X10, X20, X30, α1, α2, α3, m, η) = V([X10, X20, X30, α1, α2, α3, m, η], tspan, nsteps, data, mu, sigma)
 
-    X10_true = X20_true = X30_true = 2.0
-    α1_true = 10.0
-    α2_true = 15.0
-    α3_true = 20.0
-    m_true = 4.0
-    η_true = 1.0
-
     X10_dom = (0.5, 3.5)
     X20_dom = (0.5, 3.5)
     X30_dom = (0.5, 3.5)
@@ -75,32 +68,31 @@ function ttsvd_repressilator()
     η_dom = (0.95, 1.05)
 
     grid = (
-        LinRange(X10_dom..., nbins + 1),
-        LinRange(X20_dom..., nbins + 1),
-        LinRange(X30_dom..., nbins + 1),
-        LinRange(α1_dom..., nbins + 1),
-        LinRange(α2_dom..., nbins + 1),
-        LinRange(α3_dom..., nbins + 1),
-        LinRange(m_dom..., nbins + 1),
-        LinRange(η_dom..., nbins + 1)
+        collect(LinRange(X10_dom..., nbins + 1)),
+        collect(LinRange(X20_dom..., nbins + 1)),
+        collect(LinRange(X30_dom..., nbins + 1)),
+        collect(LinRange(α1_dom..., nbins + 1)),
+        collect(LinRange(α2_dom..., nbins + 1)),
+        collect(LinRange(α3_dom..., nbins + 1)),
+        collect(LinRange(m_dom..., nbins + 1)),
+        collect(LinRange(η_dom..., nbins + 1))
     )
-
-    offset = neglogposterior(X10_true, X20_true, X30_true, α1_true, α2_true, α3_true, m_true, η_true)
 
     println("Populating tensor...")
     flush(stdout)
     
-    posterior(x...) = exp(offset - neglogposterior(x...))
-    A = zeros(Float64, nbins, nbins, nbins, nbins, nbins, nbins, nbins, nbins)
-    Threads.@threads for i1 in 1:nbins
-        for i2 in 1:nbins
-            for i3 in 1:nbins
-                for i4 in 1:nbins
-                    for i5 in 1:nbins
-                        for i6 in 1:nbins
-                            for i7 in 1:nbins
-                                for i8 in 1:nbins
-                                    A[i1, i2, i3, i4, i5, i6, i7, i8] = posterior(grid[1][i1], grid[2][i2], grid[3][i3], grid[4][i4], grid[5][i5], grid[6][i6], grid[7][i7], grid[8][i8])
+    nlA = zeros(Float64, nbins + 1, nbins + 1, nbins + 1, nbins + 1, nbins + 1, nbins + 1, nbins + 1, nbins + 1)
+    for i1 in 1:nbins+1
+        for i2 in 1:nbins+1
+            println("$i1 $i2")
+            flush(stdout)
+            for i3 in 1:nbins+1
+                for i4 in 1:nbins+1
+                    for i5 in 1:nbins+1
+                        for i6 in 1:nbins+1
+                            for i7 in 1:nbins+1
+                                for i8 in 1:nbins+1
+                                    nlA[i1, i2, i3, i4, i5, i6, i7, i8] = neglogposterior(grid[1][i1], grid[2][i2], grid[3][i3], grid[4][i4], grid[5][i5], grid[6][i6], grid[7][i7], grid[8][i8])
                                 end
                             end
                         end
@@ -110,8 +102,13 @@ function ttsvd_repressilator()
         end
     end
 
+    offset = minimum(nlA)
+
+    A = zeros(Float64, nbins + 1, nbins + 1, nbins + 1, nbins + 1, nbins + 1, nbins + 1, nbins + 1, nbins + 1)
+    A[:, :, :, :, :, :, :, :] = exp(offset - nlA[:, :, :, :, :, :, :, :])
+
     psivec = Vector{ITensor}(undef, d)
-    sites = siteinds(nbins, d)
+    sites = siteinds(nbins + 1, d)
 
     println("Computing posterior TT...\n")
     flush(stdout)
@@ -127,7 +124,7 @@ function ttsvd_repressilator()
     @show psi
 
     sites = siteinds(psi)
-    oneslist = [ITensor(ones(nbins), sites[i]) for i in 1:d]
+    oneslist = [ITensor(ones(nbins + 1), sites[i]) for i in 1:d]
     norm = psi[1] * oneslist[1]
     for i in 2:d
         norm *= psi[i] * oneslist[i]
@@ -161,15 +158,15 @@ function ttsvd_repressilator()
             result = Lenv * psi[pos] * psi[pos + 1] * Renv
         end
         open("ttsvd_repressilator_marginal_$pos.txt", "w") do file
-            for i in 1:nbins
-                for j in 1:nbins
+            for i in 1:nbins+1
+                for j in 1:nbins+1
                     write(file, "$(grid[pos][i]) $(grid[pos + 1][j]) $(result[sites[pos] => i, sites[pos + 1] => j])\n")
                 end
             end
         end
     end
 
-    vec1list = [ITensor(collect(grid[i][1:nbins]), sites[i]) for i in 1:d]
+    vec1list = [ITensor(grid[i], sites[i]) for i in 1:d]
     meanlist = zeros(d)
     for i in 1:d
         mean = psi[1] * (i == 1 ? vec1list[1] : oneslist[1])
@@ -185,8 +182,8 @@ function ttsvd_repressilator()
     #     cov0 = eval(Meta.parse(readline(file)))
     # end
 
-    vec2list = [ITensor(collect(grid[i][1:nbins] .- meanlist[i]), sites[i]) for i in 1:d]
-    vec22list = [ITensor(collect((grid[i][1:nbins] .- meanlist[i]).^2), sites[i]) for i in 1:d]
+    vec2list = [ITensor(grid[i] .- meanlist[i], sites[i]) for i in 1:d]
+    vec22list = [ITensor((grid[i] .- meanlist[i]).^2, sites[i]) for i in 1:d]
     varlist = zeros(d, d)
     for i in 1:d
         for j in i:d
@@ -220,7 +217,7 @@ function ttsvd_repressilator()
     flush(stdout)
 
     open("ttsvd_repressilator_samples.txt", "w") do file
-        for sampleid in 1:30
+        for sampleid in 1:1000
             println("Collecting sample $sampleid...")
             sample = Vector{Float64}(undef, d)
             sampleidx = Vector{Int64}(undef, d)
@@ -228,10 +225,10 @@ function ttsvd_repressilator()
             for count in 1:d
                 Renv = undef
                 if count != d
-                    ind = ITensor(ones(nbins), sites[d])
+                    ind = ITensor(ones(nbins + 1), sites[d])
                     Renv = psi[d] * ind
                     for i in d-1:-1:count+1
-                        ind = ITensor(ones(nbins), sites[i])
+                        ind = ITensor(ones(nbins + 1), sites[i])
                         Renv *= psi[i] * ind
                     end
                 end
@@ -239,9 +236,9 @@ function ttsvd_repressilator()
                 println("u_$count = $u")
                 flush(stdout)
                 a = 1
-                b = nbins
+                b = nbins + 1
 
-                ind = ITensor(ones(nbins), sites[count])
+                ind = ITensor(ones(nbins + 1), sites[count])
                 normi = psi[count] * ind
                 for i in count-1:-1:1
                     ind = ITensor(sites[i])
@@ -252,12 +249,13 @@ function ttsvd_repressilator()
                     normi *= Renv
                 end
 
+                cdfi = 0.0
                 while true
                     mid = div(a + b, 2)
                     if a == mid
                         break
                     end
-                    indvec = zeros(nbins)
+                    indvec = zeros(nbins + 1)
                     indvec[1:mid] .= 1.0
                     ind = ITensor(indvec, sites[count])
                     cdfi = psi[count] * ind
@@ -275,8 +273,27 @@ function ttsvd_repressilator()
                         b = mid
                     end
                 end
-                sample[count] = grid[count][a]
-                sampleidx[count] = a
+                
+                indvec = zeros(dim(sites[count]))
+                indvec[1:b] .= 1.0
+                ind = ITensor(indvec, sites[count])
+                cdfi_b = psi[count] * ind
+                for i in count-1:-1:1
+                    ind = ITensor(sites[i])
+                    ind[sites[i]=>sampleidx[i]] = 1.0
+                    cdfi_b *= psi[i] * ind
+                end
+                if count != d
+                    cdfi_b *= Renv
+                end
+
+                if abs(cdfi[] / normi[] - u) < abs(cdfi_b[] / normi[] - u)
+                    sample[count] = grid[count][a]
+                    sampleidx[count] = a
+                else
+                    sample[count] = grid[count][b]
+                    sampleidx[count] = b
+                end
             end
 
             write(file, "$(sample[1]) $(sample[2]) $(sample[3]) $(sample[4]) $(sample[5]) $(sample[6]) $(sample[7]) $(sample[8])\n")
@@ -285,8 +302,8 @@ function ttsvd_repressilator()
 end
 
 d = 8
-nbins = 20
-cutoff = 0.01
+nbins = 10
+cutoff = 1.0e-6
 start_time = time()
 ttsvd_repressilator()
 end_time = time()
