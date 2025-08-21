@@ -88,7 +88,7 @@ function tt_repressilator()
     #         samples[i, :] = sample
     #     end
     # end
-    samples = readdlm("tt_repressilator_samples.txt")
+    samples = readdlm("tt_repressilator_fine_samples.txt")
     # samples = readdlm("tt_repressilator_coarse_samples.txt")
     R = kmeans(samples', 3)
     borders = []
