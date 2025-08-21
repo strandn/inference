@@ -81,7 +81,8 @@ function tt_repressilator()
     )
 
     samples = zeros(nsamples, d)
-    open("vanilla_samples.txt", "r") do file
+    # open("vanilla_samples.txt", "r") do file
+    open("tt_repressilator_coarse_samples.txt", "r") do file
         for i in 1:nsamples
             sample = eval(Meta.parse(readline(file)))
             samples[i, :] = sample
@@ -131,8 +132,8 @@ function tt_repressilator()
     flush(stdout)
 
     posterior(x...) = exp(offset - neglogposterior(x...))
-    # A = ODEArray(posterior, grid_full)
-    A = ODEArray(posterior, grid)
+    A = ODEArray(posterior, grid_full)
+    # A = ODEArray(posterior, grid)
 
     seedlist = zeros(Int64, nsamples, d)
     for i in 1:nsamples
@@ -194,15 +195,15 @@ function tt_repressilator()
         open("tt_repressilator_marginal_$pos.txt", "w") do file
             for i in 1:dim(sites[pos])
                 for j in 1:dim(sites[pos+1])
-                    # write(file, "$(grid_full[pos][i]) $(grid_full[pos + 1][j]) $(result[sites[pos]=>i, sites[pos+1]=>j])\n")
-                    write(file, "$(grid[pos][i]) $(grid[pos + 1][j]) $(result[sites[pos]=>i, sites[pos+1]=>j])\n")
+                    write(file, "$(grid_full[pos][i]) $(grid_full[pos + 1][j]) $(result[sites[pos]=>i, sites[pos+1]=>j])\n")
+                    # write(file, "$(grid[pos][i]) $(grid[pos + 1][j]) $(result[sites[pos]=>i, sites[pos+1]=>j])\n")
                 end
             end
         end
     end
 
-    # vec1list = [ITensor(grid_full[i], sites[i]) for i in 1:d]
-    vec1list = [ITensor(grid[i], sites[i]) for i in 1:d]
+    vec1list = [ITensor(grid_full[i], sites[i]) for i in 1:d]
+    # vec1list = [ITensor(grid[i], sites[i]) for i in 1:d]
     meanlist = zeros(d)
     for i in 1:d
         mean = psi[1] * (i == 1 ? vec1list[1] : oneslist[1])
@@ -218,10 +219,10 @@ function tt_repressilator()
     #     cov0 = eval(Meta.parse(readline(file)))
     # end
 
-    # vec2list = [ITensor(grid_full[i] .- meanlist[i], sites[i]) for i in 1:d]
-    # vec22list = [ITensor((grid_full[i] .- meanlist[i]).^2, sites[i]) for i in 1:d]
-    vec2list = [ITensor(grid[i] .- meanlist[i], sites[i]) for i in 1:d]
-    vec22list = [ITensor((grid[i] .- meanlist[i]).^2, sites[i]) for i in 1:d]
+    vec2list = [ITensor(grid_full[i] .- meanlist[i], sites[i]) for i in 1:d]
+    vec22list = [ITensor((grid_full[i] .- meanlist[i]).^2, sites[i]) for i in 1:d]
+    # vec2list = [ITensor(grid[i] .- meanlist[i], sites[i]) for i in 1:d]
+    # vec22list = [ITensor((grid[i] .- meanlist[i]).^2, sites[i]) for i in 1:d]
     varlist = zeros(d, d)
     for i in 1:d
         for j in i:d
@@ -326,12 +327,12 @@ function tt_repressilator()
                 end
 
                 if abs(cdfi[] / normi[] - u) < abs(cdfi_b[] / normi[] - u)
-                    # sample[count] = grid_full[count][a]
-                    sample[count] = grid[count][a]
+                    sample[count] = grid_full[count][a]
+                    # sample[count] = grid[count][a]
                     sampleidx[count] = a
                 else
-                    # sample[count] = grid_full[count][b]
-                    sample[count] = grid[count][b]
+                    sample[count] = grid_full[count][b]
+                    # sample[count] = grid[count][b]
                     sampleidx[count] = b
                 end
             end
@@ -342,11 +343,11 @@ function tt_repressilator()
 end
 
 d = 8
-maxr = 100
+maxr = 500
 tol = 1.0e-4
 maxiter = 10
 nbins = 100
-nsamples = 10^4
+nsamples = 1000
 
 start_time = time()
 tt_repressilator()
