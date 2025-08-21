@@ -102,23 +102,23 @@ function tt_repressilator()
         println(borders[i])
     end
 
-    grid = Tuple([Float64[] for _ in 1:d])
-    for i in 1:d
-        for border in borders[i]
-            first = searchsortedlast(grid_full[i], border[1])
-            if first == 0
-                first = 1
-            end
-            last = searchsortedfirst(grid_full[i], border[2])
-            if last == nbins + 1
-                last = nbins
-            end
-            append!(grid[i], grid_full[i][first:last])
-        end
-        unique!(grid[i])
-        sort!(grid[i])
-    end
-    println([length(g) for g in grid])
+    # grid = Tuple([Float64[] for _ in 1:d])
+    # for i in 1:d
+    #     for border in borders[i]
+    #         first = searchsortedlast(grid_full[i], border[1])
+    #         if first == 0
+    #             first = 1
+    #         end
+    #         last = searchsortedfirst(grid_full[i], border[2])
+    #         if last == nbins + 1
+    #             last = nbins
+    #         end
+    #         append!(grid[i], grid_full[i][first:last])
+    #     end
+    #     unique!(grid[i])
+    #     sort!(grid[i])
+    # end
+    # println([length(g) for g in grid])
 
     offset = neglogposterior(samples[1, :]...)
 
@@ -127,19 +127,19 @@ function tt_repressilator()
 
     posterior(x...) = exp(offset - neglogposterior(x...))
     # A = ODEArray(posterior, grid_full)
-    A = ODEArray(posterior, grid)
+    A = ODEArray(posterior, grid_full)
 
     seedlist = zeros(Int64, nsamples, d)
     for i in 1:nsamples
         for j in 1:d
-            hi = searchsortedfirst(grid[j], samples[i, j])
+            hi = searchsortedfirst(grid_full[j], samples[i, j])
             if hi == 1
                 seedlist[i, j] = 1
-            elseif hi == length(grid[j]) + 1
-                seedlist[i, j] = length(grid[j])
+            elseif hi == length(grid_full[j]) + 1
+                seedlist[i, j] = length(grid_full[j])
             else
                 lo = hi - 1
-                if abs(grid[j][lo] - samples[i, j]) < abs(grid[j][hi] - samples[i, j])
+                if abs(grid_full[j][lo] - samples[i, j]) < abs(grid_full[j][hi] - samples[i, j])
                     seedlist[i, j] = lo
                 else
                     seedlist[i, j] = hi
@@ -190,14 +190,14 @@ function tt_repressilator()
             for i in 1:dim(sites[pos])
                 for j in 1:dim(sites[pos+1])
                     # write(file, "$(grid_full[pos][i]) $(grid_full[pos + 1][j]) $(result[sites[pos]=>i, sites[pos+1]=>j])\n")
-                    write(file, "$(grid[pos][i]) $(grid[pos + 1][j]) $(result[sites[pos]=>i, sites[pos+1]=>j])\n")
+                    write(file, "$(grid_full[pos][i]) $(grid_full[pos + 1][j]) $(result[sites[pos]=>i, sites[pos+1]=>j])\n")
                 end
             end
         end
     end
 
     # vec1list = [ITensor(grid_full[i], sites[i]) for i in 1:d]
-    vec1list = [ITensor(grid[i], sites[i]) for i in 1:d]
+    vec1list = [ITensor(grid_full[i], sites[i]) for i in 1:d]
     meanlist = zeros(d)
     for i in 1:d
         mean = psi[1] * (i == 1 ? vec1list[1] : oneslist[1])
@@ -215,8 +215,8 @@ function tt_repressilator()
 
     # vec2list = [ITensor(grid_full[i] .- meanlist[i], sites[i]) for i in 1:d]
     # vec22list = [ITensor((grid_full[i] .- meanlist[i]).^2, sites[i]) for i in 1:d]
-    vec2list = [ITensor(grid[i] .- meanlist[i], sites[i]) for i in 1:d]
-    vec22list = [ITensor((grid[i] .- meanlist[i]).^2, sites[i]) for i in 1:d]
+    vec2list = [ITensor(grid_full[i] .- meanlist[i], sites[i]) for i in 1:d]
+    vec22list = [ITensor((grid_full[i] .- meanlist[i]).^2, sites[i]) for i in 1:d]
     varlist = zeros(d, d)
     for i in 1:d
         for j in i:d
