@@ -81,7 +81,6 @@ function tt_repressilator()
         collect(LinRange(η_dom..., nbins + 1))
     )
 
-    samples = zeros(nsamples, d)
     samples = readdlm("tt_repressilator_coarse_samples.txt")
     R = kmeans(samples', 3)
     borders = []
@@ -248,7 +247,7 @@ function tt_repressilator()
     flush(stdout)
 
     open("tt_repressilator_samples.txt", "w") do file
-        for sampleid in 1:30
+        for sampleid in 1:1000
             println("Collecting sample $sampleid...")
             sample = Vector{Float64}(undef, d)
             sampleidx = Vector{Int64}(undef, d)
@@ -335,7 +334,7 @@ function tt_repressilator()
 end
 
 d = 8
-maxr = 20
+maxr = 500
 tol = 1.0e-4
 maxiter = 10
 nbins = 20
