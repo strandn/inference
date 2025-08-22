@@ -261,7 +261,7 @@ function tt_repressilator()
     flush(stdout)
 
     open("tt_repressilator_samples.txt", "w") do file
-        for sampleid in 1:30
+        for sampleid in 1:1000
             println("Collecting sample $sampleid...")
             sample = Vector{Float64}(undef, d)
             sampleidx = Vector{Int64}(undef, d)
@@ -351,7 +351,7 @@ d = 8
 maxr = 20
 tol = 1.0e-4
 maxiter = 10
-nbins = 100
+nbins = 50
 nsamples = 1000
 
 start_time = time()
