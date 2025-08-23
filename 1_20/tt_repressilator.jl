@@ -114,11 +114,11 @@ function tt_repressilator()
     for i in 1:d
         for border in borders[i]
             first = searchsortedlast(grid_full[i], border[1])
-            if first == 0
+            if first < 1
                 first = 1
             end
             last = searchsortedfirst(grid_full[i], border[2])
-            if last == nbins + 1
+            if last > nbins
                 last = nbins
             end
             append!(grid[i], grid_full[i][first:last])
