@@ -88,7 +88,7 @@ function tt_repressilator()
     #         samples[i, :] = sample
     #     end
     # end
-    samples = readdlm("tt_repressilator_fine_samples.txt")
+    samples = readdlm("tt_repressilator_rank20_samples.txt")
     # samples = readdlm("tt_repressilator_coarse_samples.txt")
     R = kmeans(samples', 3)
     borders = []
@@ -114,11 +114,11 @@ function tt_repressilator()
     for i in 1:d
         for border in borders[i]
             first = searchsortedlast(grid_full[i], border[1])
-            if first == 0
+            if first < 1
                 first = 1
             end
             last = searchsortedfirst(grid_full[i], border[2])
-            if last == nbins + 1
+            if last > nbins
                 last = nbins
             end
             append!(grid[i], grid_full[i][first:last])
@@ -261,7 +261,7 @@ function tt_repressilator()
     flush(stdout)
 
     open("tt_repressilator_samples.txt", "w") do file
-        for sampleid in 1:30
+        for sampleid in 1:1000
             println("Collecting sample $sampleid...")
             sample = Vector{Float64}(undef, d)
             sampleidx = Vector{Int64}(undef, d)
@@ -348,6 +348,7 @@ function tt_repressilator()
 end
 
 d = 8
+# maxr = 500
 maxr = 100
 tol = 1.0e-4
 maxiter = 10
