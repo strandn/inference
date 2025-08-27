@@ -2,6 +2,7 @@ using MPI
 using Random
 using LinearAlgebra
 using DifferentialEquations
+using Statistics
 
 function repressilator!(du, u, p, t)
     X1, X2, X3 = u
@@ -42,24 +43,6 @@ function V(r, tspan, nsteps, data, mu, sigma)
     end
     return result
 end
-
-# --------------------- Welford stats (vector) -------------------
-mutable struct WelfordVec
-    n::Int
-    μ::Vector{Float64}
-    M2::Matrix{Float64}
-end
-function WelfordVec(d::Int)
-    WelfordVec(0, zeros(d), zeros(d, d))
-end
-function update!(W::WelfordVec, x::AbstractVector{<:Real})
-    W.n += 1
-    x = Vector{Float64}(x)
-    δ = x .- W.μ
-    W.μ .+= δ ./ W.n
-    W.M2 .+= δ * (x .- W.μ)'          # outer product
-end
-mean_cov(W::WelfordVec) = (W.μ, W.n > 1 ? W.M2 ./ (W.n - 1) : fill(NaN, size(W.M2)))
 
 # Reflect x into [lo, hi] (billiard reflection), handles multi-hop if step is large
 @inline function reflect_into!(x::Vector{Float64}, domains::Vector{Tuple{Float64,Float64}})
@@ -124,6 +107,20 @@ function pt_mpi(
     fracσ::Vector{Float64},
     comm = MPI.COMM_WORLD
 )
+
+    using Statistics
+
+    # how many thinned samples we will keep on rank 0
+    function n_kept(nsteps, burnin, save_every)
+        kept = nsteps - burnin
+        kept <= 0 && return 0
+        return (kept + (save_every - 1)) ÷ save_every  # ceiling division
+    end
+
+    Nkeep = n_kept(nsteps, burnin, save_every)
+    samples = (rank == 0 && Nkeep > 0) ? Matrix{Float64}(undef, d, Nkeep) : nothing
+    keepidx = 0
+
     rank = MPI.Comm_rank(comm)
     nprocs = MPI.Comm_size(comm)
     d = length(x0)
@@ -156,7 +153,6 @@ function pt_mpi(
 
     acc_moves = 0; prop_moves = 0
     acc_swaps = 0; prop_swaps = 0
-    W = rank == 0 ? WelfordVec(d) : nothing
 
     function mh_step!()
         xnew = @views x .+ σ_vec .* randn(rng, d)   # per-dim step
@@ -243,7 +239,8 @@ function pt_mpi(
             swap_pass!(1)  # odd-lower pairs
         end
         if rank == 0 && t > burnin && ((t - burnin) % save_every == 0)
-            update!(W, x)
+            keepidx += 1
+            samples[:, keepidx] = x
         end
     end
 
@@ -254,7 +251,14 @@ function pt_mpi(
     tot_prop_swaps = MPI.Reduce(prop_swaps, +, 0, comm)
 
     if rank == 0
-        μ, Σ = mean_cov(W)
+        if Nkeep == 0
+            println("No samples kept (check burnin/save_every).")
+            return nothing
+        end
+
+        μ = vec(mean(gathered_samples; dims=2))
+        Σ = cov(gathered_samples)
+
         println("β ladder (first 6): ", round.(betas[1:min(end,6)]; digits=4))
         println("Local move acceptance (avg over all replicas): ",
                 round(tot_acc_moves / max(1, tot_prop_moves), digits=3))
