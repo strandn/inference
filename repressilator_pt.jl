@@ -115,15 +115,15 @@ function pt_mpi(
         return (kept + (save_every - 1)) ÷ save_every  # ceiling division
     end
 
-    Nkeep = n_kept(nsteps, burnin, save_every)
-    samples = (rank == 0 && Nkeep > 0) ? Matrix{Float64}(undef, d, Nkeep) : nothing
-    keepidx = 0
-
     rank = MPI.Comm_rank(comm)
     nprocs = MPI.Comm_size(comm)
     d = length(x0)
     @assert length(domains) == d
     @assert length(fracσ) == d
+
+    Nkeep = n_kept(nsteps, burnin, save_every)
+    samples = (rank == 0 && Nkeep > 0) ? Matrix{Float64}(undef, d, Nkeep) : nothing
+    keepidx = 0
 
     # Build β ladder
     if betas === nothing
