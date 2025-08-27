@@ -108,8 +108,6 @@ function pt_mpi(
     comm = MPI.COMM_WORLD
 )
 
-    using Statistics
-
     # how many thinned samples we will keep on rank 0
     function n_kept(nsteps, burnin, save_every)
         kept = nsteps - burnin
