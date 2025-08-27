@@ -110,7 +110,7 @@ function pt_mpi(
 
     # Replica state on this rank
     x = copy(x0) .+ 1e-6 .* randn(rng, d)  # tiny jitter
-    e = E(x)
+    e = E(x...)
     σ = baseσ / sqrt(β)
 
     # Counters
@@ -125,7 +125,7 @@ function pt_mpi(
     # Local MH step
     function mh_step!()
         xnew = x .+ σ .* randn(rng, d)
-        enew = E(xnew)
+        enew = E(xnew...)
         logα = -β * (enew - e)
         if log(rand(rng)) < logα
             x = xnew
@@ -238,12 +238,33 @@ MPI.Init()
 comm = MPI.COMM_WORLD
 rank = MPI.Comm_rank(comm)
 
-# Example: 2D double-well
-x0 = [0.0, 0.0]
+tspan = (0.0, 30.0)
+nsteps = 50
+
+data = []
+open("repressilator_data.txt", "r") do file
+    for line in eachline(file)
+        cols = split(line)
+        push!(data, parse(Float64, cols[6]))
+    end
+end
+
+mu = [2.0, 2.0, 2.0, 15.0, 15.0, 15.0, 5.0, 5.0]
+sigma = [4.0, 4.0, 4.0, 25.0, 25.0, 25.0, 25.0, 25.0]
+neglogposterior(X10, X20, X30, α1, α2, α3, m, η) = V([X10, X20, X30, α1, α2, α3, m, η], tspan, nsteps, data, mu, sigma)
+
+X10_true = X20_true = X30_true = 2.0
+α1_true = 10.0
+α2_true = 15.0
+α3_true = 20.0
+m_true = 4.0
+η_true = 1.0
+
+x0 = [X10_true, X20_true, X30_true, α1_true, α2_true, α3_true, m_true, η_true]
 nprocs = MPI.Comm_size(comm)
 
 # You can also pass your own `betas` vector (length == nprocs)
-pt_mpi(V, x0;
+pt_mpi(neglogposterior, x0;
        nsteps=10^8,
        burnin=10^4,
        swap_every=100,
