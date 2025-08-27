@@ -352,7 +352,7 @@ maxr = 500
 # maxr = 20
 tol = 1.0e-4
 maxiter = 10
-nbins = 100
+nbins = 50
 nsamples = 1000
 
 start_time = time()
