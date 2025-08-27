@@ -132,7 +132,7 @@ function pt_mpi(
 
     # Build β ladder
     if betas === nothing
-        βmax, βmin = 1.0, 0.02           # adjust as needed
+        βmax, βmin = 1.0, 0.005           # adjust as needed
         # geometric ladder (sorted high->low β so rank 0 is β≈1)
         betas = βmax .* (βmin/βmax) .^ (collect(0:nprocs-1) ./ (nprocs-1))
     else
@@ -312,11 +312,11 @@ domains = [
 ]
 
 # fraction of domain length for base step at β=1 (tune later)
-fracσ = [0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02]  # 2% of each span
+fracσ = [0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002]  # 2% of each span
 
 # You can also pass your own `betas` vector (length == nprocs)
 pt_mpi(neglogposterior, x0;
-       nsteps=10^8,
+       nsteps=10^6,
        burnin=10^4,
        swap_every=10,
        betas=nothing,        # auto geometric ladder
