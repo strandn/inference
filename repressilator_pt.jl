@@ -255,7 +255,7 @@ function pt_mpi(
         end
 
         μ = vec(mean(samples; dims=2))
-        Σ = cov(samples)
+        Σ = cov(samples')
 
         println("β ladder (first 6): ", round.(betas[1:min(end,6)]; digits=4))
         println("Local move acceptance (avg over all replicas): ",
