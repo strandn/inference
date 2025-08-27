@@ -61,6 +61,38 @@ function update!(W::WelfordVec, x::AbstractVector{<:Real})
 end
 mean_cov(W::WelfordVec) = (W.μ, W.n > 1 ? W.M2 ./ (W.n - 1) : fill(NaN, size(W.M2)))
 
+# Reflect x into [lo, hi] (billiard reflection), handles multi-hop if step is large
+@inline function reflect_into!(x::Vector{Float64}, domains::Vector{Tuple{Float64,Float64}})
+    @inbounds for i in eachindex(x)
+        lo, hi = domains[i]
+        L = hi - lo
+        xi = x[i]
+        if xi < lo || xi > hi
+            # map to [0, L] then reflect via mod
+            y = xi - lo
+            ymod = mod(y, 2L)
+            if ymod <= L
+                xi_ref = lo + ymod
+            else
+                xi_ref = hi - (ymod - L)
+            end
+            x[i] = xi_ref
+        end
+    end
+    return x
+end
+
+# Build per-dim base σ from fractions of domain length
+@inline function sigma_base_from_domains(domains, fracσ)
+    @assert length(domains) == length(fracσ)
+    σ = Vector{Float64}(undef, length(domains))
+    @inbounds for i in eachindex(domains)
+        lo, hi = domains[i]
+        σ[i] = fracσ[i] * (hi - lo)
+    end
+    return σ
+end
+
 # ------------------- Parallel Tempering (MPI) -------------------
 """
 Run replica-exchange MCMC with one replica per MPI rank.
@@ -86,14 +118,17 @@ function pt_mpi(
     burnin::Int=0,
     swap_every::Int=10,
     betas::Union{Nothing,Vector{Float64}}=nothing,
-    baseσ::Float64=0.5,
     seed::Int=42,
     save_every::Int=1,        # keep one every save_every post-burnin steps
+    domains::Vector{Tuple{Float64,Float64}},
+    fracσ::Vector{Float64},
     comm = MPI.COMM_WORLD
 )
     rank = MPI.Comm_rank(comm)
     nprocs = MPI.Comm_size(comm)
     d = length(x0)
+    @assert length(domains) == d
+    @assert length(fracσ) == d
 
     # Build β ladder
     if betas === nothing
@@ -108,27 +143,28 @@ function pt_mpi(
     # RNG per-rank
     rng = MersenneTwister(seed + rank + 1)
 
-    # Replica state on this rank
-    x = copy(x0) .+ 1e-6 .* randn(rng, d)  # tiny jitter
-    e = E(x...)
-    σ = baseσ / sqrt(β)
+    # Reflect initial state inside domain (just in case) and jitter a hair
+    x = copy(x0)
+    reflect_into!(x, domains)
+    x .+= 1e-9 .* randn(rng, d)
 
-    # Counters
-    acc_moves = 0
-    prop_moves = 0
-    acc_swaps = 0
-    prop_swaps = 0
+    # Per-dim base σ and β-scaled σ
+    σ_base = sigma_base_from_domains(domains, fracσ)   # size d
+    σ_vec  = σ_base ./ sqrt(β)                         # per-dim scaling
 
-    # Rank 0 will stream stats for β=1 chain (which always lives on rank 0)
+    e = E(x...)   # your energy takes splatted tuple
+
+    acc_moves = 0; prop_moves = 0
+    acc_swaps = 0; prop_swaps = 0
     W = rank == 0 ? WelfordVec(d) : nothing
 
-    # Local MH step
     function mh_step!()
-        xnew = x .+ σ .* randn(rng, d)
+        xnew = @views x .+ σ_vec .* randn(rng, d)   # per-dim step
+        reflect_into!(xnew, domains)                # keep inside box by reflection
         enew = E(xnew...)
         logα = -β * (enew - e)
         if log(rand(rng)) < logα
-            x = xnew
+            x .= xnew
             e = enew
             acc_moves += 1
         end
@@ -263,15 +299,31 @@ m_true = 4.0
 x0 = [X10_true, X20_true, X30_true, α1_true, α2_true, α3_true, m_true, η_true]
 nprocs = MPI.Comm_size(comm)
 
+# 8D: [X10, X20, X30, α1, α2, α3, m, η]
+domains = [
+    (0.5, 3.5),  # X10
+    (0.5, 3.5),  # X20
+    (0.5, 3.5),  # X30
+    (0.5, 25.0),  # α1
+    (0.5, 25.0),  # α2
+    (0.5, 25.0),  # α3
+    (3.0, 5.0),   # m  (≥1)
+    (0.95, 1.05)    # η
+]
+
+# fraction of domain length for base step at β=1 (tune later)
+fracσ = [0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02, 0.02]  # 2% of each span
+
 # You can also pass your own `betas` vector (length == nprocs)
 pt_mpi(neglogposterior, x0;
        nsteps=10^8,
        burnin=10^4,
-       swap_every=100,
-       baseσ=0.5,
+       swap_every=10,
        betas=nothing,        # auto geometric ladder
-       seed=1234,
+       seed=Int64(round(time())),
        save_every=100,
+       domains=domains,
+       fracσ=fracσ,
        comm=comm)
 
 MPI.Barrier(comm)
