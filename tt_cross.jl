@@ -18,7 +18,7 @@ function dmrg_cross(input_tensor, initrank::Int64, maxrank::Int64, cutoff::Float
         for j in tensor_order-1:-1:i+1
             right *= tensor_shape[j]
         end
-        rank[i] = min(left, right, maxrank)
+        rank[i] = min(left, right, initrank)
     end
 
     sites = [siteind(tensor_shape[i], i) for i in 1:tensor_order]
