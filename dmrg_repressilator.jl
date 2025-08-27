@@ -83,7 +83,7 @@ function dmrg_repressilator()
 
     posterior(x...) = exp(-neglogposterior(x...))
     A = ODEArray(posterior, grid)
-    psi = dmrg_cross(A, maxr, cutoff, tol, maxiter)
+    psi = dmrg_cross(A, initr, maxr, cutoff, tol, maxiter)
 
     sites = siteinds(psi)
     oneslist = [ITensor(ones(nbins + 1), sites[i]) for i in 1:d]
@@ -264,6 +264,7 @@ function dmrg_repressilator()
 end
 
 d = 8
+initr = 1
 maxr = -1
 cutoff = 1.0-4
 tol = 1.0e-4
