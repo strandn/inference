@@ -264,7 +264,7 @@ function dmrg_repressilator()
 end
 
 d = 8
-initr = 20
+initr = 500
 maxr = 20
 cutoff = 1.0-6
 tol = 1.0e-4
