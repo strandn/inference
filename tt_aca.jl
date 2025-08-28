@@ -68,8 +68,8 @@ function (F::ResFunc{T, N})(elements::T...) where {T, N}
         old = deepcopy(new)
         old_sign = deepcopy(new_sign)
     end
-    # return new[]
-    return new[], new_sign[]
+    return new[]
+    # return new[], new_sign[]
 end
 
 # Updates I and J by inserting a new pivot at the current unfolding (pos)
