@@ -74,45 +74,203 @@ function aca_repressilator()
         F.offset = parse(Float64, readline(file))
     end
 
-    norm, integrals, skeleton, links = compute_norm(F)
-    println("norm = $norm\n")
-    println(F.offset - log(norm))
-    println()
+    grid = (
+        collect(LinRange(X10_dom..., nbins + 1)),
+        collect(LinRange(X20_dom..., nbins + 1)),
+        collect(LinRange(X30_dom..., nbins + 1)),
+        collect(LinRange(α1_dom..., nbins + 1)),
+        collect(LinRange(α2_dom..., nbins + 1)),
+        collect(LinRange(α3_dom..., nbins + 1)),
+        collect(LinRange(m_dom..., nbins + 1)),
+        collect(LinRange(η_dom..., nbins + 1))
+    )
+
+    weights = deepcopy(grid)
+    for i in 1:d
+        weights[i][1] = (grid[i][2] - grid[i][1]) / 2
+        for j in 2:length(grid[i])-1
+            weights[i][j] = (grid[i][j + 1] - grid[i][j - 1]) / 2
+        end
+        weights[i][length(grid[i])] = (grid[i][length(grid[i])] - grid[i][length(grid[i]) - 1]) / 2
+    end
+
+    psi = build_tt(F, grid)
+    @show psi
+
+    sites = siteinds(psi)
+    oneslist = [ITensor(weights[i], sites[i]) for i in 1:d]
+    norm = psi[1] * oneslist[1]
+    for i in 2:d
+        norm *= psi[i] * oneslist[i]
+    end
+    psi /= norm[]
+
+    println(offset - log(norm[]))
+
+    for pos in 1:d-1
+        Lenv = undef
+        Renv = undef
+        if pos != 1
+            Lenv = psi[1] * oneslist[1]
+            for i in 2:pos-1
+                Lenv *= psi[i] * oneslist[i]
+            end
+        end
+        if pos != d - 1
+            Renv = psi[d] * oneslist[d]
+            for i in d-1:-1:pos+2
+                Renv *= psi[i] * oneslist[i]
+            end
+        end
+        result = undef
+        if pos == 1
+            result = psi[1] * psi[2] * Renv
+        elseif pos + 1 == d
+            result = Lenv * psi[d - 1] * psi[d]
+        else
+            result = Lenv * psi[pos] * psi[pos + 1] * Renv
+        end
+        open("repressilator_marginal_$pos.txt", "w") do file
+            for i in 1:dim(sites[pos])
+                for j in 1:dim(sites[pos+1])
+                    write(file, "$(grid[pos][i]) $(grid[pos + 1][j]) $(result[sites[pos]=>i, sites[pos+1]=>j])\n")
+                end
+            end
+        end
+    end
+
+    vec1list = [ITensor(weights[i] .* grid[i], sites[i]) for i in 1:d]
+    meanlist = zeros(d)
+    for i in 1:d
+        mean = psi[1] * (i == 1 ? vec1list[1] : oneslist[1])
+        for k in 2:d
+            mean *= psi[k] * (i == k ? vec1list[k] : oneslist[k])
+        end
+        meanlist[i] = mean[]
+    end
+    println(meanlist)
+
+    vec2list = [ITensor(weights[i] .* (grid[i] .- meanlist[i]), sites[i]) for i in 1:d]
+    vec22list = [ITensor(weights[i] .* (grid[i] .- meanlist[i]).^2, sites[i]) for i in 1:d]
+    varlist = zeros(d, d)
+    for i in 1:d
+        for j in i:d
+            var = psi[1]
+            if i == 1
+                if i == j
+                    var *= vec22list[1]
+                else
+                    var *= vec2list[1]
+                end
+            else
+                var *= oneslist[1]
+            end
+            for k in 2:d
+                var *= psi[k]
+                if i == k || j == k
+                    if i == j
+                        var *= vec22list[k]
+                    else
+                        var *= vec2list[k]
+                    end
+                else
+                    var *= oneslist[k]
+                end
+            end
+            varlist[i, j] = varlist[j, i] = var[]
+        end
+    end
+    display(varlist)
     flush(stdout)
 
-    # nbins = 100
-    # grid = (
-    #     LinRange(X10_dom..., nbins + 1),
-    #     LinRange(X20_dom..., nbins + 1),
-    #     LinRange(X30_dom..., nbins + 1),
-    #     LinRange(α1_dom..., nbins + 1),
-    #     LinRange(α2_dom..., nbins + 1),
-    #     LinRange(α3_dom..., nbins + 1),
-    #     LinRange(m_dom..., nbins + 1),
-    #     LinRange(η_dom..., nbins + 1)
-    # )
-
-    # for count in 1:d-1
-    #     dens = compute_marginal(F, integrals, skeleton, links, count)
-    #     open("repressilator_marginal_$count.txt", "w") do file
-    #         for i in 1:nbins
-    #             for j in 1:nbins
-    #                 write(file, "$(grid[count][i]) $(grid[count + 1][j]) $(dens[i, j] / norm)\n")
-    #             end
-    #         end
-    #     end
-    # end
-
     open("repressilator_samples.txt", "w") do file
-        for i in 1:500
-            println("Collecting sample $i...")
-            sample = sample_from_tt(F, integrals, skeleton, links)
+        for sampleid in 1:1000
+            println("Collecting sample $sampleid...")
+            sample = Vector{Float64}(undef, d)
+            sampleidx = Vector{Int64}(undef, d)
+
+            for count in 1:d
+                Renv = undef
+                if count != d
+                    ind = ITensor(weights[d], sites[d])
+                    Renv = psi[d] * ind
+                    for i in d-1:-1:count+1
+                        ind = ITensor(weights[i], sites[i])
+                        Renv *= psi[i] * ind
+                    end
+                end
+                u = rand()
+                println("u_$count = $u")
+                flush(stdout)
+                a = 1
+                b = dim(sites[count])
+
+                ind = ITensor(weights[count], sites[count])
+                normi = psi[count] * ind
+                for i in count-1:-1:1
+                    ind = ITensor(sites[i])
+                    ind[sites[i]=>sampleidx[i]] = 1.0
+                    normi *= psi[i] * ind
+                end
+                if count != d
+                    normi *= Renv
+                end
+
+                cdfi = 0.0
+                while true
+                    mid = div(a + b, 2)
+                    if a == mid
+                        break
+                    end
+                    indvec = zeros(dim(sites[count]))
+                    indvec[1:mid-1] = weights[count][1:mid-1]
+                    indvec[mid] = (grid[count][mid] - grid[count][mid - 1]) / 2
+                    ind = ITensor(indvec, sites[count])
+                    cdfi = psi[count] * ind
+                    for i in count-1:-1:1
+                        ind = ITensor(sites[i])
+                        ind[sites[i]=>sampleidx[i]] = 1.0
+                        cdfi *= psi[i] * ind
+                    end
+                    if count != d
+                        cdfi *= Renv
+                    end
+                    if cdfi[] / normi[] < u
+                        a = mid
+                    else
+                        b = mid
+                    end
+                end
+                
+                indvec = zeros(dim(sites[count]))
+                indvec[1:b-1] .= weights[count][1:b-1]
+                indvec[b] = (grid[count][b] - grid[count][b - 1]) / 2
+                ind = ITensor(indvec, sites[count])
+                cdfi_b = psi[count] * ind
+                for i in count-1:-1:1
+                    ind = ITensor(sites[i])
+                    ind[sites[i]=>sampleidx[i]] = 1.0
+                    cdfi_b *= psi[i] * ind
+                end
+                if count != d
+                    cdfi_b *= Renv
+                end
+
+                if abs(cdfi[] / normi[] - u) < abs(cdfi_b[] / normi[] - u)
+                    sample[count] = grid[count][a]
+                    sampleidx[count] = a
+                else
+                    sample[count] = grid[count][b]
+                    sampleidx[count] = b
+                end
+            end
+
             write(file, "$(sample[1]) $(sample[2]) $(sample[3]) $(sample[4]) $(sample[5]) $(sample[6]) $(sample[7]) $(sample[8])\n")
         end
     end
 end
 
-d = 8
+nbins = 100
 
 start_time = time()
 aca_repressilator()
