@@ -4,6 +4,7 @@ using QuadGK
 using MPI
 using LinearAlgebra
 using ITensors
+using ITensorMPS
 
 # Struct holding metadata used for ACA calculations
 mutable struct ResFunc{T, N}
@@ -496,7 +497,7 @@ function build_tt(F::ResFunc{T, N}, grid::NTuple{N, Vector{T}}) where {T, N}
     psi[1] = ITensor(sites[1], links[1])
     for j in eachindex(grid[1])
         for k in 1:npivots[1]
-            psi[1][j=>sites[i], k=>links[i]] = expnegf(F, grid[1][j], F.J[2][k]...)
+            psi[1][sites[1]=>j, links[1]=>k] = expnegf(F, grid[1][j], F.J[2][k]...)
         end
     end
     println("i = 1\n")
@@ -557,7 +558,7 @@ function build_tt(F::ResFunc{T, N}, grid::NTuple{N, Vector{T}}) where {T, N}
     psi[order] = ITensor(sites[order], links[order - 1])
     for j in eachindex(grid[order])
         for k in 1:npivots[order - 1]
-            psi[order][j=>sites[order], k=>links[order-1]] = expnegf(F, F.I[order][k]..., grid[order][j])
+            psi[order][sites[order]=>j, links[order-1]=>k] = expnegf(F, F.I[order][k]..., grid[order][j])
         end
     end
     println("\ni = $order\n")
