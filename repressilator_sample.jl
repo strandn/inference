@@ -105,7 +105,7 @@ function aca_repressilator()
     end
     psi /= norm[]
 
-    println(offset - log(norm[]))
+    println(F.offset - log(norm[]))
 
     for pos in 1:d-1
         Lenv = undef
@@ -131,8 +131,8 @@ function aca_repressilator()
             result = Lenv * psi[pos] * psi[pos + 1] * Renv
         end
         open("repressilator_marginal_$pos.txt", "w") do file
-            for i in 1:dim(sites[pos])
-                for j in 1:dim(sites[pos+1])
+            for i in 1:ITensors.dim(sites[pos])
+                for j in 1:ITensors.dim(sites[pos+1])
                     write(file, "$(grid[pos][i]) $(grid[pos + 1][j]) $(result[sites[pos]=>i, sites[pos+1]=>j])\n")
                 end
             end
@@ -203,7 +203,7 @@ function aca_repressilator()
                 println("u_$count = $u")
                 flush(stdout)
                 a = 1
-                b = dim(sites[count])
+                b = ITensors.dim(sites[count])
 
                 ind = ITensor(weights[count], sites[count])
                 normi = psi[count] * ind
@@ -222,7 +222,7 @@ function aca_repressilator()
                     if a == mid
                         break
                     end
-                    indvec = zeros(dim(sites[count]))
+                    indvec = zeros(ITensors.dim(sites[count]))
                     indvec[1:mid-1] = weights[count][1:mid-1]
                     indvec[mid] = (grid[count][mid] - grid[count][mid - 1]) / 2
                     ind = ITensor(indvec, sites[count])
@@ -242,7 +242,7 @@ function aca_repressilator()
                     end
                 end
                 
-                indvec = zeros(dim(sites[count]))
+                indvec = zeros(ITensors.dim(sites[count]))
                 indvec[1:b-1] .= weights[count][1:b-1]
                 indvec[b] = (grid[count][b] - grid[count][b - 1]) / 2
                 ind = ITensor(indvec, sites[count])
@@ -270,7 +270,8 @@ function aca_repressilator()
     end
 end
 
-nbins = 100
+d = 8
+nbins = 500
 
 start_time = time()
 aca_repressilator()
