@@ -81,10 +81,6 @@ function aca_repressilator()
             write(file, "$IJ\n")
             write(file, "$(F.offset)\n")
         end
-        # norm, _, _ = compute_norm(F)
-        # println("norm = $norm")
-        # println(F.offset - log(norm))
-        # flush(stdout)
     end
 end
 
@@ -94,8 +90,8 @@ mpi_rank = MPI.Comm_rank(mpi_comm)
 mpi_size = MPI.Comm_size(mpi_comm)
 
 d = 8
-maxr = 50
-n_chains = 50
+maxr = 10
+n_chains = 20
 n_samples = 1000
 jump_width = 0.01
 cutoff = 1.0e-6
