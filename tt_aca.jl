@@ -486,6 +486,87 @@ end
 #     return [repeat(pivot', size(chain_xy, 1)) chain_xy], chain_res, chain_sign
 # end
 
+function build_tt(F::ResFunc{T, N}, grid::NTuple{N, Vector{T}}) where {T, N}
+    order = F.ndims
+    npivots = [length(F.I[i]) for i in 2:order]
+    psi = Vector{ITensor}(undef, order)
+    sites = [siteind(length(grid[i]), i) for i in 1:order]
+    links = Vector{Index}(undef, order - 1)
+    links[1] = Index(npivots[1], "Link,l=1")
+    psi[1] = ITensor(sites[1], links[1])
+    for j in eachindex(grid[1])
+        for k in 1:npivots[1]
+            psi[1][j=>sites[i], k=>links[i]] = expnegf(F, grid[1][j], F.J[2][k]...)
+        end
+    end
+    println("i = 1\n")
+    println(psi[1])
+    println()
+    AIJ = zeros(npivots[1], npivots[1])
+    for j in 1:npivots[1]
+        for k in 1:npivots[1]
+            AIJ[j, k] = expnegf(F, F.I[2][j]..., F.J[2][k]...)
+        end
+    end
+    AIJinv = inv(AIJ)
+    println(norm(AIJ * AIJinv - I))
+    println()
+    skeleton = ITensor(links[1], links[1]')
+    for j in 1:npivots[1]
+        for k in 1:npivots[1]
+            skeleton[links[1]=>j, links[1]'=>k] = AIJinv[j, k]
+        end
+    end
+    psi[1] *= skeleton
+    noprime!(psi[1])
+    println(psi[1])
+    flush(stdout)
+    for i in 2:order-1
+        links[i] = Index(npivots[i], "Link,l=$i")
+        psi[i] = ITensor(sites[i], links[i - 1], links[i])
+        for j in eachindex(grid[i])
+            for k in 1:npivots[i - 1]
+                for l in 1:npivots[i]
+                    psi[i][sites[i]=>j, links[i-1]=>k, links[i]=>l] = expnegf(F, F.I[i][k]..., grid[i][j], F.J[i + 1][l]...)
+                end
+            end
+        end
+        println("\ni = $i\n")
+        println(psi[i])
+        println()
+        AIJ = zeros(npivots[i], npivots[i])
+        for j in 1:npivots[i]
+            for k in 1:npivots[i]
+                AIJ[j, k] = expnegf(F, F.I[i + 1][j]..., F.J[i + 1][k]...)
+            end
+        end
+        AIJinv = inv(AIJ)
+        println(norm(AIJ * AIJinv - I))
+        println()
+        skeleton = ITensor(links[i], links[i]')
+        for j in 1:npivots[i]
+            for k in 1:npivots[i]
+                skeleton[links[i]=>j, links[i]'=>k] = AIJinv[j, k]
+            end
+        end
+        psi[i] *= skeleton
+        noprime!(psi[i])
+        println(psi[i])
+        flush(stdout)
+    end
+    psi[order] = ITensor(sites[order], links[order - 1])
+    for j in eachindex(grid[order])
+        for k in 1:npivots[order - 1]
+            psi[order][j=>sites[order], k=>links[order-1]] = expnegf(F, F.I[order][k]..., grid[order][j])
+        end
+    end
+    println("\ni = $order\n")
+    println(psi[order])
+    println()
+    flush(stdout)
+    return MPS(psi)
+end
+
 # Approximates normalization constant, or partition function (if F is a Boltzmann distribution)
 # Involes univariate integral calculations along all dimensions
 function compute_norm(F::ResFunc{T, N}) where {T, N}
