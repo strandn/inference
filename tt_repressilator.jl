@@ -168,7 +168,7 @@ function tt_repressilator()
     end
     psi /= norm[]
 
-    println(F.offset - log(norm[]))
+    println(offset - log(norm[]))
 
     for pos in 1:d-1
         Lenv = undef
