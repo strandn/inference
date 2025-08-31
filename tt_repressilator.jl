@@ -82,14 +82,7 @@ function tt_repressilator()
     )
 
     samples = zeros(nsamples, d)
-    # open("vanilla_samples.txt", "r") do file
-    #     for i in 1:nsamples
-    #         sample = eval(Meta.parse(readline(file)))
-    #         samples[i, :] = sample
-    #     end
-    # end
-    # samples = readdlm("tt_repressilator_rank20_samples.txt")
-    samples = readdlm("tt_repressilator_coarse_samples.txt")
+    samples = readdlm("repressilator_samples.txt")
     R = kmeans(samples', 3)
     borders = []
     for i in 1:d
@@ -110,23 +103,23 @@ function tt_repressilator()
         println(borders[i])
     end
 
-    # grid = Tuple([Float64[] for _ in 1:d])
-    # for i in 1:d
-    #     for border in borders[i]
-    #         first = searchsortedlast(grid_full[i], border[1])
-    #         if first < 1
-    #             first = 1
-    #         end
-    #         last = searchsortedfirst(grid_full[i], border[2])
-    #         if last > nbins
-    #             last = nbins
-    #         end
-    #         append!(grid[i], grid_full[i][first:last])
-    #     end
-    #     unique!(grid[i])
-    #     sort!(grid[i])
-    # end
-    # println([length(g) for g in grid])
+    grid = Tuple([Float64[] for _ in 1:d])
+    for i in 1:d
+        for border in borders[i]
+            first = searchsortedlast(grid_full[i], border[1])
+            if first < 1
+                first = 1
+            end
+            last = searchsortedfirst(grid_full[i], border[2])
+            if last > nbins
+                last = nbins
+            end
+            append!(grid[i], grid_full[i][first:last])
+        end
+        unique!(grid[i])
+        sort!(grid[i])
+    end
+    println([length(g) for g in grid])
 
     offset = neglogposterior(samples[1, :]...)
 
@@ -134,24 +127,19 @@ function tt_repressilator()
     flush(stdout)
 
     posterior(x...) = exp(offset - neglogposterior(x...))
-    A = ODEArray(posterior, grid_full)
-    # A = ODEArray(posterior, grid)
+    A = ODEArray(posterior, grid)
 
     seedlist = zeros(Int64, nsamples, d)
     for i in 1:nsamples
         for j in 1:d
-            hi = searchsortedfirst(grid_full[j], samples[i, j])
-            # hi = searchsortedfirst(grid[j], samples[i, j])
+            hi = searchsortedfirst(grid[j], samples[i, j])
             if hi == 1
                 seedlist[i, j] = 1
-            elseif hi == length(grid_full[j]) + 1
-                seedlist[i, j] = length(grid_full[j])
-            # elseif hi == length(grid[j]) + 1
-            #     seedlist[i, j] = length(grid[j])
+            elseif hi == length(grid[j]) + 1
+                seedlist[i, j] = length(grid[j])
             else
                 lo = hi - 1
-                if abs(grid_full[j][lo] - samples[i, j]) < abs(grid_full[j][hi] - samples[i, j])
-                # if abs(grid[j][lo] - samples[i, j]) < abs(grid[j][hi] - samples[i, j])
+                if abs(grid[j][lo] - samples[i, j]) < abs(grid[j][hi] - samples[i, j])
                     seedlist[i, j] = lo
                 else
                     seedlist[i, j] = hi
@@ -160,19 +148,27 @@ function tt_repressilator()
         end
     end
 
+    weights = deepcopy(grid)
+    for i in 1:d
+        weights[i][1] = (grid[i][2] - grid[i][1]) / 2
+        for j in 2:length(grid[i])-1
+            weights[i][j] = (grid[i][j + 1] - grid[i][j - 1]) / 2
+        end
+        weights[i][length(grid[i])] = (grid[i][length(grid[i])] - grid[i][length(grid[i]) - 1]) / 2
+    end
+
     psi = tt_cross(A, maxr, tol, maxiter, seedlist)
     @show psi
 
     sites = siteinds(psi)
-    oneslist = [ITensor(ones(dim(sites[i])), sites[i]) for i in 1:d]
+    oneslist = [ITensor(weights[i], sites[i]) for i in 1:d]
     norm = psi[1] * oneslist[1]
     for i in 2:d
         norm *= psi[i] * oneslist[i]
     end
     psi /= norm[]
 
-    domprod = (X10_dom[2] - X10_dom[1]) * (X20_dom[2] - X20_dom[1]) * (X30_dom[2] - X30_dom[1]) * (α1_dom[2] - α1_dom[1]) * (α2_dom[2] - α2_dom[1]) * (α3_dom[2] - α3_dom[1]) * (m_dom[2] - m_dom[1]) * (η_dom[2] - η_dom[1])
-    println(offset - log(norm[] * domprod / nbins^d))
+    println(F.offset - log(norm[]))
 
     for pos in 1:d-1
         Lenv = undef
@@ -198,17 +194,15 @@ function tt_repressilator()
             result = Lenv * psi[pos] * psi[pos + 1] * Renv
         end
         open("tt_repressilator_marginal_$pos.txt", "w") do file
-            for i in 1:dim(sites[pos])
-                for j in 1:dim(sites[pos+1])
-                    write(file, "$(grid_full[pos][i]) $(grid_full[pos + 1][j]) $(result[sites[pos]=>i, sites[pos+1]=>j])\n")
-                    # write(file, "$(grid[pos][i]) $(grid[pos + 1][j]) $(result[sites[pos]=>i, sites[pos+1]=>j])\n")
+            for i in 1:ITensors.dim(sites[pos])
+                for j in 1:ITensors.dim(sites[pos+1])
+                    write(file, "$(grid[pos][i]) $(grid[pos + 1][j]) $(result[sites[pos]=>i, sites[pos+1]=>j])\n")
                 end
             end
         end
     end
 
-    vec1list = [ITensor(grid_full[i], sites[i]) for i in 1:d]
-    # vec1list = [ITensor(grid[i], sites[i]) for i in 1:d]
+    vec1list = [ITensor(weights[i] .* grid[i], sites[i]) for i in 1:d]
     meanlist = zeros(d)
     for i in 1:d
         mean = psi[1] * (i == 1 ? vec1list[1] : oneslist[1])
@@ -219,15 +213,8 @@ function tt_repressilator()
     end
     println(meanlist)
 
-    # cov0 = undef
-    # open("repressilator0cov.txt", "r") do file
-    #     cov0 = eval(Meta.parse(readline(file)))
-    # end
-
-    vec2list = [ITensor(grid_full[i] .- meanlist[i], sites[i]) for i in 1:d]
-    vec22list = [ITensor((grid_full[i] .- meanlist[i]).^2, sites[i]) for i in 1:d]
-    # vec2list = [ITensor(grid[i] .- meanlist[i], sites[i]) for i in 1:d]
-    # vec22list = [ITensor((grid[i] .- meanlist[i]).^2, sites[i]) for i in 1:d]
+    vec2list = [ITensor(weights[i] .* (grid[i] .- meanlist[i]), sites[i]) for i in 1:d]
+    vec22list = [ITensor(weights[i] .* (grid[i] .- meanlist[i]).^2, sites[i]) for i in 1:d]
     varlist = zeros(d, d)
     for i in 1:d
         for j in i:d
@@ -257,7 +244,6 @@ function tt_repressilator()
         end
     end
     display(varlist)
-    # println(LinearAlgebra.norm(varlist - cov0) / LinearAlgebra.norm(cov0))
     flush(stdout)
 
     open("tt_repressilator_samples.txt", "w") do file
@@ -269,10 +255,10 @@ function tt_repressilator()
             for count in 1:d
                 Renv = undef
                 if count != d
-                    ind = ITensor(ones(dim(sites[d])), sites[d])
+                    ind = ITensor(weights[d], sites[d])
                     Renv = psi[d] * ind
                     for i in d-1:-1:count+1
-                        ind = ITensor(ones(dim(sites[i])), sites[i])
+                        ind = ITensor(weights[i], sites[i])
                         Renv *= psi[i] * ind
                     end
                 end
@@ -280,9 +266,9 @@ function tt_repressilator()
                 println("u_$count = $u")
                 flush(stdout)
                 a = 1
-                b = dim(sites[count])
+                b = ITensors.dim(sites[count])
 
-                ind = ITensor(ones(dim(sites[count])), sites[count])
+                ind = ITensor(weights[count], sites[count])
                 normi = psi[count] * ind
                 for i in count-1:-1:1
                     ind = ITensor(sites[i])
@@ -299,8 +285,9 @@ function tt_repressilator()
                     if a == mid
                         break
                     end
-                    indvec = zeros(dim(sites[count]))
-                    indvec[1:mid] .= 1.0
+                    indvec = zeros(ITensors.dim(sites[count]))
+                    indvec[1:mid-1] = weights[count][1:mid-1]
+                    indvec[mid] = (grid[count][mid] - grid[count][mid - 1]) / 2
                     ind = ITensor(indvec, sites[count])
                     cdfi = psi[count] * ind
                     for i in count-1:-1:1
@@ -318,8 +305,9 @@ function tt_repressilator()
                     end
                 end
                 
-                indvec = zeros(dim(sites[count]))
-                indvec[1:b] .= 1.0
+                indvec = zeros(ITensors.dim(sites[count]))
+                indvec[1:b-1] .= weights[count][1:b-1]
+                indvec[b] = (grid[count][b] - grid[count][b - 1]) / 2
                 ind = ITensor(indvec, sites[count])
                 cdfi_b = psi[count] * ind
                 for i in count-1:-1:1
@@ -332,12 +320,10 @@ function tt_repressilator()
                 end
 
                 if abs(cdfi[] / normi[] - u) < abs(cdfi_b[] / normi[] - u)
-                    sample[count] = grid_full[count][a]
-                    # sample[count] = grid[count][a]
+                    sample[count] = grid[count][a]
                     sampleidx[count] = a
                 else
-                    sample[count] = grid_full[count][b]
-                    # sample[count] = grid[count][b]
+                    sample[count] = grid[count][b]
                     sampleidx[count] = b
                 end
             end
@@ -348,11 +334,10 @@ function tt_repressilator()
 end
 
 d = 8
-maxr = 500
-# maxr = 20
+maxr = 100
 tol = 1.0e-4
 maxiter = 10
-nbins = 100
+nbins = 50
 nsamples = 1000
 
 start_time = time()

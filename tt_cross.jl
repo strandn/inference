@@ -566,9 +566,10 @@ end
 mutable struct ODEArray{T, N} <: AbstractArray{T, N}
     f
     grid::NTuple{N, Vector{T}}
+    map::Dict{NTuple{N, Int64}, Float64}
 
     function ODEArray(f, grid::NTuple{N, Vector{T}}) where {T, N}
-        new{T, N}(f, grid)
+        new{T, N}(f, grid, Dict{NTuple{N, Int64}, Float64}())
     end
 end
 
@@ -582,7 +583,12 @@ function Base.ndims(A::ODEArray)
 end
 
 function Base.getindex(A::ODEArray, elements::Int64...)
-    return A.f([A.grid[i][elements[i]] for i in eachindex(elements)]...)
+    val = get(A.map, elements, NaN)
+    if isnan(val)
+        val = A.f([A.grid[i][elements[i]] for i in eachindex(elements)]...)
+        A.map[elements] = val
+    end
+    return val
 end
 
 function to_continuous(A::ODEArray, row_idx, col_idx)
