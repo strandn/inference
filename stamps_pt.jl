@@ -297,10 +297,10 @@ domains = [
 fracσ = [0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05, 0.05]
 
 # You can also pass your own `betas` vector (length == nprocs)
-pt_mpi(neglogposterior, x0;
-       nsteps=10^8,
+pt_mpi(hidalgo_like, x0;
+       nsteps=10^6,
        burnin=10^4,
-       swap_every=10,
+       swap_every=100,
        betas=nothing,        # auto geometric ladder
        seed=Int64(round(time())),
        save_every=100,
