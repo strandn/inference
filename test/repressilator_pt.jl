@@ -318,9 +318,9 @@ fracσ = [0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002]  # 2% of each 
 
 # You can also pass your own `betas` vector (length == nprocs)
 pt_mpi(neglogposterior, x0;
-       nsteps=10^8,
-       burnin=10^4,
-       swap_every=10,
+       nsteps=10^9,
+       burnin=10^6,
+       swap_every=1000,
        betas=nothing,        # auto geometric ladder
        seed=Int64(round(time())),
        save_every=100,

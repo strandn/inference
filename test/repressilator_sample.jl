@@ -217,14 +217,10 @@ function aca_repressilator()
                 end
 
                 cdfi = 0.0
-                while true
+                while b - a > 1
                     mid = div(a + b, 2)
-                    if a == mid
-                        break
-                    end
                     indvec = zeros(ITensors.dim(sites[count]))
-                    indvec[1:mid-1] = weights[count][1:mid-1]
-                    indvec[mid] = (grid[count][mid] - grid[count][mid - 1]) / 2
+                    indvec[1:mid] = weights[count][1:mid]
                     ind = ITensor(indvec, sites[count])
                     cdfi = psi[count] * ind
                     for i in count-1:-1:1
@@ -241,10 +237,22 @@ function aca_repressilator()
                         b = mid
                     end
                 end
+
+                indvec = zeros(ITensors.dim(sites[count]))
+                indvec[1:a] = weights[count][1:a]
+                ind = ITensor(indvec, sites[count])
+                cdfi_a = psi[count] * ind
+                for i in count-1:-1:1
+                    ind = ITensor(sites[i])
+                    ind[sites[i]=>sampleidx[i]] = 1.0
+                    cdfi_a *= psi[i] * ind
+                end
+                if count != d
+                    cdfi_a *= Renv
+                end
                 
                 indvec = zeros(ITensors.dim(sites[count]))
-                indvec[1:b-1] .= weights[count][1:b-1]
-                indvec[b] = (grid[count][b] - grid[count][b - 1]) / 2
+                indvec[1:b] = weights[count][1:b]
                 ind = ITensor(indvec, sites[count])
                 cdfi_b = psi[count] * ind
                 for i in count-1:-1:1
@@ -256,7 +264,7 @@ function aca_repressilator()
                     cdfi_b *= Renv
                 end
 
-                if abs(cdfi[] / normi[] - u) < abs(cdfi_b[] / normi[] - u)
+                if abs(cdfi_a[] / normi[] - u) < abs(cdfi_b[] / normi[] - u)
                     sample[count] = grid[count][a]
                     sampleidx[count] = a
                 else
