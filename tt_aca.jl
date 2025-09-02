@@ -106,7 +106,12 @@ function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, 
         xylist = fill(Tuple(fill(0.0, order)), n_chains_total)
         reslist = fill(0.0, n_chains_total)
         res_new = 0.0
-        for r in length(F.I[i + 1])+1:rank[i]
+        r = length(F.I[i + 1]) + 1
+        pivot_count = pivot_last = mod(r - 1, length(F.I[i])) + 1
+        while true
+            if r > rank[i]
+                break
+            end
             # Determine number of tasks for the current process
             elements_per_task = div(n_chains_total, mpi_size)
             # Extra tasks to be carried out by the root process at the end
@@ -116,7 +121,7 @@ function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, 
             for k in 1:elements_per_task
                 # Run multiple Markov chains in parallel, approximate position of the largest current residual across all walkers
                 # idx = mod(mpi_rank * elements_per_task + k - 1, length(F.I[i])) + 1
-                idx = mod(r - 1, length(F.I[i])) + 1
+                idx = mod(pivot_count - 1, length(F.I[i])) + 1
                 local_xy[k], local_res[k] = max_metropolis(F, F.I[i][idx], n_samples, jump_width)
             end
             # Collect results from all processes
@@ -130,7 +135,7 @@ function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, 
             if mpi_rank == 0 && remainder > 0
                 for k in mpi_size*elements_per_task+1:n_chains_total
                     # idx = mod(k - 1, length(F.I[i])) + 1
-                    idx = mod(r - 1, length(F.I[i])) + 1
+                    idx = mod(pivot_count - 1, length(F.I[i])) + 1
                     xylist[k], reslist[k] = max_metropolis(F, F.I[i][idx], n_samples, jump_width)
                 end
             end
@@ -146,14 +151,21 @@ function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, 
             end
             res_new = [exp(-F(xy[]...))]
             MPI.Bcast!(res_new, 0, mpi_comm)
+            pivot_count = mod(pivot_count, length(F.I[i])) + 1
             if res_new[] < F.cutoff
-                break
+                if pivot_count == pivot_last
+                    break
+                else
+                    continue
+                end
             end
             updateIJ(F, xy[])
             if mpi_rank == 0
                 println("rank = $r res = $(res_new[]) xy = $(xy[]) offset = $(F.offset)")
                 flush(stdout)
             end
+            r += 1
+            pivot_last = pivot_count
         end
     end
 
