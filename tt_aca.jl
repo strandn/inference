@@ -514,9 +514,9 @@ function build_tt(F::ResFunc{T, N}, grid::NTuple{N, Vector{T}}) where {T, N}
             psi[1][sites[1]=>j, links[1]=>k] = expnegf(F, grid[1][j], F.J[2][k]...)
         end
     end
-    println("i = 1\n")
-    println(psi[1])
-    println()
+    # println("i = 1\n")
+    # println(psi[1])
+    # println()
     AIJ = zeros(npivots[1], npivots[1])
     for j in 1:npivots[1]
         for k in 1:npivots[1]
@@ -524,8 +524,8 @@ function build_tt(F::ResFunc{T, N}, grid::NTuple{N, Vector{T}}) where {T, N}
         end
     end
     AIJinv = inv(AIJ)
-    println(norm(AIJ * AIJinv - I))
-    println()
+    # println(norm(AIJ * AIJinv - I))
+    # println()
     skeleton = ITensor(links[1], links[1]')
     for j in 1:npivots[1]
         for k in 1:npivots[1]
@@ -534,8 +534,8 @@ function build_tt(F::ResFunc{T, N}, grid::NTuple{N, Vector{T}}) where {T, N}
     end
     psi[1] *= skeleton
     noprime!(psi[1])
-    println(psi[1])
-    flush(stdout)
+    # println(psi[1])
+    # flush(stdout)
     for i in 2:order-1
         links[i] = Index(npivots[i], "Link,l=$i")
         psi[i] = ITensor(sites[i], links[i - 1], links[i])
@@ -546,9 +546,9 @@ function build_tt(F::ResFunc{T, N}, grid::NTuple{N, Vector{T}}) where {T, N}
                 end
             end
         end
-        println("\ni = $i\n")
-        println(psi[i])
-        println()
+        # println("\ni = $i\n")
+        # println(psi[i])
+        # println()
         AIJ = zeros(npivots[i], npivots[i])
         for j in 1:npivots[i]
             for k in 1:npivots[i]
@@ -556,8 +556,8 @@ function build_tt(F::ResFunc{T, N}, grid::NTuple{N, Vector{T}}) where {T, N}
             end
         end
         AIJinv = inv(AIJ)
-        println(norm(AIJ * AIJinv - I))
-        println()
+        # println(norm(AIJ * AIJinv - I))
+        # println()
         skeleton = ITensor(links[i], links[i]')
         for j in 1:npivots[i]
             for k in 1:npivots[i]
@@ -566,8 +566,8 @@ function build_tt(F::ResFunc{T, N}, grid::NTuple{N, Vector{T}}) where {T, N}
         end
         psi[i] *= skeleton
         noprime!(psi[i])
-        println(psi[i])
-        flush(stdout)
+        # println(psi[i])
+        # flush(stdout)
     end
     psi[order] = ITensor(sites[order], links[order - 1])
     for j in eachindex(grid[order])
@@ -575,10 +575,10 @@ function build_tt(F::ResFunc{T, N}, grid::NTuple{N, Vector{T}}) where {T, N}
             psi[order][sites[order]=>j, links[order-1]=>k] = expnegf(F, F.I[order][k]..., grid[order][j])
         end
     end
-    println("\ni = $order\n")
-    println(psi[order])
-    println()
-    flush(stdout)
+    # println("\ni = $order\n")
+    # println(psi[order])
+    # println()
+    # flush(stdout)
     return MPS(psi)
 end
 
