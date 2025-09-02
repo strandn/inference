@@ -220,7 +220,8 @@ function aca_repressilator()
                 while b - a > 1
                     mid = div(a + b, 2)
                     indvec = zeros(ITensors.dim(sites[count]))
-                    indvec[1:mid] = weights[count][1:mid]
+                    indvec[1:mid-1] .= weights[count][1:mid-1]
+                    indvec[mid] = 0.5 * (grid[count][mid] - grid[count][mid - 1])
                     ind = ITensor(indvec, sites[count])
                     cdfi = psi[count] * ind
                     for i in count-1:-1:1
@@ -238,38 +239,64 @@ function aca_repressilator()
                     end
                 end
 
-                indvec = zeros(ITensors.dim(sites[count]))
-                indvec[1:a] = weights[count][1:a]
-                ind = ITensor(indvec, sites[count])
-                cdfi_a = psi[count] * ind
-                for i in count-1:-1:1
-                    ind = ITensor(sites[i])
-                    ind[sites[i]=>sampleidx[i]] = 1.0
-                    cdfi_a *= psi[i] * ind
-                end
-                if count != d
-                    cdfi_a *= Renv
-                end
-                
-                indvec = zeros(ITensors.dim(sites[count]))
-                indvec[1:b] = weights[count][1:b]
-                ind = ITensor(indvec, sites[count])
-                cdfi_b = psi[count] * ind
-                for i in count-1:-1:1
-                    ind = ITensor(sites[i])
-                    ind[sites[i]=>sampleidx[i]] = 1.0
-                    cdfi_b *= psi[i] * ind
-                end
-                if count != d
-                    cdfi_b *= Renv
+                # Boundary CDF up to x_a (half-left at a)
+                Ca = 0.0
+                if a > 1
+                    indvec = zeros(ITensors.dim(sites[count]))
+                    indvec[1:a-1] .= weights[count][1:a-1]
+                    indvec[a] = 0.5 * (grid[count][a] - grid[count][a - 1])  # half-left at a
+                    ind = ITensor(indvec, sites[count])
+                    cdfi_a = psi[count] * ind
+                    for i in count-1:-1:1
+                        ind = ITensor(sites[i]); ind[sites[i] => sampleidx[i]] = 1.0
+                        cdfi_a *= psi[i] * ind
+                    end
+                    if count != d
+                        cdfi_a *= Renv
+                    end
+                    Ca = cdfi_a[]
                 end
 
-                if abs(cdfi_a[] / normi[] - u) < abs(cdfi_b[] / normi[] - u)
-                    sample[count] = grid[count][a]
+                # Node values at a and b (conditioned on previous dims; integrated over later dims)
+                ind = ITensor(sites[count])
+                ind[sites[count]=>a] = 1.0
+                fa = psi[count] * ind
+                for i in count-1:-1:1
+                    ind = ITensor(sites[i])
+                    ind[sites[i]=>sampleidx[i]] = 1.0
+                    fa *= psi[i] * ind
+                end
+                if count != d
+                    fa *= Renv
+                end
+                fa = fa[]
+
+                ind = ITensor(sites[count])
+                ind[sites[count] => b] = 1.0
+                fb = psi[count] * ind
+                for i in count-1:-1:1
+                    ind = ITensor(sites[i])
+                    ind[sites[i]=>sampleidx[i]] = 1.0
+                    fb *= psi[i] * ind
+                end
+                if count != d
+                    fb *= Renv
+                end
+                fb = fb[]
+
+                fa = max(fa, 0.0)
+                fb = max(fb, 0.0)
+
+                # Correct discrete split inside the cell
+                h = grid[count][b] - grid[count][a]
+                threshold = Ca + 0.5 * h * fa
+
+                if u * normi[] <= threshold
                     sampleidx[count] = a
+                    sample[count] = grid[count][a]
                 else
-                    sample[count] = grid[count][b]
                     sampleidx[count] = b
+                    sample[count] = grid[count][b]
                 end
             end
 
