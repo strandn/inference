@@ -4,45 +4,31 @@ using LinearAlgebra
 using HDF5
 using Random
 
-function dmrg_cross(input_tensor, maxrank::Int64, cutoff::Float64, tol::Float64, n_iter_max::Int64, seedlist::Vector{Vector{Int64}}=Vector{Int64}[])
+function dmrg_cross(input_tensor, initrank::Int64, maxrank::Int64, cutoff::Float64, tol::Float64, n_iter_max::Int64)
     tensor_shape = size(input_tensor)
     tensor_order = ndims(input_tensor)
 
-    rank = fill(1, tensor_order - 1)
+    rank = zeros(Int64, tensor_order - 1)
+    for i in 1:tensor_order-1
+        left = tensor_shape[1];
+        for j in 2:i
+            left *= tensor_shape[j]
+        end
+        right = tensor_shape[tensor_order];
+        for j in tensor_order-1:-1:i+1
+            right *= tensor_shape[j]
+        end
+        rank[i] = min(left, right, initrank)
+    end
 
     sites = [siteind(tensor_shape[i], i) for i in 1:tensor_order]
-    factor = randomMPS(sites)
+    factor = randomMPS(sites; linkdims=rank)
     links = linkinds(factor)
-    if !isempty(seedlist)
-        rank = fill(length(seedlist), tensor_order - 1)
-
-        for i in eachindex(sites)
-            if i < tensor_order
-                links[i] = Index(rank[i], "Link,l=$i")
-            end
-            if i == 1
-                factor[i] = ITensor(links[i], sites[i])
-            elseif i == tensor_order
-                factor[i] = ITensor(links[i - 1], sites[i])
-            else
-                factor[i] = ITensor(links[i - 1], sites[i], links[i])
-            end
-        end
-
-        for i in eachindex(seedlist)
-            x = seedlist[i, :][]
-            factor[1][sites[1]=>x[1], links[1]=>i] = 1.0
-            for k in 2:tensor_order-1
-                factor[k][links[k-1]=>i, sites[k]=>x[k], links[k]=>i] = 1.0
-            end
-            factor[tensor_order][links[tensor_order-1]=>i, sites[tensor_order]=>x[tensor_order]] = 1.0
-        end
-    end
 
     P = Vector{Matrix}(undef, tensor_order - 1)
     row_idx = Vector(undef, tensor_order - 1)
     col_idx = Vector(undef, tensor_order - 1)
-    Q, R, links[tensor_order - 1] = qr(factor[tensor_order], sites[tensor_order]; tags=tags(links[tensor_order - 1]))
+    Q, R, links[tensor_order - 1] = qr(factor[tensor_order], sites[tensor_order]; tags=tags(links[tensor_order-1]))
     factor[tensor_order] = Q
     Qmat = Matrix(Q, links[tensor_order - 1], sites[tensor_order])
     J = maxvol(Matrix(transpose(Qmat)))
@@ -51,7 +37,7 @@ function dmrg_cross(input_tensor, maxrank::Int64, cutoff::Float64, tol::Float64,
 
     for k in tensor_order-1:-1:2
         factor[k] *= R
-        Q, R, links[k - 1] = qr(factor[k], sites[k], links[k]; tags=tags(links[k - 1]))
+        Q, R, links[k - 1] = qr(factor[k], sites[k], links[k]; tags=tags(links[k-1]))
         Q *= ITensor(P[k], links[k], links[k]')
         noprime!(Q)
         factor[k] = Q
@@ -216,7 +202,7 @@ function right_left_dmrgcross(input_tensor, rank::Vector{Int64}, row_idx, col_id
         not_converged = true
     end
 
-    U, S, V = maxrank == -1 ? svd(bond, sites[tensor_order]; cutoff=cutoff, lefttags=tags(links[tensor_order - 1])) : svd(bond, sites[tensor_order]; cutoff=cutoff, maxdim=maxrank, lefttags=tags(links[tensor_order - 1]))
+    U, S, V = maxrank == -1 ? svd(bond, sites[tensor_order]; cutoff=cutoff, lefttags=tags(links[tensor_order-1])) : svd(bond, sites[tensor_order]; cutoff=cutoff, maxdim=maxrank, lefttags=tags(links[tensor_order-1]))
     links[tensor_order - 1] = commonind(U, S)
     rank[tensor_order - 1] = ITensors.dim(links[tensor_order - 1])
     println([S[i, i] for i in 1:rank[tensor_order - 1]])
@@ -580,9 +566,10 @@ end
 mutable struct ODEArray{T, N} <: AbstractArray{T, N}
     f
     grid::NTuple{N, Vector{T}}
+    map::Dict{NTuple{N, Int64}, Float64}
 
     function ODEArray(f, grid::NTuple{N, Vector{T}}) where {T, N}
-        new{T, N}(f, grid)
+        new{T, N}(f, grid, Dict{NTuple{N, Int64}, Float64}())
     end
 end
 
@@ -596,7 +583,12 @@ function Base.ndims(A::ODEArray)
 end
 
 function Base.getindex(A::ODEArray, elements::Int64...)
-    return A.f([A.grid[i][elements[i]] for i in eachindex(elements)]...)
+    val = get(A.map, elements, NaN)
+    if isnan(val)
+        val = A.f([A.grid[i][elements[i]] for i in eachindex(elements)]...)
+        A.map[elements] = val
+    end
+    return val
 end
 
 function to_continuous(A::ODEArray, row_idx, col_idx)

@@ -1,4 +1,7 @@
 using DifferentialEquations
+using StatsBase
+using Clustering
+using DelimitedFiles
 
 include("tt_cross.jl")
 
@@ -58,13 +61,6 @@ function tt_repressilator()
     sigma = [4.0, 4.0, 4.0, 25.0, 25.0, 25.0, 25.0, 25.0]
     neglogposterior(X10, X20, X30, α1, α2, α3, m, η) = V([X10, X20, X30, α1, α2, α3, m, η], tspan, nsteps, data, mu, sigma)
 
-    X10_true = X20_true = X30_true = 2.0
-    α1_true = 10.0
-    α2_true = 15.0
-    α3_true = 20.0
-    m_true = 4.0
-    η_true = 1.0
-
     X10_dom = (0.5, 3.5)
     X20_dom = (0.5, 3.5)
     X30_dom = (0.5, 3.5)
@@ -74,54 +70,105 @@ function tt_repressilator()
     m_dom = (3.0, 5.0)
     η_dom = (0.95, 1.05)
 
-    nbins = 100
-    grid = (
-        LinRange(X10_dom..., nbins + 1),
-        LinRange(X20_dom..., nbins + 1),
-        LinRange(X30_dom..., nbins + 1),
-        LinRange(α1_dom..., nbins + 1),
-        LinRange(α2_dom..., nbins + 1),
-        LinRange(α3_dom..., nbins + 1),
-        LinRange(m_dom..., nbins + 1),
-        LinRange(η_dom..., nbins + 1)
+    grid_full = (
+        collect(LinRange(X10_dom..., nbins + 1)),
+        collect(LinRange(X20_dom..., nbins + 1)),
+        collect(LinRange(X30_dom..., nbins + 1)),
+        collect(LinRange(α1_dom..., nbins + 1)),
+        collect(LinRange(α2_dom..., nbins + 1)),
+        collect(LinRange(α3_dom..., nbins + 1)),
+        collect(LinRange(m_dom..., nbins + 1)),
+        collect(LinRange(η_dom..., nbins + 1))
     )
-    X10_idx = searchsortedfirst(grid[1], X10_true)
-    X20_idx = searchsortedfirst(grid[2], X20_true)
-    X30_idx = searchsortedfirst(grid[3], X30_true)
-    α1_idx = searchsortedfirst(grid[4], α1_true)
-    α2_idx = searchsortedfirst(grid[5], α2_true)
-    α3_idx = searchsortedfirst(grid[6], α3_true)
-    m_idx = searchsortedfirst(grid[7], m_true)
-    η_idx = searchsortedfirst(grid[8], η_true)
 
-    offset = neglogposterior(X10_true, X20_true, X30_true, α1_true, α2_true, α3_true, m_true, η_true)
+    samples = zeros(nsamples, d)
+    samples = readdlm("repressilator_samples.txt")
+    R = kmeans(samples', 3)
+    borders = []
+    for i in 1:d
+        if i == 4 || i == 5 || i == 6
+            clusterborders = []
+            for j in 1:3
+                idx = findall(x -> x == j, assignments(R))
+                avg = mean(samples[idx, i])
+                sd = std(samples[idx, i])
+                push!(clusterborders, (avg - 5 * sd, avg + 5 * sd))
+            end
+            push!(borders, clusterborders)
+        else
+            avg = mean(samples[:, i])
+            sd = std(samples[:, i])
+            push!(borders, [(avg - 5 * sd, avg + 5 * sd)])
+        end
+        println(borders[i])
+    end
+
+    grid = Tuple([Float64[] for _ in 1:d])
+    for i in 1:d
+        for border in borders[i]
+            first = searchsortedlast(grid_full[i], border[1])
+            if first < 1
+                first = 1
+            end
+            last = searchsortedfirst(grid_full[i], border[2])
+            if last > nbins
+                last = nbins
+            end
+            append!(grid[i], grid_full[i][first:last])
+        end
+        unique!(grid[i])
+        sort!(grid[i])
+    end
+    println([length(g) for g in grid])
+
+    offset = minimum([neglogposterior(samples[i, :]...) for i in 1:nsamples])
 
     println("Starting TT cross...")
     flush(stdout)
 
     posterior(x...) = exp(offset - neglogposterior(x...))
     A = ODEArray(posterior, grid)
-    # seedlist = [
-    #     [X10_idx, X20_idx, X30_idx, α1_idx, α2_idx, α3_idx, m_idx, η_idx]
-    # ]
-    seedlist = [
-        [X10_idx, X20_idx, X30_idx, α1_idx, α2_idx, α3_idx, m_idx, η_idx],
-        [X10_idx, X20_idx, X30_idx, α2_idx, α3_idx, α1_idx, m_idx, η_idx],
-        [X10_idx, X20_idx, X30_idx, α3_idx, α1_idx, α2_idx, m_idx, η_idx]
-    ]
-    # psi = tt_cross(A, maxr, tol, maxiter)
+
+    seedlist = zeros(Int64, nsamples, d)
+    for i in 1:nsamples
+        for j in 1:d
+            hi = searchsortedfirst(grid[j], samples[i, j])
+            if hi == 1
+                seedlist[i, j] = 1
+            elseif hi == length(grid[j]) + 1
+                seedlist[i, j] = length(grid[j])
+            else
+                lo = hi - 1
+                if abs(grid[j][lo] - samples[i, j]) < abs(grid[j][hi] - samples[i, j])
+                    seedlist[i, j] = lo
+                else
+                    seedlist[i, j] = hi
+                end
+            end
+        end
+    end
+
+    weights = deepcopy(grid)
+    for i in 1:d
+        weights[i][1] = (grid[i][2] - grid[i][1]) / 2
+        for j in 2:length(grid[i])-1
+            weights[i][j] = (grid[i][j + 1] - grid[i][j - 1]) / 2
+        end
+        weights[i][length(grid[i])] = (grid[i][length(grid[i])] - grid[i][length(grid[i]) - 1]) / 2
+    end
+
     psi = tt_cross(A, maxr, tol, maxiter, seedlist)
+    @show psi
 
     sites = siteinds(psi)
-    oneslist = [ITensor(ones(nbins), sites[i]) for i in 1:d]
+    oneslist = [ITensor(weights[i], sites[i]) for i in 1:d]
     norm = psi[1] * oneslist[1]
     for i in 2:d
         norm *= psi[i] * oneslist[i]
     end
     psi /= norm[]
 
-    domprod = (X10_dom[2] - X10_dom[1]) * (X20_dom[2] - X20_dom[1]) * (X30_dom[2] - X30_dom[1]) * (α1_dom[2] - α1_dom[1]) * (α2_dom[2] - α2_dom[1]) * (α3_dom[2] - α3_dom[1]) * (m_dom[2] - m_dom[1]) * (η_dom[2] - η_dom[1])
-    println(offset - log(norm[] * domprod / 100^d))
+    println(offset - log(norm[]))
 
     for pos in 1:d-1
         Lenv = undef
@@ -147,15 +194,15 @@ function tt_repressilator()
             result = Lenv * psi[pos] * psi[pos + 1] * Renv
         end
         open("tt_repressilator_marginal_$pos.txt", "w") do file
-            for i in 1:nbins
-                for j in 1:nbins
-                    write(file, "$(grid[pos][i]) $(grid[pos + 1][j]) $(result[sites[pos] => i, sites[pos + 1] => j])\n")
+            for i in 1:ITensors.dim(sites[pos])
+                for j in 1:ITensors.dim(sites[pos+1])
+                    write(file, "$(grid[pos][i]) $(grid[pos + 1][j]) $(result[sites[pos]=>i, sites[pos+1]=>j])\n")
                 end
             end
         end
     end
 
-    vec1list = [ITensor(collect(grid[i][1:nbins]), sites[i]) for i in 1:d]
+    vec1list = [ITensor(weights[i] .* grid[i], sites[i]) for i in 1:d]
     meanlist = zeros(d)
     for i in 1:d
         mean = psi[1] * (i == 1 ? vec1list[1] : oneslist[1])
@@ -166,13 +213,8 @@ function tt_repressilator()
     end
     println(meanlist)
 
-    # cov0 = undef
-    # open("repressilator0cov.txt", "r") do file
-    #     cov0 = eval(Meta.parse(readline(file)))
-    # end
-
-    vec2list = [ITensor(collect(grid[i][1:nbins] .- meanlist[i]), sites[i]) for i in 1:d]
-    vec22list = [ITensor(collect((grid[i][1:nbins] .- meanlist[i]).^2), sites[i]) for i in 1:d]
+    vec2list = [ITensor(weights[i] .* (grid[i] .- meanlist[i]), sites[i]) for i in 1:d]
+    vec22list = [ITensor(weights[i] .* (grid[i] .- meanlist[i]).^2, sites[i]) for i in 1:d]
     varlist = zeros(d, d)
     for i in 1:d
         for j in i:d
@@ -202,14 +244,136 @@ function tt_repressilator()
         end
     end
     display(varlist)
-    # println(LinearAlgebra.norm(varlist - cov0) / LinearAlgebra.norm(cov0))
     flush(stdout)
+
+    open("tt_repressilator_samples.txt", "w") do file
+        for sampleid in 1:1000
+            println("Collecting sample $sampleid...")
+            sample = Vector{Float64}(undef, d)
+            sampleidx = Vector{Int64}(undef, d)
+
+            for count in 1:d
+                Renv = undef
+                if count != d
+                    ind = ITensor(weights[d], sites[d])
+                    Renv = psi[d] * ind
+                    for i in d-1:-1:count+1
+                        ind = ITensor(weights[i], sites[i])
+                        Renv *= psi[i] * ind
+                    end
+                end
+                u = rand()
+                println("u_$count = $u")
+                flush(stdout)
+                a = 1
+                b = ITensors.dim(sites[count])
+
+                ind = ITensor(weights[count], sites[count])
+                normi = psi[count] * ind
+                for i in count-1:-1:1
+                    ind = ITensor(sites[i])
+                    ind[sites[i]=>sampleidx[i]] = 1.0
+                    normi *= psi[i] * ind
+                end
+                if count != d
+                    normi *= Renv
+                end
+
+                cdfi = 0.0
+                while b - a > 1
+                    mid = div(a + b, 2)
+                    indvec = zeros(ITensors.dim(sites[count]))
+                    indvec[1:mid-1] .= weights[count][1:mid-1]
+                    indvec[mid] = 0.5 * (grid[count][mid] - grid[count][mid - 1])
+                    ind = ITensor(indvec, sites[count])
+                    cdfi = psi[count] * ind
+                    for i in count-1:-1:1
+                        ind = ITensor(sites[i])
+                        ind[sites[i]=>sampleidx[i]] = 1.0
+                        cdfi *= psi[i] * ind
+                    end
+                    if count != d
+                        cdfi *= Renv
+                    end
+                    if cdfi[] / normi[] < u
+                        a = mid
+                    else
+                        b = mid
+                    end
+                end
+
+                # Boundary CDF up to x_a (half-left at a)
+                Ca = 0.0
+                if a > 1
+                    indvec = zeros(ITensors.dim(sites[count]))
+                    indvec[1:a-1] .= weights[count][1:a-1]
+                    indvec[a] = 0.5 * (grid[count][a] - grid[count][a - 1])  # half-left at a
+                    ind = ITensor(indvec, sites[count])
+                    cdfi_a = psi[count] * ind
+                    for i in count-1:-1:1
+                        ind = ITensor(sites[i]); ind[sites[i] => sampleidx[i]] = 1.0
+                        cdfi_a *= psi[i] * ind
+                    end
+                    if count != d
+                        cdfi_a *= Renv
+                    end
+                    Ca = cdfi_a[]
+                end
+
+                # Node values at a and b (conditioned on previous dims; integrated over later dims)
+                ind = ITensor(sites[count])
+                ind[sites[count]=>a] = 1.0
+                fa = psi[count] * ind
+                for i in count-1:-1:1
+                    ind = ITensor(sites[i])
+                    ind[sites[i]=>sampleidx[i]] = 1.0
+                    fa *= psi[i] * ind
+                end
+                if count != d
+                    fa *= Renv
+                end
+                fa = fa[]
+
+                ind = ITensor(sites[count])
+                ind[sites[count] => b] = 1.0
+                fb = psi[count] * ind
+                for i in count-1:-1:1
+                    ind = ITensor(sites[i])
+                    ind[sites[i]=>sampleidx[i]] = 1.0
+                    fb *= psi[i] * ind
+                end
+                if count != d
+                    fb *= Renv
+                end
+                fb = fb[]
+
+                fa = max(fa, 0.0)
+                fb = max(fb, 0.0)
+
+                # Correct discrete split inside the cell
+                h = grid[count][b] - grid[count][a]
+                threshold = Ca + 0.5 * h * fa
+
+                if u * normi[] <= threshold
+                    sampleidx[count] = a
+                    sample[count] = grid[count][a]
+                else
+                    sampleidx[count] = b
+                    sample[count] = grid[count][b]
+                end
+            end
+
+            write(file, "$(sample[1]) $(sample[2]) $(sample[3]) $(sample[4]) $(sample[5]) $(sample[6]) $(sample[7]) $(sample[8])\n")
+        end
+    end
 end
 
 d = 8
-maxr = 140
+maxr = 100
 tol = 1.0e-4
 maxiter = 10
+nbins = 50
+nsamples = 1000
 
 start_time = time()
 tt_repressilator()
