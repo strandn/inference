@@ -127,7 +127,7 @@ function pt_mpi(
 
     # Build β ladder
     if betas === nothing
-        βmax, βmin = 1.0, 0.005           # adjust as needed
+        βmax, βmin = 1.0, 0.001           # adjust as needed
         # geometric ladder (sorted high->low β so rank 0 is β≈1)
         betas = βmax .* (βmin/βmax) .^ (collect(0:nprocs-1) ./ (nprocs-1))
     else
@@ -318,9 +318,9 @@ fracσ = [0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002, 0.002]  # 2% of each 
 
 # You can also pass your own `betas` vector (length == nprocs)
 pt_mpi(neglogposterior, x0;
-       nsteps=10^6,
+       nsteps=10^7,
        burnin=10^5,
-       swap_every=1000,
+       swap_every=100,
        betas=nothing,        # auto geometric ladder
        seed=Int64(round(time())),
        save_every=100,
