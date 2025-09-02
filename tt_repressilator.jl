@@ -121,7 +121,7 @@ function tt_repressilator()
     end
     println([length(g) for g in grid])
 
-    offset = minimum(neglogposterior(samples[i, :]...) for i in 1:nsamples)
+    offset = minimum([neglogposterior(samples[i, :]...) for i in 1:nsamples])
 
     println("Starting TT cross...")
     flush(stdout)
