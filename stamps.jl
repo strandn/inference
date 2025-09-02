@@ -36,34 +36,11 @@ function aca_stamps()
 
     IJ = continuous_aca(F, fill(maxr, d - 1), n_chains, n_samples, jump_width, mpi_comm)
 
-    cov0 = undef
-    open("stamps0cov.txt", "r") do file
-        cov0 = eval(Meta.parse(readline(file)))
-    end
-
     if mpi_rank == 0
         open("stamps_IJ.txt", "w") do file
             write(file, "$IJ\n")
             write(file, "$(F.offset)\n")
         end
-        norm, integrals, skeleton, links = compute_norm(F)
-        println("norm = $norm")
-        println(F.offset - log(norm))
-        
-        mu = zeros(d)
-        for i in 1:d
-            mu[i] = compute_mu(F, integrals, skeleton, links, i) / norm
-        end
-        println(mu)
-        cov = zeros(d, d)
-        for i in 1:d
-            for j in i:d
-                cov[i, j] = cov[j, i] = compute_cov(F, integrals, skeleton, links, mu, i, j) / norm
-            end
-        end
-        display(cov)
-        println(LinearAlgebra.norm(cov - cov0) / LinearAlgebra.norm(cov0))
-        flush(stdout)
     end
 end
 
@@ -74,10 +51,10 @@ mpi_size = MPI.Comm_size(mpi_comm)
 
 d = 9
 maxr = 50
-n_chains = 5
+n_chains = 20
 n_samples = 100
-jump_width = 0.05
-cutoff = 1.0e-4
+jump_width = 0.01
+cutoff = 1.0e-6
 
 start_time = time()
 aca_stamps()
