@@ -41,30 +41,83 @@ function aca_stamps()
         cov0 = eval(Meta.parse(readline(file)))
     end
 
-    if mpi_rank == 0
-        open("stamps_IJ.txt", "w") do file
-            write(file, "$IJ\n")
-            write(file, "$(F.offset)\n")
+    grid = (
+        collect(LinRange(m1_dom..., nbins + 1)),
+        collect(LinRange(m2_dom..., nbins + 1)),
+        collect(LinRange(m3_dom..., nbins + 1)),
+        collect(LinRange(ls1_dom..., nbins + 1)),
+        collect(LinRange(ls2_dom..., nbins + 1)),
+        collect(LinRange(ls3_dom..., nbins + 1)),
+        collect(LinRange(a1_dom..., nbins + 1)),
+        collect(LinRange(a2_dom..., nbins + 1)),
+        collect(LinRange(a3_dom..., nbins + 1))
+    )
+
+    weights = deepcopy(grid)
+    for i in 1:d
+        weights[i][1] = (grid[i][2] - grid[i][1]) / 2
+        for j in 2:length(grid[i])-1
+            weights[i][j] = (grid[i][j + 1] - grid[i][j - 1]) / 2
         end
-        norm, integrals, skeleton, links = compute_norm(F)
-        println("norm = $norm")
-        println(F.offset - log(norm))
-        
-        mu = zeros(d)
-        for i in 1:d
-            mu[i] = compute_mu(F, integrals, skeleton, links, i) / norm
-        end
-        println(mu)
-        cov = zeros(d, d)
-        for i in 1:d
-            for j in i:d
-                cov[i, j] = cov[j, i] = compute_cov(F, integrals, skeleton, links, mu, i, j) / norm
-            end
-        end
-        display(cov)
-        println(LinearAlgebra.norm(cov - cov0) / LinearAlgebra.norm(cov0))
-        flush(stdout)
+        weights[i][length(grid[i])] = (grid[i][length(grid[i])] - grid[i][length(grid[i]) - 1]) / 2
     end
+
+    psi = build_tt(F, grid)
+
+    sites = siteinds(psi)
+    oneslist = [ITensor(weights[i], sites[i]) for i in 1:d]
+    norm = psi[1] * oneslist[1]
+    for i in 2:d
+        norm *= psi[i] * oneslist[i]
+    end
+    psi /= norm[]
+
+    println(F.offset - log(norm[]))
+
+    vec1list = [ITensor(weights[i] .* grid[i], sites[i]) for i in 1:d]
+    meanlist = zeros(d)
+    for i in 1:d
+        mean = psi[1] * (i == 1 ? vec1list[1] : oneslist[1])
+        for k in 2:d
+            mean *= psi[k] * (i == k ? vec1list[k] : oneslist[k])
+        end
+        meanlist[i] = mean[]
+    end
+    println(meanlist)
+
+    vec2list = [ITensor(weights[i] .* (grid[i] .- meanlist[i]), sites[i]) for i in 1:d]
+    vec22list = [ITensor(weights[i] .* (grid[i] .- meanlist[i]).^2, sites[i]) for i in 1:d]
+    varlist = zeros(d, d)
+    for i in 1:d
+        for j in i:d
+            var = psi[1]
+            if i == 1
+                if i == j
+                    var *= vec22list[1]
+                else
+                    var *= vec2list[1]
+                end
+            else
+                var *= oneslist[1]
+            end
+            for k in 2:d
+                var *= psi[k]
+                if i == k || j == k
+                    if i == j
+                        var *= vec22list[k]
+                    else
+                        var *= vec2list[k]
+                    end
+                else
+                    var *= oneslist[k]
+                end
+            end
+            varlist[i, j] = varlist[j, i] = var[]
+        end
+    end
+    display(varlist)
+    println(LinearAlgebra.norm(varlist - cov0) / LinearAlgebra.norm(cov0))
+    flush(stdout)
 end
 
 MPI.Init()
@@ -74,10 +127,11 @@ mpi_size = MPI.Comm_size(mpi_comm)
 
 d = 9
 maxr = 50
-n_chains = 20
+n_chains = 5
 n_samples = 500
 jump_width = 0.01
-cutoff = 0.01
+cutoff = 1.0e-6
+nbins = 500
 
 for _ in 1:20
     start_time = time()
