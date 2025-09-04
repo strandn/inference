@@ -79,6 +79,19 @@ function aca_repressilator()
     if mpi_rank == 0
         println(result)
     end
+
+    # # cov0 = undef
+    # # open("repressilator0cov.txt", "r") do file
+    # #     cov0 = eval(Meta.parse(readline(file)))
+    # # end
+
+    # mu, cov = mcmc_mean_cov_parallel(neglogposterior; domain=dom, comm=mpi_comm, nchains=n_chains, nsamples=n_samples, proposal_std=jump_width, periodicity=Tuple(fill(false, 8)))
+    # if mpi_rank == 0
+    #     println(mu)
+    #     display(cov)
+    #     # println(LinearAlgebra.norm(cov - cov0) / LinearAlgebra.norm(cov0))
+    #     flush(stdout)
+    # end
 end
 
 MPI.Init()
@@ -86,7 +99,9 @@ mpi_comm = MPI.COMM_WORLD
 mpi_rank = MPI.Comm_rank(mpi_comm)
 mpi_size = MPI.Comm_size(mpi_comm)
 
-n_samples = 10^8
+n_chains = 20
+n_samples = 10^9
+jump_width = 0.002
 
 start_time = time()
 aca_repressilator()
@@ -94,7 +109,6 @@ end_time = time()
 elapsed_time = end_time - start_time
 if mpi_rank == 0
     println("Elapsed time: $elapsed_time seconds")
-    flush(stdout)
 end
 
 MPI.Finalize()
