@@ -75,7 +75,6 @@ function aca_repressilator()
 
     IJ = continuous_aca(F, fill(maxr, d - 1), n_chains, n_samples, jump_width, mpi_comm)
 
-    norm = 0.0
     if mpi_rank == 0
         open("repressilator_IJ.txt", "w") do file
             write(file, "$IJ\n")
@@ -91,10 +90,10 @@ mpi_size = MPI.Comm_size(mpi_comm)
 
 d = 8
 maxr = 10
-n_chains = 20
-n_samples = 1000
+n_chains = 100
+n_samples = 5000
 jump_width = 0.01
-cutoff = 1.0e-12
+cutoff = 1.0e-6
 
 start_time = time()
 aca_repressilator()
