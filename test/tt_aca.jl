@@ -69,156 +69,14 @@ function (F::ResFunc{T, N})(elements::T...) where {T, N}
         old = deepcopy(new)
         old_sign = deepcopy(new_sign)
     end
-    return new[]
-    # return new[], new_sign[]
+    # return new[]
+    return new[], new_sign[]
 end
 
 # Updates I and J by inserting a new pivot at the current unfolding (pos)
 function updateIJ(F::ResFunc{T, N}, ij::NTuple{N, T}) where {T, N}
     push!(F.I[F.pos + 1], [ij[j] for j in 1:F.pos])
     push!(F.J[F.pos + 1], [ij[j] for j in F.pos+1:F.ndims])
-end
-
-# Main ACA routine
-# Takes multidimensional function F, and sequentially finds pivots which roughly maximize a dynamical residual function, moving from one unfolding to the next
-# Pivots in each unfolding depend on pivots found for the previous unfolding
-function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, n_samples::Int64, jump_width::Float64, mpi_comm::MPI.Comm) where {T, N}
-    mpi_rank = MPI.Comm_rank(mpi_comm)
-    mpi_size = MPI.Comm_size(mpi_comm)
-    
-    order = F.ndims
-    if order == 1 && mpi_rank == 0
-        error(
-            "`continuous_aca` currently does not support system sizes of 1.",
-        )
-    end
-
-    F.pos = 0
-    for i in 1:order-1
-        if mpi_rank == 0
-            println("pos = $i")
-            flush(stdout)
-        end
-        F.pos += 1
-        
-        # MCMC sampling routine to be parallelized across MPI processes
-        n_chains_total = max(n_chains, mpi_size, length(F.I[i]))
-        xylist = fill(Tuple(fill(0.0, order)), n_chains_total)
-        reslist = fill(0.0, n_chains_total)
-        res_new = 0.0
-        for r in length(F.I[i + 1])+1:rank[i]
-            # Determine number of tasks for the current process
-            elements_per_task = div(n_chains_total, mpi_size)
-            # Extra tasks to be carried out by the root process at the end
-            remainder = rem(n_chains_total, mpi_size)
-            local_xy = fill(Tuple(fill(0.0, order)), elements_per_task)
-            local_res = fill(0.0, elements_per_task)
-            for k in 1:elements_per_task
-                # Run multiple Markov chains in parallel, approximate position of the largest current residual across all walkers
-                # idx = mod(mpi_rank * elements_per_task + k - 1, length(F.I[i])) + 1
-                idx = mod(r - 1, length(F.I[i])) + 1
-                local_xy[k], local_res[k] = max_metropolis(F, F.I[i][idx], n_samples, jump_width)
-            end
-            # Collect results from all processes
-            xydata = MPI.Gather(local_xy, 0, mpi_comm)
-            resdata = MPI.Gather(local_res, 0, mpi_comm)
-            if mpi_rank == 0
-                xylist[1:mpi_size*elements_per_task] .= xydata
-                reslist[1:mpi_size*elements_per_task] .= resdata
-            end
-            # Rank 0 process performs any remaining tasks
-            if mpi_rank == 0 && remainder > 0
-                for k in mpi_size*elements_per_task+1:n_chains_total
-                    # idx = mod(k - 1, length(F.I[i])) + 1
-                    idx = mod(r - 1, length(F.I[i])) + 1
-                    xylist[k], reslist[k] = max_metropolis(F, F.I[i][idx], n_samples, jump_width)
-                end
-            end
-            
-            # Find position of largest residuals
-            idx = argmin(reslist)
-            xy = [xylist[idx]]
-            MPI.Bcast!(xy, 0, mpi_comm)
-            if isempty(F.I[i + 1]) || F.f(xy[]...) < F.offset
-                offset_new = [F.f(xy[]...)]
-                MPI.Bcast!(offset_new, 0, mpi_comm)
-                F.offset = offset_new[]
-            end
-            res_new = [exp(-F(xy[]...))]
-            MPI.Bcast!(res_new, 0, mpi_comm)
-            if res_new[] < F.cutoff
-                break
-            end
-            updateIJ(F, xy[])
-            if mpi_rank == 0
-                println("rank = $r res = $(res_new[]) xy = $(xy[]) offset = $(F.offset)")
-                flush(stdout)
-            end
-        end
-    end
-
-    return F.I, F.J
-end
-
-# MCMC sampler, searches function F and runs one Markov chain
-# Outputs largest residual magnitude and corresponding position
-function max_metropolis(F::ResFunc{T, N}, pivot::Vector{T}, n_samples::Int64, jump_width::Float64) where {T, N}
-    order = F.ndims - F.pos + 1
-    
-    lb = [F.domain[i][1] for i in F.pos:F.ndims]
-    ub = [F.domain[i][2] for i in F.pos:F.ndims]
-
-    chain = zeros(n_samples, order)
-
-    min_nlr = Inf
-    max_xy = zeros(F.ndims)
-
-    while true
-        for k in 1:order
-            chain[1, k] = rand() * (ub[k] - lb[k]) + lb[k]
-        end
-        fx = F(pivot..., chain[1, :]...)  # Call once
-        if isfinite(fx)
-            break
-        end
-    end
-
-    for i in 2:n_samples
-        p_new = zeros(order)
-        for k in 1:order
-            p_new[k] = rand(Normal(chain[i - 1, k], jump_width * (ub[k] - lb[k])))
-            if(F.periodicity[k])
-                p_new[k] = mod(p_new[k] - lb[k], ub[k] - lb[k]) + lb[k]
-            else
-                if p_new[k] < lb[k]
-                    p_new[k] = lb[k] + abs(p_new[k] - lb[k])
-                elseif p_new[k] > ub[k]
-                    p_new[k] = ub[k] - abs(p_new[k] - ub[k])
-                end
-            end
-        end
-
-        arg_old = [pivot; [chain[i - 1, k] for k in 1:order]]
-        arg_new = [pivot; [p_new[k] for k in 1:order]]
-        acceptance_prob = 0.0
-        if isfinite(F.f(arg_new...))
-            f_old = F(arg_old...)
-            f_new = F(arg_new...)
-            acceptance_prob = min(1, exp(f_old - f_new))
-        end
-        
-        if rand() < acceptance_prob
-            chain[i, :] = p_new
-            if f_new < min_nlr
-                min_nlr = f_new
-                max_xy = arg_new
-            end
-        else
-            chain[i, :] = chain[i - 1, :]
-        end
-    end
-
-    return Tuple(max_xy), min_nlr
 end
 
 # # Main ACA routine
@@ -236,186 +94,78 @@ end
 #     end
 
 #     F.pos = 0
-#     for count in 1:order-1
+#     for i in 1:order-1
 #         if mpi_rank == 0
-#             println("pos = $count")
+#             println("pos = $i")
 #             flush(stdout)
 #         end
 #         F.pos += 1
         
 #         # MCMC sampling routine to be parallelized across MPI processes
-#         n_chains_total = max(n_chains, mpi_size, length(F.I[count]))
-#         xylist = zeros(n_chains_total * n_samples, order)
-#         reslist = zeros(n_chains_total * n_samples)
-#         signlist = ones(Int64, n_chains_total * n_samples)
+#         n_chains_total = max(n_chains, mpi_size, length(F.I[i]))
+#         xylist = fill(Tuple(fill(0.0, order)), n_chains_total)
+#         reslist = fill(0.0, n_chains_total)
 #         res_new = 0.0
-#         r = length(F.I[count + 1]) + 1
-#         # while r <= rank[count]
-#         while r <= 1
+#         r = length(F.I[i + 1]) + 1
+#         pivot_count = pivot_last = mod(r - 1, length(F.I[i])) + 1
+#         while true
+#             if r > rank[i]
+#                 break
+#             end
 #             # Determine number of tasks for the current process
 #             elements_per_task = div(n_chains_total, mpi_size)
 #             # Extra tasks to be carried out by the root process at the end
 #             remainder = rem(n_chains_total, mpi_size)
-#             local_xy = zeros(elements_per_task * n_samples, order)
-#             local_res = zeros(elements_per_task * n_samples)
-#             local_sign = ones(Int64, elements_per_task * n_samples)
+#             local_xy = fill(Tuple(fill(0.0, order)), elements_per_task)
+#             local_res = fill(0.0, elements_per_task)
 #             for k in 1:elements_per_task
 #                 # Run multiple Markov chains in parallel, approximate position of the largest current residual across all walkers
-#                 idx = mod(mpi_rank * elements_per_task + k - 1, length(F.I[count])) + 1
-#                 local_xy[(k-1)*n_samples+1:k*n_samples, :], local_res[(k-1)*n_samples+1:k*n_samples], local_sign[(k-1)*n_samples+1:k*n_samples] = max_metropolis(F, F.I[count][idx], n_samples, jump_width)
+#                 # idx = mod(mpi_rank * elements_per_task + k - 1, length(F.I[i])) + 1
+#                 idx = mod(pivot_count - 1, length(F.I[i])) + 1
+#                 local_xy[k], local_res[k] = max_metropolis(F, F.I[i][idx], n_samples, jump_width)
 #             end
 #             # Collect results from all processes
-#             local_xy = reshape(local_xy, elements_per_task * n_samples * order)
 #             xydata = MPI.Gather(local_xy, 0, mpi_comm)
 #             resdata = MPI.Gather(local_res, 0, mpi_comm)
-#             signdata = MPI.Gather(local_sign, 0, mpi_comm)
 #             if mpi_rank == 0
-#                 xydata = reshape(xydata, mpi_size * elements_per_task * n_samples, order)
-#                 xylist[1:mpi_size*elements_per_task*n_samples, :] .= xydata
-#                 reslist[1:mpi_size*elements_per_task*n_samples] .= resdata
-#                 signlist[1:mpi_size*elements_per_task*n_samples] .= signdata
+#                 xylist[1:mpi_size*elements_per_task] .= xydata
+#                 reslist[1:mpi_size*elements_per_task] .= resdata
 #             end
 #             # Rank 0 process performs any remaining tasks
 #             if mpi_rank == 0 && remainder > 0
 #                 for k in mpi_size*elements_per_task+1:n_chains_total
-#                     idx = mod(k - 1, length(F.I[count])) + 1
-#                     xylist[(k-1)*n_samples+1:k*n_samples, :], reslist[(k-1)*n_samples+1:k*n_samples], signlist[(k-1)*n_samples+1:k*n_samples] = max_metropolis(F, F.I[count][idx], n_samples, jump_width)
+#                     # idx = mod(k - 1, length(F.I[i])) + 1
+#                     idx = mod(pivot_count - 1, length(F.I[i])) + 1
+#                     xylist[k], reslist[k] = max_metropolis(F, F.I[i][idx], n_samples, jump_width)
 #                 end
 #             end
-
+            
+#             # Find position of largest residuals
 #             idx = argmin(reslist)
-#             # println(reslist[idx])
-#             xy = xylist[idx, :]
+#             xy = [xylist[idx]]
 #             MPI.Bcast!(xy, 0, mpi_comm)
-#             offset_delta = 0.0
-#             if isempty(F.I[count + 1]) || F.f(xy...) < F.offset
-#                 offset_new = [F.f(xy...)]
+#             if isempty(F.I[i + 1]) || F.f(xy[]...) < F.offset
+#                 offset_new = [F.f(xy[]...)]
 #                 MPI.Bcast!(offset_new, 0, mpi_comm)
-#                 offset_delta = offset_new[] - F.offset
 #                 F.offset = offset_new[]
 #             end
-#             reslist .-= offset_delta
-#             # println(reslist[idx])
-
-#             nlres_new, _ = F(xy...)
-#             res_new = [exp(-nlres_new)]
+#             res_new = [exp(-F(xy[]...))]
 #             MPI.Bcast!(res_new, 0, mpi_comm)
+#             pivot_count = mod(pivot_count, length(F.I[i])) + 1
 #             if res_new[] < F.cutoff
-#                 break
+#                 if pivot_count == pivot_last
+#                     break
+#                 else
+#                     continue
+#                 end
 #             end
-
-#             new_pivots = []
-#             npivots = [0]
-
+#             updateIJ(F, xy[])
 #             if mpi_rank == 0
-#                 Rk = deepcopy(reslist)
-#                 Rk_sign = deepcopy(signlist)
-#                 u = []
-#                 v = []
-#                 u_sign = []
-#                 v_sign = []
-#                 r_first = length(F.I[count + 1]) + 1
-#                 nsamples = n_chains_total * n_samples
-#                 while r <= rank[count]
-#                     # println(length(Rk))
-#                     # resxy = [(Rk[i], xylist[i, :]) for i in eachindex(Rk)]
-#                     # sort!(resxy)
-#                     # for i in 1:1000
-#                     #     println(resxy[i])
-#                     # end
-
-#                     ik = 0
-#                     dk = Inf
-#                     dk_sign = 1
-#                     for i in 1:nsamples
-#                         if Rk[i] < dk
-#                             ik = i
-#                             dk = Rk[i]
-#                             dk_sign = Rk_sign[i]
-#                         end
-#                     end
-#                     Ri = zeros(nsamples)
-#                     Rj = zeros(nsamples)
-#                     Ri_sign = ones(Int64, nsamples)
-#                     Rj_sign = ones(Int64, nsamples)
-#                     for i in 1:nsamples
-#                         arg = [xylist[i, 1:F.pos]; xylist[ik, F.pos+1:order]]
-#                         # Ri[i] = F.f(arg...) - F.offset
-#                         Ri[i], Ri_sign[i] = F(arg...)
-#                         arg = [xylist[ik, 1:F.pos]; xylist[i, F.pos+1:order]]
-#                         # Rj[i] = F.f(arg...) - F.offset
-#                         Rj[i], Rj_sign[i] = F(arg...)
-#                     end
-#                     for l in 1:r-r_first
-#                         for i in 1:nsamples
-#                             arg1 = -Ri[i]
-#                             arg2 = -u[l][i] - v[l][ik]
-#                             arglarge = max(arg1, arg2)
-
-#                             sign1 = Ri_sign[i]
-#                             sign2 = u_sign[l][i] * v_sign[l][ik]
-
-#                             delta = sign1 * exp(arg1 - arglarge) - sign2 * exp(arg2 - arglarge)
-#                             Ri[i] = -arglarge - log(abs(delta) + eps())
-#                             Ri_sign[i] = ifelse(delta < 0.0, -1, 1)
-
-#                             arg1 = -Rj[i]
-#                             arg2 = -v[l][i] - u[l][ik]
-#                             arglarge = max(arg1, arg2)
-
-#                             sign1 = Rj_sign[i]
-#                             sign2 = v_sign[l][i] * u_sign[l][ik]
-
-#                             delta = sign1 * exp(arg1 - arglarge) - sign2 * exp(arg2 - arglarge)
-#                             Rj[i] = -arglarge - log(abs(delta) + eps())
-#                             Rj_sign[i] = ifelse(delta < 0.0, -1, 1)
-#                         end
-#                     end
-#                     Rj .-= dk
-#                     Rj_sign .*= dk_sign
-#                     push!(u, deepcopy(Ri))
-#                     push!(v, deepcopy(Rj))
-#                     push!(u_sign, deepcopy(Ri_sign))
-#                     push!(v_sign, deepcopy(Rj_sign))
-
-#                     xy = xylist[ik, :]
-#                     # nlres_new, _ = F(xy...)
-#                     # res_new = [exp(-nlres_new)]
-#                     res_new = [exp(-dk)]
-#                     if res_new[] < F.cutoff
-#                         break
-#                     end
-#                     push!(new_pivots, xy)
-#                     npivots[] += 1
-#                     println("rank = $r res = $(res_new[]) xy = $xy offset = $(F.offset)")
-#                     flush(stdout)
-
-#                     for i in 1:nsamples
-#                         arg1 = -Rk[i]
-#                         arg2 = -u[r - r_first + 1][i] - v[r - r_first + 1][i]
-#                         arglarge = max(arg1, arg2)
-
-#                         sign1 = Rk_sign[i]
-#                         sign2 = u_sign[r - r_first + 1][i] * v_sign[r - r_first + 1][i]
-
-#                         delta = sign1 * exp(arg1 - arglarge) - sign2 * exp(arg2 - arglarge)
-#                         Rk[i] = -arglarge - log(abs(delta) + eps())
-#                         Rk_sign[i] = ifelse(delta < 0.0, -1, 1)
-#                     end
-
-#                     r += 1
-#                 end
+#                 println("rank = $r res = $(res_new[]) xy = $(xy[]) offset = $(F.offset)")
+#                 flush(stdout)
 #             end
-
-#             MPI.Bcast!(npivots, 0, mpi_comm)
-#             for i in 1:npivots[]
-#                 xy = zeros(order)
-#                 if mpi_rank == 0
-#                     xy = new_pivots[i]
-#                 end
-#                 MPI.Bcast!(xy, 0, mpi_comm)
-#                 updateIJ(F, Tuple(xy))
-#             end
+#             r += 1
+#             pivot_last = pivot_count
 #         end
 #     end
 
@@ -430,23 +180,17 @@ end
 #     lb = [F.domain[i][1] for i in F.pos:F.ndims]
 #     ub = [F.domain[i][2] for i in F.pos:F.ndims]
 
-#     chain_xy = zeros(n_samples, order)
-#     chain_res = zeros(n_samples)
-#     chain_sign = ones(Int64, n_samples)
+#     chain = zeros(n_samples, order)
 
-#     f_old = 0.0
-#     f_new = 0.0
-#     sign_old = 1
-#     sign_new = 1
+#     min_nlr = Inf
+#     max_xy = zeros(F.ndims)
 
 #     while true
 #         for k in 1:order
-#             chain_xy[1, k] = rand() * (ub[k] - lb[k]) + lb[k]
+#             chain[1, k] = rand() * (ub[k] - lb[k]) + lb[k]
 #         end
-#         f_old, sign_old = F(pivot..., chain_xy[1, :]...)  # Call once
-#         chain_res[1] = f_old
-#         chain_sign[1] = sign_old
-#         if isfinite(chain_res[1])
+#         fx = F(pivot..., chain[1, :]...)  # Call once
+#         if isfinite(fx)
 #             break
 #         end
 #     end
@@ -454,7 +198,7 @@ end
 #     for i in 2:n_samples
 #         p_new = zeros(order)
 #         for k in 1:order
-#             p_new[k] = rand(Normal(chain_xy[i - 1, k], jump_width * (ub[k] - lb[k])))
+#             p_new[k] = rand(Normal(chain[i - 1, k], jump_width * (ub[k] - lb[k])))
 #             if(F.periodicity[k])
 #                 p_new[k] = mod(p_new[k] - lb[k], ub[k] - lb[k]) + lb[k]
 #             else
@@ -466,28 +210,296 @@ end
 #             end
 #         end
 
-#         arg_old = [pivot; [chain_xy[i - 1, k] for k in 1:order]]
+#         arg_old = [pivot; [chain[i - 1, k] for k in 1:order]]
 #         arg_new = [pivot; [p_new[k] for k in 1:order]]
-#         log_acceptance_prob = -Inf
+#         acceptance_prob = 0.0
 #         if isfinite(F.f(arg_new...))
-#             f_old, sign_old = F(arg_old...)
-#             f_new, sign_new = F(arg_new...)
-#             log_acceptance_prob = min(0.0, f_old - f_new)
+#             f_old = F(arg_old...)
+#             f_new = F(arg_new...)
+#             acceptance_prob = min(1, exp(f_old - f_new))
 #         end
         
-#         if log(rand()) < log_acceptance_prob
-#             chain_xy[i, :] = p_new
-#             chain_res[i] = f_new
-#             chain_sign[i] = sign_new
+#         if rand() < acceptance_prob
+#             chain[i, :] = p_new
+#             if f_new < min_nlr
+#                 min_nlr = f_new
+#                 max_xy = arg_new
+#             end
 #         else
-#             chain_xy[i, :] = chain_xy[i - 1, :]
-#             chain_res[i] = f_old
-#             chain_sign[i] = sign_old
+#             chain[i, :] = chain[i - 1, :]
 #         end
 #     end
 
-#     return [repeat(pivot', size(chain_xy, 1)) chain_xy], chain_res, chain_sign
+#     return Tuple(max_xy), min_nlr
 # end
+
+# Main ACA routine
+# Takes multidimensional function F, and sequentially finds pivots which roughly maximize a dynamical residual function, moving from one unfolding to the next
+# Pivots in each unfolding depend on pivots found for the previous unfolding
+function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, n_samples::Int64, jump_width::Float64, mpi_comm::MPI.Comm) where {T, N}
+    mpi_rank = MPI.Comm_rank(mpi_comm)
+    mpi_size = MPI.Comm_size(mpi_comm)
+    
+    order = F.ndims
+    if order == 1 && mpi_rank == 0
+        error(
+            "`continuous_aca` currently does not support system sizes of 1.",
+        )
+    end
+
+    F.pos = 0
+    for count in 1:order-1
+        if mpi_rank == 0
+            println("pos = $count")
+            flush(stdout)
+        end
+        F.pos += 1
+        
+        # MCMC sampling routine to be parallelized across MPI processes
+        n_chains_total = max(n_chains, mpi_size, length(F.I[count]))
+        xylist = zeros(n_chains_total * n_samples, order)
+        reslist = zeros(n_chains_total * n_samples)
+        signlist = ones(Int64, n_chains_total * n_samples)
+        res_new = 0.0
+        r = length(F.I[count + 1]) + 1
+        # while r <= rank[count]
+        while r <= 1
+            # Determine number of tasks for the current process
+            elements_per_task = div(n_chains_total, mpi_size)
+            # Extra tasks to be carried out by the root process at the end
+            remainder = rem(n_chains_total, mpi_size)
+            local_xy = zeros(elements_per_task * n_samples, order)
+            local_res = zeros(elements_per_task * n_samples)
+            local_sign = ones(Int64, elements_per_task * n_samples)
+            for k in 1:elements_per_task
+                # Run multiple Markov chains in parallel, approximate position of the largest current residual across all walkers
+                idx = mod(mpi_rank * elements_per_task + k - 1, length(F.I[count])) + 1
+                local_xy[(k-1)*n_samples+1:k*n_samples, :], local_res[(k-1)*n_samples+1:k*n_samples], local_sign[(k-1)*n_samples+1:k*n_samples] = max_metropolis(F, F.I[count][idx], n_samples, jump_width)
+            end
+            # Collect results from all processes
+            local_xy = reshape(local_xy, elements_per_task * n_samples * order)
+            xydata = MPI.Gather(local_xy, 0, mpi_comm)
+            resdata = MPI.Gather(local_res, 0, mpi_comm)
+            signdata = MPI.Gather(local_sign, 0, mpi_comm)
+            if mpi_rank == 0
+                xydata = reshape(xydata, mpi_size * elements_per_task * n_samples, order)
+                xylist[1:mpi_size*elements_per_task*n_samples, :] .= xydata
+                reslist[1:mpi_size*elements_per_task*n_samples] .= resdata
+                signlist[1:mpi_size*elements_per_task*n_samples] .= signdata
+            end
+            # Rank 0 process performs any remaining tasks
+            if mpi_rank == 0 && remainder > 0
+                for k in mpi_size*elements_per_task+1:n_chains_total
+                    idx = mod(k - 1, length(F.I[count])) + 1
+                    xylist[(k-1)*n_samples+1:k*n_samples, :], reslist[(k-1)*n_samples+1:k*n_samples], signlist[(k-1)*n_samples+1:k*n_samples] = max_metropolis(F, F.I[count][idx], n_samples, jump_width)
+                end
+            end
+
+            idx = argmin(reslist)
+            # println(reslist[idx])
+            xy = xylist[idx, :]
+            MPI.Bcast!(xy, 0, mpi_comm)
+            offset_delta = 0.0
+            if isempty(F.I[count + 1]) || F.f(xy...) < F.offset
+                offset_new = [F.f(xy...)]
+                MPI.Bcast!(offset_new, 0, mpi_comm)
+                offset_delta = offset_new[] - F.offset
+                F.offset = offset_new[]
+            end
+            reslist .-= offset_delta
+            # println(reslist[idx])
+
+            nlres_new, _ = F(xy...)
+            res_new = [exp(-nlres_new)]
+            MPI.Bcast!(res_new, 0, mpi_comm)
+            if res_new[] < F.cutoff
+                break
+            end
+
+            new_pivots = []
+            npivots = [0]
+
+            if mpi_rank == 0
+                Rk = deepcopy(reslist)
+                Rk_sign = deepcopy(signlist)
+                u = []
+                v = []
+                u_sign = []
+                v_sign = []
+                r_first = length(F.I[count + 1]) + 1
+                nsamples = n_chains_total * n_samples
+                while r <= rank[count]
+                    # println(length(Rk))
+                    # resxy = [(Rk[i], xylist[i, :]) for i in eachindex(Rk)]
+                    # sort!(resxy)
+                    # for i in 1:1000
+                    #     println(resxy[i])
+                    # end
+
+                    ik = 0
+                    dk = Inf
+                    dk_sign = 1
+                    for i in 1:nsamples
+                        if Rk[i] < dk
+                            ik = i
+                            dk = Rk[i]
+                            dk_sign = Rk_sign[i]
+                        end
+                    end
+                    Ri = zeros(nsamples)
+                    Rj = zeros(nsamples)
+                    Ri_sign = ones(Int64, nsamples)
+                    Rj_sign = ones(Int64, nsamples)
+                    for i in 1:nsamples
+                        arg = [xylist[i, 1:F.pos]; xylist[ik, F.pos+1:order]]
+                        # Ri[i] = F.f(arg...) - F.offset
+                        Ri[i], Ri_sign[i] = F(arg...)
+                        arg = [xylist[ik, 1:F.pos]; xylist[i, F.pos+1:order]]
+                        # Rj[i] = F.f(arg...) - F.offset
+                        Rj[i], Rj_sign[i] = F(arg...)
+                    end
+                    for l in 1:r-r_first
+                        for i in 1:nsamples
+                            arg1 = -Ri[i]
+                            arg2 = -u[l][i] - v[l][ik]
+                            arglarge = max(arg1, arg2)
+
+                            sign1 = Ri_sign[i]
+                            sign2 = u_sign[l][i] * v_sign[l][ik]
+
+                            delta = sign1 * exp(arg1 - arglarge) - sign2 * exp(arg2 - arglarge)
+                            Ri[i] = -arglarge - log(abs(delta) + eps())
+                            Ri_sign[i] = ifelse(delta < 0.0, -1, 1)
+
+                            arg1 = -Rj[i]
+                            arg2 = -v[l][i] - u[l][ik]
+                            arglarge = max(arg1, arg2)
+
+                            sign1 = Rj_sign[i]
+                            sign2 = v_sign[l][i] * u_sign[l][ik]
+
+                            delta = sign1 * exp(arg1 - arglarge) - sign2 * exp(arg2 - arglarge)
+                            Rj[i] = -arglarge - log(abs(delta) + eps())
+                            Rj_sign[i] = ifelse(delta < 0.0, -1, 1)
+                        end
+                    end
+                    Rj .-= dk
+                    Rj_sign .*= dk_sign
+                    push!(u, deepcopy(Ri))
+                    push!(v, deepcopy(Rj))
+                    push!(u_sign, deepcopy(Ri_sign))
+                    push!(v_sign, deepcopy(Rj_sign))
+
+                    xy = xylist[ik, :]
+                    # nlres_new, _ = F(xy...)
+                    # res_new = [exp(-nlres_new)]
+                    res_new = [exp(-dk)]
+                    if res_new[] < F.cutoff
+                        break
+                    end
+                    push!(new_pivots, xy)
+                    npivots[] += 1
+                    println("rank = $r res = $(res_new[]) xy = $xy offset = $(F.offset)")
+                    flush(stdout)
+
+                    for i in 1:nsamples
+                        arg1 = -Rk[i]
+                        arg2 = -u[r - r_first + 1][i] - v[r - r_first + 1][i]
+                        arglarge = max(arg1, arg2)
+
+                        sign1 = Rk_sign[i]
+                        sign2 = u_sign[r - r_first + 1][i] * v_sign[r - r_first + 1][i]
+
+                        delta = sign1 * exp(arg1 - arglarge) - sign2 * exp(arg2 - arglarge)
+                        Rk[i] = -arglarge - log(abs(delta) + eps())
+                        Rk_sign[i] = ifelse(delta < 0.0, -1, 1)
+                    end
+
+                    r += 1
+                end
+            end
+
+            MPI.Bcast!(npivots, 0, mpi_comm)
+            for i in 1:npivots[]
+                xy = zeros(order)
+                if mpi_rank == 0
+                    xy = new_pivots[i]
+                end
+                MPI.Bcast!(xy, 0, mpi_comm)
+                updateIJ(F, Tuple(xy))
+            end
+        end
+    end
+
+    return F.I, F.J
+end
+
+# MCMC sampler, searches function F and runs one Markov chain
+# Outputs largest residual magnitude and corresponding position
+function max_metropolis(F::ResFunc{T, N}, pivot::Vector{T}, n_samples::Int64, jump_width::Float64) where {T, N}
+    order = F.ndims - F.pos + 1
+    
+    lb = [F.domain[i][1] for i in F.pos:F.ndims]
+    ub = [F.domain[i][2] for i in F.pos:F.ndims]
+
+    chain_xy = zeros(n_samples, order)
+    chain_res = zeros(n_samples)
+    chain_sign = ones(Int64, n_samples)
+
+    f_old = 0.0
+    f_new = 0.0
+    sign_old = 1
+    sign_new = 1
+
+    while true
+        for k in 1:order
+            chain_xy[1, k] = rand() * (ub[k] - lb[k]) + lb[k]
+        end
+        f_old, sign_old = F(pivot..., chain_xy[1, :]...)  # Call once
+        chain_res[1] = f_old
+        chain_sign[1] = sign_old
+        if isfinite(chain_res[1])
+            break
+        end
+    end
+
+    for i in 2:n_samples
+        p_new = zeros(order)
+        for k in 1:order
+            p_new[k] = rand(Normal(chain_xy[i - 1, k], jump_width * (ub[k] - lb[k])))
+            if(F.periodicity[k])
+                p_new[k] = mod(p_new[k] - lb[k], ub[k] - lb[k]) + lb[k]
+            else
+                if p_new[k] < lb[k]
+                    p_new[k] = lb[k] + abs(p_new[k] - lb[k])
+                elseif p_new[k] > ub[k]
+                    p_new[k] = ub[k] - abs(p_new[k] - ub[k])
+                end
+            end
+        end
+
+        arg_old = [pivot; [chain_xy[i - 1, k] for k in 1:order]]
+        arg_new = [pivot; [p_new[k] for k in 1:order]]
+        log_acceptance_prob = -Inf
+        if isfinite(F.f(arg_new...))
+            f_old, sign_old = F(arg_old...)
+            f_new, sign_new = F(arg_new...)
+            log_acceptance_prob = min(0.0, f_old - f_new)
+        end
+        
+        if log(rand()) < log_acceptance_prob
+            chain_xy[i, :] = p_new
+            chain_res[i] = f_new
+            chain_sign[i] = sign_new
+        else
+            chain_xy[i, :] = chain_xy[i - 1, :]
+            chain_res[i] = f_old
+            chain_sign[i] = sign_old
+        end
+    end
+
+    return [repeat(pivot', size(chain_xy, 1)) chain_xy], chain_res, chain_sign
+end
 
 function build_tt(F::ResFunc{T, N}, grid::NTuple{N, Vector{T}}) where {T, N}
     order = F.ndims
@@ -502,9 +514,9 @@ function build_tt(F::ResFunc{T, N}, grid::NTuple{N, Vector{T}}) where {T, N}
             psi[1][sites[1]=>j, links[1]=>k] = expnegf(F, grid[1][j], F.J[2][k]...)
         end
     end
-    println("i = 1\n")
-    println(psi[1])
-    println()
+    # println("i = 1\n")
+    # println(psi[1])
+    # println()
     AIJ = zeros(npivots[1], npivots[1])
     for j in 1:npivots[1]
         for k in 1:npivots[1]
@@ -512,8 +524,8 @@ function build_tt(F::ResFunc{T, N}, grid::NTuple{N, Vector{T}}) where {T, N}
         end
     end
     AIJinv = inv(AIJ)
-    println(norm(AIJ * AIJinv - I))
-    println()
+    # println(norm(AIJ * AIJinv - I))
+    # println()
     skeleton = ITensor(links[1], links[1]')
     for j in 1:npivots[1]
         for k in 1:npivots[1]
@@ -522,8 +534,8 @@ function build_tt(F::ResFunc{T, N}, grid::NTuple{N, Vector{T}}) where {T, N}
     end
     psi[1] *= skeleton
     noprime!(psi[1])
-    println(psi[1])
-    flush(stdout)
+    # println(psi[1])
+    # flush(stdout)
     for i in 2:order-1
         links[i] = Index(npivots[i], "Link,l=$i")
         psi[i] = ITensor(sites[i], links[i - 1], links[i])
@@ -534,9 +546,9 @@ function build_tt(F::ResFunc{T, N}, grid::NTuple{N, Vector{T}}) where {T, N}
                 end
             end
         end
-        println("\ni = $i\n")
-        println(psi[i])
-        println()
+        # println("\ni = $i\n")
+        # println(psi[i])
+        # println()
         AIJ = zeros(npivots[i], npivots[i])
         for j in 1:npivots[i]
             for k in 1:npivots[i]
@@ -544,8 +556,8 @@ function build_tt(F::ResFunc{T, N}, grid::NTuple{N, Vector{T}}) where {T, N}
             end
         end
         AIJinv = inv(AIJ)
-        println(norm(AIJ * AIJinv - I))
-        println()
+        # println(norm(AIJ * AIJinv - I))
+        # println()
         skeleton = ITensor(links[i], links[i]')
         for j in 1:npivots[i]
             for k in 1:npivots[i]
@@ -554,8 +566,8 @@ function build_tt(F::ResFunc{T, N}, grid::NTuple{N, Vector{T}}) where {T, N}
         end
         psi[i] *= skeleton
         noprime!(psi[i])
-        println(psi[i])
-        flush(stdout)
+        # println(psi[i])
+        # flush(stdout)
     end
     psi[order] = ITensor(sites[order], links[order - 1])
     for j in eachindex(grid[order])
@@ -563,10 +575,10 @@ function build_tt(F::ResFunc{T, N}, grid::NTuple{N, Vector{T}}) where {T, N}
             psi[order][sites[order]=>j, links[order-1]=>k] = expnegf(F, F.I[order][k]..., grid[order][j])
         end
     end
-    println("\ni = $order\n")
-    println(psi[order])
-    println()
-    flush(stdout)
+    # println("\ni = $order\n")
+    # println(psi[order])
+    # println()
+    # flush(stdout)
     return MPS(psi)
 end
 
