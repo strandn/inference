@@ -369,10 +369,10 @@ function tt_repressilator()
 end
 
 d = 8
-maxr = 100
+maxr = parse(Int64, ARGS[2])
 tol = 1.0e-4
 maxiter = 10
-nbins = 50
+nbins = parse(Int64, ARGS[1])
 nsamples = 1000
 
 start_time = time()
