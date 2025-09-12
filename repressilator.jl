@@ -93,7 +93,7 @@ maxr = 50
 n_chains = 100
 n_samples = 2000
 jump_width = 0.01
-cutoff = 1.0e-6
+cutoff = 1.0e-4
 
 start_time = time()
 aca_repressilator()
