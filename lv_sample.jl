@@ -24,7 +24,7 @@ function V(r, tspan, nsteps, data_hare, data_lynx, mu, sigma)
         sol = solve(prob, Tsit5(), saveat=dt)
         if sol.retcode == ReturnCode.Success
             obs_hare = sol[1, :]
-            obs_hare = sol[2, :]
+            obs_lynx = sol[2, :]
         else
             throw(ErrorException("ODE solver failed"))
         end
