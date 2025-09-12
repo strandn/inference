@@ -24,7 +24,7 @@ function V(r, tspan, nsteps, data_hare, data_lynx, mu, sigma)
         sol = solve(prob, Tsit5(), saveat=dt)
         if sol.retcode == ReturnCode.Success
             obs_hare = sol[1, :]
-            obs_hare = sol[2, :]
+            obs_lynx = sol[2, :]
         else
             throw(ErrorException("ODE solver failed"))
         end
@@ -54,7 +54,7 @@ function aca_lv()
     neglogposterior(x0, y0, a, b, c, d) = V([x0, y0, a, b, c, d], tspan, nsteps, data_hare, data_lynx, mu, sigma)
 
     x0_dom = (20.0, 50.0)
-    y0_dom = (0, 9.0)
+    y0_dom = (0.0, 9.0)
     a_dom = (0.2, 0.7)
     b_dom = (0.01, 0.05)
     c_dom = (0.4, 1.4)
