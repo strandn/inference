@@ -2,6 +2,13 @@ using DifferentialEquations
 
 include("bayesian_vanilla.jl")
 
+function lv!(du, u, p, t)
+    x, y = u
+    a, b, c, d = p
+    du[1] = a * x - b * x * y
+    du[2] = -c * y + d * x * y
+end
+
 function V(r, tspan, nsteps, data_hare, data_lynx, mu, sigma)
     dt = (tspan[2] - tspan[1]) / nsteps
     x0 = r[1]
