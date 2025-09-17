@@ -68,13 +68,85 @@ function aca_lv()
 
     IJ = continuous_aca(F, fill(maxr, d - 1), n_chains, n_samples, jump_width, mpi_comm)
 
-    norm = 0.0
-    if mpi_rank == 0
-        open("lv_IJ.txt", "w") do file
-            write(file, "$IJ\n")
-            write(file, "$(F.offset)\n")
+    # cov0 = undef
+    # open("lv0cov.txt", "r") do file
+    #     cov0 = eval(Meta.parse(readline(file)))
+    # end
+
+    grid = (
+        collect(LinRange(x0_dom..., nbins + 1)),
+        collect(LinRange(y0_dom..., nbins + 1)),
+        collect(LinRange(a_dom..., nbins + 1)),
+        collect(LinRange(b_dom..., nbins + 1)),
+        collect(LinRange(c_dom..., nbins + 1)),
+        collect(LinRange(d_dom..., nbins + 1))
+    )
+
+    weights = deepcopy(grid)
+    for i in 1:d
+        weights[i][1] = (grid[i][2] - grid[i][1]) / 2
+        for j in 2:length(grid[i])-1
+            weights[i][j] = (grid[i][j + 1] - grid[i][j - 1]) / 2
+        end
+        weights[i][length(grid[i])] = (grid[i][length(grid[i])] - grid[i][length(grid[i]) - 1]) / 2
+    end
+
+    psi = build_tt(F, grid)
+
+    sites = siteinds(psi)
+    oneslist = [ITensor(weights[i], sites[i]) for i in 1:d]
+    norm = psi[1] * oneslist[1]
+    for i in 2:d
+        norm *= psi[i] * oneslist[i]
+    end
+    psi /= norm[]
+
+    println(F.offset - log(norm[]))
+
+    vec1list = [ITensor(weights[i] .* grid[i], sites[i]) for i in 1:d]
+    meanlist = zeros(d)
+    for i in 1:d
+        mean = psi[1] * (i == 1 ? vec1list[1] : oneslist[1])
+        for k in 2:d
+            mean *= psi[k] * (i == k ? vec1list[k] : oneslist[k])
+        end
+        meanlist[i] = mean[]
+    end
+    println(meanlist)
+
+    vec2list = [ITensor(weights[i] .* (grid[i] .- meanlist[i]), sites[i]) for i in 1:d]
+    vec22list = [ITensor(weights[i] .* (grid[i] .- meanlist[i]).^2, sites[i]) for i in 1:d]
+    varlist = zeros(d, d)
+    for i in 1:d
+        for j in i:d
+            var = psi[1]
+            if i == 1
+                if i == j
+                    var *= vec22list[1]
+                else
+                    var *= vec2list[1]
+                end
+            else
+                var *= oneslist[1]
+            end
+            for k in 2:d
+                var *= psi[k]
+                if i == k || j == k
+                    if i == j
+                        var *= vec22list[k]
+                    else
+                        var *= vec2list[k]
+                    end
+                else
+                    var *= oneslist[k]
+                end
+            end
+            varlist[i, j] = varlist[j, i] = var[]
         end
     end
+    display(varlist)
+    # println(LinearAlgebra.norm(varlist - cov0) / LinearAlgebra.norm(cov0))
+    flush(stdout)
 end
 
 MPI.Init()
@@ -88,6 +160,7 @@ n_chains = 20
 n_samples = 500
 jump_width = 0.01
 cutoff = 1.0e-4
+nbins = 500
 
 for _ in 1:20
     start_time = time()
