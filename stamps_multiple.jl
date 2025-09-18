@@ -131,7 +131,7 @@ n_chains = 20
 n_samples = 500
 jump_width = 0.01
 cutoff = 1.0e-6
-nbins = 500
+nbins = 100
 
 for _ in 1:20
     start_time = time()

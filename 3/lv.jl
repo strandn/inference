@@ -1,6 +1,6 @@
 using DifferentialEquations
 
-include("bayesian_vanilla.jl")
+include("tt_aca.jl")
 
 function lv!(du, u, p, t)
     x, y = u
@@ -60,31 +60,21 @@ function aca_lv()
     c_dom = (0.4, 1.4)
     d_dom = (0.01, 0.05)
 
-    dom = (x0_dom, y0_dom, a_dom, b_dom, c_dom, d_dom)
+    F = ResFunc(neglogposterior, (x0_dom, y0_dom, a_dom, b_dom, c_dom, d_dom), cutoff, Tuple(fill(false, d)))
 
     if mpi_rank == 0
-        println("Starting MC integration...")
-        flush(stdout)
+        println("Starting TT-cross ACA...")
     end
 
-    result = estimate_log_evidence_uniform(neglogposterior; domain=dom, comm=mpi_comm, nsamples=n_samples)
+    IJ = continuous_aca(F, fill(maxr, d - 1), n_chains, n_samples, jump_width, mpi_comm)
 
+    norm = 0.0
     if mpi_rank == 0
-        println(result)
+        open("lv_IJ.txt", "w") do file
+            write(file, "$IJ\n")
+            write(file, "$(F.offset)\n")
+        end
     end
-
-    # # cov0 = undef
-    # # open("lv0cov.txt", "r") do file
-    # #     cov0 = eval(Meta.parse(readline(file)))
-    # # end
-
-    # mu, cov = mcmc_mean_cov_parallel(neglogposterior; domain=dom, comm=mpi_comm, nchains=n_chains, nsamples=n_samples, proposal_std=jump_width, periodicity=Tuple(fill(false, 8)))
-    # if mpi_rank == 0
-    #     println(mu)
-    #     display(cov)
-    #     # println(LinearAlgebra.norm(cov - cov0) / LinearAlgebra.norm(cov0))
-    #     flush(stdout)
-    # end
 end
 
 MPI.Init()
@@ -92,9 +82,12 @@ mpi_comm = MPI.COMM_WORLD
 mpi_rank = MPI.Comm_rank(mpi_comm)
 mpi_size = MPI.Comm_size(mpi_comm)
 
+d = 6
+maxr = 5
 n_chains = 20
-n_samples = 10^8
+n_samples = 500
 jump_width = 0.01
+cutoff = 1.0e-4
 
 start_time = time()
 aca_lv()
