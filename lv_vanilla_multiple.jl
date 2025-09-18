@@ -93,16 +93,17 @@ mpi_rank = MPI.Comm_rank(mpi_comm)
 mpi_size = MPI.Comm_size(mpi_comm)
 
 n_chains = 20
-n_samples = 10^3
+n_samples = 10^8
 jump_width = 0.01
 
-start_time = time()
-for _ in 1:20
-        aca_lv()
+for _ in 1:19
+    start_time = time()
+    aca_lv()
     end_time = time()
     elapsed_time = end_time - start_time
     if mpi_rank == 0
         println("Elapsed time: $elapsed_time seconds")
+        flush(stdout)
     end
 end
 
