@@ -73,7 +73,6 @@ function tt_lv()
 
     samples = zeros(nsamples, d)
     samples = readdlm("lv_samples.txt")
-    R = kmeans(samples', 3)
     borders = []
     for i in 1:d
         avg = mean(samples[:, i])
@@ -342,13 +341,13 @@ function tt_lv()
                 end
             end
 
-            write(file, "$(sample[1]) $(sample[2]) $(sample[3]) $(sample[4]) $(sample[5]) $(sample[6]) $(sample[7]) $(sample[8])\n")
+            write(file, "$(sample[1]) $(sample[2]) $(sample[3]) $(sample[4]) $(sample[5]) $(sample[6])\n")
         end
     end
 end
 
-d = 8
-maxr = 100
+d = 6
+maxr = 200
 tol = 1.0e-4
 maxiter = 10
 nbins = 50
