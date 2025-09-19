@@ -62,29 +62,30 @@ function aca_lv()
 
     dom = (x0_dom, y0_dom, a_dom, b_dom, c_dom, d_dom)
 
-    if mpi_rank == 0
-        println("Starting MC integration...")
-        flush(stdout)
-    end
-
-    result = estimate_log_evidence_uniform(neglogposterior; domain=dom, comm=mpi_comm, nsamples=n_samples)
-
-    if mpi_rank == 0
-        println(result)
-    end
-
-    # # cov0 = undef
-    # # open("lv0cov.txt", "r") do file
-    # #     cov0 = eval(Meta.parse(readline(file)))
-    # # end
-
-    # mu, cov = mcmc_mean_cov_parallel(neglogposterior; domain=dom, comm=mpi_comm, nchains=n_chains, nsamples=n_samples, proposal_std=jump_width, periodicity=Tuple(fill(false, 8)))
     # if mpi_rank == 0
-    #     println(mu)
-    #     display(cov)
-    #     # println(LinearAlgebra.norm(cov - cov0) / LinearAlgebra.norm(cov0))
+    #     println("Starting MC integration...")
     #     flush(stdout)
     # end
+
+    # result = estimate_log_evidence_uniform(neglogposterior; domain=dom, comm=mpi_comm, nsamples=n_samples)
+
+    # if mpi_rank == 0
+    #     println(result)
+    # end
+
+    # cov0 = undef
+    # open("lv0cov.txt", "r") do file
+    #     cov0 = eval(Meta.parse(readline(file)))
+    # end
+
+    mu, cov = mcmc_mean_cov_parallel(neglogposterior; domain=dom, comm=mpi_comm, nchains=n_chains, nsamples=n_samples, proposal_std=jump_width, periodicity=Tuple(fill(false, 6)))
+    if mpi_rank == 0
+        println(mu)
+        display(cov)
+        # println(LinearAlgebra.norm(cov - cov0) / LinearAlgebra.norm(cov0))
+        println(LinearAlgebra.norm(cov))
+        flush(stdout)
+    end
 end
 
 MPI.Init()
@@ -93,7 +94,7 @@ mpi_rank = MPI.Comm_rank(mpi_comm)
 mpi_size = MPI.Comm_size(mpi_comm)
 
 n_chains = 20
-n_samples = 10^8
+n_samples = 10^4
 jump_width = 0.01
 
 start_time = time()
