@@ -188,6 +188,15 @@ function mcmc_mean_cov_parallel(neglogposterior;
         gathered_samples = vcat(blocks...)
         mean_vec = [mean(gathered_samples[:, i]) for i in 1:ndim]
         cov_mat = cov(gathered_samples)
+
+        # nlp_samples = [(neglogposterior(gathered_samples[i, :]...), gathered_samples[i, :]) for i in 1:nsamples*nchains]
+        # sort!(nlp_samples)
+        # open("vanilla_samples.txt", "w") do file
+        #     for i in 1:nsamples*nchains
+        #         write(file, "$(nlp_samples[i][2])\n")
+        #     end
+        # end
+
         return mean_vec, cov_mat
     else
         return nothing, nothing
