@@ -297,7 +297,7 @@ function aca_lv()
 end
 
 d = 6
-nbins = 500
+nbins = 100
 
 start_time = time()
 aca_lv()

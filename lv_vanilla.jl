@@ -85,6 +85,9 @@ function aca_lv()
         # println(LinearAlgebra.norm(cov - cov0) / LinearAlgebra.norm(cov0))
         println(LinearAlgebra.norm(cov))
         flush(stdout)
+        open("lv0cov.txt", "w") do file
+            write(file, "$cov\n")
+        end
     end
 end
 
@@ -93,9 +96,9 @@ mpi_comm = MPI.COMM_WORLD
 mpi_rank = MPI.Comm_rank(mpi_comm)
 mpi_size = MPI.Comm_size(mpi_comm)
 
-n_chains = 20
-n_samples = 10^4
-jump_width = 0.01
+n_chains = 100
+n_samples = 10^7
+jump_width = 0.02
 
 start_time = time()
 aca_lv()

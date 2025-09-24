@@ -83,11 +83,11 @@ mpi_rank = MPI.Comm_rank(mpi_comm)
 mpi_size = MPI.Comm_size(mpi_comm)
 
 d = 6
-maxr = 5
-n_chains = 20
+maxr = 50
+n_chains = 5
 n_samples = 500
 jump_width = 0.01
-cutoff = 1.0e-4
+cutoff = 0.001
 
 start_time = time()
 aca_lv()
