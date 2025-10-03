@@ -130,6 +130,11 @@ function aca_lv()
     #     end
     # end
 
+    cov0 = undef
+    open("lv0cov.txt", "r") do file
+        cov0 = eval(Meta.parse(readline(file)))
+    end
+
     vec1list = [ITensor(weights[i] .* grid[i], sites[i]) for i in 1:d]
     meanlist = zeros(d)
     for i in 1:d
@@ -172,6 +177,7 @@ function aca_lv()
         end
     end
     display(varlist)
+    println(LinearAlgebra.norm(varlist - cov0) / LinearAlgebra.norm(cov0))
     flush(stdout)
 
     open("lv_samples.txt", "w") do file
