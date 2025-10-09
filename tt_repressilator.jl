@@ -15,14 +15,14 @@ end
 
 function V(r, tspan, nsteps, data, mu, sigma)
     dt = (tspan[2] - tspan[1]) / nsteps
-    X10 = r[1]
-    X20 = r[2]
-    X30 = r[3]
-    α1 = r[4]
-    α2 = r[5]
-    α3 = r[6]
-    m = r[7]
-    η = r[8]
+    α1 = r[1]
+    α2 = r[2]
+    α3 = r[3]
+    m = r[4]
+    η = r[5]
+    X10 = r[6]
+    X20 = r[7]
+    X30 = r[8]
     prob = ODEProblem(repressilator!, [X10, X20, X30], tspan, [α1, α2, α3, m, η])
     obs = undef
     try
@@ -37,7 +37,7 @@ function V(r, tspan, nsteps, data, mu, sigma)
     end
 
     s2 = 0.25
-    diff = [X10, X20, X30, α1, α2, α3, m, η] - mu
+    diff = [α1, α2, α3, m, η, X10, X20, X30] - mu
     result = 1 / 2 * sum((diff .^ 2) ./ sigma)
     for i in 1:nsteps+1
         result += 1 / 2 * log(2 * pi * s2) + (data[i] - obs[i]) ^ 2 / (2 * s2)
@@ -57,28 +57,28 @@ function tt_repressilator()
         end
     end
 
-    mu = [2.0, 2.0, 2.0, 15.0, 15.0, 15.0, 5.0, 5.0]
-    sigma = [4.0, 4.0, 4.0, 25.0, 25.0, 25.0, 25.0, 25.0]
-    neglogposterior(X10, X20, X30, α1, α2, α3, m, η) = V([X10, X20, X30, α1, α2, α3, m, η], tspan, nsteps, data, mu, sigma)
+    mu = [15.0, 15.0, 15.0, 5.0, 5.0, 2.0, 2.0, 2.0]
+    sigma = [25.0, 25.0, 25.0, 25.0, 25.0, 4.0, 4.0, 4.0]
+    neglogposterior(α1, α2, α3, m, η, X10, X20, X30) = V([α1, α2, α3, m, η, X10, X20, X30], tspan, nsteps, data, mu, sigma)
 
-    X10_dom = (0.5, 3.5)
-    X20_dom = (0.5, 3.5)
-    X30_dom = (0.5, 3.5)
     α1_dom = (0.5, 25.0)
     α2_dom = (0.5, 25.0)
     α3_dom = (0.5, 25.0)
     m_dom = (3.0, 5.0)
     η_dom = (0.95, 1.05)
+    X10_dom = (0.5, 3.5)
+    X20_dom = (0.5, 3.5)
+    X30_dom = (0.5, 3.5)
 
     grid_full = (
-        collect(LinRange(X10_dom..., nbins + 1)),
-        collect(LinRange(X20_dom..., nbins + 1)),
-        collect(LinRange(X30_dom..., nbins + 1)),
         collect(LinRange(α1_dom..., nbins + 1)),
         collect(LinRange(α2_dom..., nbins + 1)),
         collect(LinRange(α3_dom..., nbins + 1)),
         collect(LinRange(m_dom..., nbins + 1)),
-        collect(LinRange(η_dom..., nbins + 1))
+        collect(LinRange(η_dom..., nbins + 1)),
+        collect(LinRange(X10_dom..., nbins + 1)),
+        collect(LinRange(X20_dom..., nbins + 1)),
+        collect(LinRange(X30_dom..., nbins + 1))
     )
 
     samples = zeros(nsamples, d)
@@ -86,7 +86,7 @@ function tt_repressilator()
     R = kmeans(samples', 3)
     borders = []
     for i in 1:d
-        if i == 4 || i == 5 || i == 6
+        if i == 1 || i == 2 || i == 3
             clusterborders = []
             for j in 1:3
                 idx = findall(x -> x == j, assignments(R))
