@@ -70,7 +70,7 @@ function tt_repressilator()
     X20_dom = (0.5, 3.5)
     X30_dom = (0.5, 3.5)
 
-    grid_full = (
+    grid = (
         collect(LinRange(α1_dom..., nbins + 1)),
         collect(LinRange(α2_dom..., nbins + 1)),
         collect(LinRange(α3_dom..., nbins + 1)),
@@ -84,42 +84,42 @@ function tt_repressilator()
     samples = zeros(nsamples, d)
     samples = readdlm("repressilator_samples.txt")
     R = kmeans(samples', 3)
-    borders = []
-    for i in 1:d
-        if i == 1 || i == 2 || i == 3
-            clusterborders = []
-            for j in 1:3
-                idx = findall(x -> x == j, assignments(R))
-                avg = mean(samples[idx, i])
-                sd = std(samples[idx, i])
-                push!(clusterborders, (avg - 5 * sd, avg + 5 * sd))
-            end
-            push!(borders, clusterborders)
-        else
-            avg = mean(samples[:, i])
-            sd = std(samples[:, i])
-            push!(borders, [(avg - 5 * sd, avg + 5 * sd)])
-        end
-        println(borders[i])
-    end
+    # borders = []
+    # for i in 1:d
+    #     if i == 1 || i == 2 || i == 3
+    #         clusterborders = []
+    #         for j in 1:3
+    #             idx = findall(x -> x == j, assignments(R))
+    #             avg = mean(samples[idx, i])
+    #             sd = std(samples[idx, i])
+    #             push!(clusterborders, (avg - 5 * sd, avg + 5 * sd))
+    #         end
+    #         push!(borders, clusterborders)
+    #     else
+    #         avg = mean(samples[:, i])
+    #         sd = std(samples[:, i])
+    #         push!(borders, [(avg - 5 * sd, avg + 5 * sd)])
+    #     end
+    #     println(borders[i])
+    # end
 
-    grid = Tuple([Float64[] for _ in 1:d])
-    for i in 1:d
-        for border in borders[i]
-            first = searchsortedlast(grid_full[i], border[1])
-            if first < 1
-                first = 1
-            end
-            last = searchsortedfirst(grid_full[i], border[2])
-            if last > nbins
-                last = nbins
-            end
-            append!(grid[i], grid_full[i][first:last])
-        end
-        unique!(grid[i])
-        sort!(grid[i])
-    end
-    println([length(g) for g in grid])
+    # grid = Tuple([Float64[] for _ in 1:d])
+    # for i in 1:d
+    #     for border in borders[i]
+    #         first = searchsortedlast(grid_full[i], border[1])
+    #         if first < 1
+    #             first = 1
+    #         end
+    #         last = searchsortedfirst(grid_full[i], border[2])
+    #         if last > nbins
+    #             last = nbins
+    #         end
+    #         append!(grid[i], grid_full[i][first:last])
+    #     end
+    #     unique!(grid[i])
+    #     sort!(grid[i])
+    # end
+    # println([length(g) for g in grid])
 
     offset = minimum([neglogposterior(samples[i, :]...) for i in 1:nsamples])
 
