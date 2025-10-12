@@ -51,19 +51,19 @@ end
 function aca_hidalgo()
     data = parse.(Float64, filter(!isempty, readlines("hidalgo_stamp_thicknesses.csv")))
     data *= 100
-    neglogposterior(q1, q2, mu1, mu2, mu3, ll1, ll2, ll3, beta) = V([q1, q2, mu1, mu2, mu3, ll1, ll2, ll3, beta], data)
+    neglogposterior(mu1, mu2, mu3, ll1, ll2, ll3, q1, q2, beta) = V([mu1, mu2, mu3, ll1, ll2, ll3, q1, q2, beta], data)
 
-    q1_dom = (0.0, 1.0)
-    q2_dom = (0.0, 1.0)
     mu1_dom = (2.0, 14.0)
     mu2_dom = (2.0, 14.0)
     mu3_dom = (2.0, 14.0)
     ll1_dom = (-3.0, 4.0)
     ll2_dom = (-3.0, 4.0)
     ll3_dom = (-3.0, 4.0)
+    q1_dom = (0.0, 1.0)
+    q2_dom = (0.0, 1.0)
     beta_dom = (0.0, 5.0)
 
-    F = ResFunc(neglogposterior, (q1_dom, q2_dom, mu1_dom, mu2_dom, mu3_dom, ll1_dom, ll2_dom, ll3_dom, beta_dom), cutoff, Tuple(fill(false, d)))
+    F = ResFunc(neglogposterior, (mu1_dom, mu2_dom, mu3_dom, ll1_dom, ll2_dom, ll3_dom, q1_dom, q2_dom, beta_dom), cutoff, Tuple(fill(false, d)))
 
     if mpi_rank == 0
         println("Starting TT-cross ACA...")
@@ -86,7 +86,7 @@ mpi_size = MPI.Comm_size(mpi_comm)
 
 d = 9
 maxr = 50
-n_chains = 100
+n_chains = 5
 n_samples = 1000
 jump_width = 0.01
 cutoff = 1.0e-3
