@@ -2,9 +2,9 @@ include("tt_aca.jl")
 
 function V(r, data)
     K = 3
-    q = [r[1:2]; 1.0 - r[1] - r[2]]
-    mu = r[3:5]
-    lambda = exp.(r[6:8])
+    mu = r[1:3]
+    lambda = exp.(r[4:6])
+    q = [r[7:8]; 1.0 - r[7] - r[8]]
     beta = r[9]
 
     # ---- Hyperparameters ----
