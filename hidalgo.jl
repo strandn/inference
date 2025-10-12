@@ -89,7 +89,7 @@ maxr = 50
 n_chains = 5
 n_samples = 1000
 jump_width = 0.01
-cutoff = 1.0e-3
+cutoff = 0.001
 
 start_time = time()
 aca_hidalgo()
