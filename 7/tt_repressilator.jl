@@ -193,7 +193,7 @@ function tt_repressilator()
         else
             result = Lenv * psi[pos] * psi[pos + 1] * Renv
         end
-        open("tt_repressilator_marginal_$pos.txt", "w") do file
+        open("tt_repressilator_marginal_$(pos)_$(id).txt", "w") do file
             for i in 1:ITensors.dim(sites[pos])
                 for j in 1:ITensors.dim(sites[pos+1])
                     write(file, "$(grid[pos][i]) $(grid[pos + 1][j]) $(result[sites[pos]=>i, sites[pos+1]=>j])\n")
@@ -246,7 +246,7 @@ function tt_repressilator()
     display(varlist)
     flush(stdout)
 
-    open("tt_repressilator_samples.txt", "w") do file
+    open("tt_repressilator_samples_$(id).txt", "w") do file
         for sampleid in 1:1000
             println("Collecting sample $sampleid...")
             sample = Vector{Float64}(undef, d)
@@ -369,11 +369,12 @@ function tt_repressilator()
 end
 
 d = 8
-maxr = 300
+maxr = parse(Int64, ARGS[3])
 tol = 1.0e-4
 maxiter = 10
-nbins = 50
+nbins = parse(Int64, ARGS[2])
 nsamples = 1000
+id = parse(Int64, ARGS[1])
 
 start_time = time()
 tt_repressilator()
