@@ -53,17 +53,17 @@ function aca_hidalgo()
     data *= 100
     neglogposterior(mu1, mu2, mu3, ll1, ll2, ll3, q1, q2, beta) = V([mu1, mu2, mu3, ll1, ll2, ll3, q1, q2, beta], data)
 
-    mu1_dom = (2.0, 14.0)
-    mu2_dom = (2.0, 14.0)
-    mu3_dom = (2.0, 14.0)
-    ll1_dom = (-3.0, 4.0)
-    ll2_dom = (-3.0, 4.0)
-    ll3_dom = (-3.0, 4.0)
-    q1_dom = (0.0, 1.0)
-    q2_dom = (0.0, 1.0)
-    beta_dom = (0.0, 5.0)
+    mu1_dom = (6.0, 12.0)
+    mu2_dom = (6.0, 12.0)
+    mu3_dom = (6.0, 12.0)
+    ll1_dom = (-2.0, 5.0)
+    ll2_dom = (-2.0, 5.0)
+    ll3_dom = (-2.0, 5.0)
+    q1_dom = (0.0, 0.6)
+    q2_dom = (0.0, 0.6)
+    beta_dom = (1.0, 4.0)
 
-    F = ResFunc(neglogposterior, (mu1_dom, mu2_dom, mu3_dom, ll1_dom, ll2_dom, ll3_dom, q1_dom, q2_dom, beta_dom), cutoff, Tuple(fill(false, d)))
+    F = ResFunc(neglogposterior, (mu1_dom, mu2_dom, mu3_dom, ll1_dom, ll2_dom, ll3_dom, q1_dom, q2_dom, beta_dom), 0.0, Tuple(fill(false, d)))
 
     open("hidalgo_IJ.txt", "r") do file
         F.I, F.J = eval(Meta.parse(readline(file)))
@@ -72,7 +72,7 @@ function aca_hidalgo()
 
     grid = (
         collect(LinRange(mu1_dom..., nbins + 1)),
-        collect(LinRange(mu22_dom..., nbins + 1)),
+        collect(LinRange(mu2_dom..., nbins + 1)),
         collect(LinRange(mu3_dom..., nbins + 1)),
         collect(LinRange(ll1_dom..., nbins + 1)),
         collect(LinRange(ll2_dom..., nbins + 1)),

@@ -89,9 +89,9 @@ mpi_rank = MPI.Comm_rank(mpi_comm)
 mpi_size = MPI.Comm_size(mpi_comm)
 
 d = 8
-maxr = 10
+maxr = 5
 n_chains = 5
-n_samples = 5000
+n_samples = 2 * 10^4
 jump_width = 0.01
 cutoff = 0.001
 
