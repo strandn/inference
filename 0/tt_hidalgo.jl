@@ -3,6 +3,8 @@ using Clustering
 using DelimitedFiles
 using Distributions
 
+include("tt_cross.jl")
+
 function V(r, data)
     K = 3
     mu = r[1:3]
