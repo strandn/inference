@@ -108,6 +108,7 @@ function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, 
         res_new = 0.0
         r = length(F.I[i + 1]) + 1
         pivot_count = pivot_last = mod(r - 1, length(F.I[i])) + 1
+        seedlist = fill(NaN, n_chains_total, F.ndims - F.pos + 1)
         while true
             if r > rank[i]
                 break
@@ -120,9 +121,10 @@ function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, 
             local_res = fill(0.0, elements_per_task)
             for k in 1:elements_per_task
                 # Run multiple Markov chains in parallel, approximate position of the largest current residual across all walkers
-                # idx = mod(mpi_rank * elements_per_task + k - 1, length(F.I[i])) + 1
-                idx = mod(pivot_count - 1, length(F.I[i])) + 1
-                local_xy[k], local_res[k] = max_metropolis(F, F.I[i][idx], n_samples, jump_width)
+                idx = mod(mpi_rank * elements_per_task + k - 1, length(F.I[i])) + 1
+                # idx = mod(pivot_count - 1, length(F.I[i])) + 1
+                local_xy[k], local_res[k] = max_metropolis(F, F.I[i][idx], n_samples, jump_width, seedlist[mpi_rank * elements_per_task + k, :])
+                println(seedlist[mpi_rank * elements_per_task + k, :])
             end
             # Collect results from all processes
             xydata = MPI.Gather(local_xy, 0, mpi_comm)
@@ -134,9 +136,9 @@ function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, 
             # Rank 0 process performs any remaining tasks
             if mpi_rank == 0 && remainder > 0
                 for k in mpi_size*elements_per_task+1:n_chains_total
-                    # idx = mod(k - 1, length(F.I[i])) + 1
-                    idx = mod(pivot_count - 1, length(F.I[i])) + 1
-                    xylist[k], reslist[k] = max_metropolis(F, F.I[i][idx], n_samples, jump_width)
+                    idx = mod(k - 1, length(F.I[i])) + 1
+                    # idx = mod(pivot_count - 1, length(F.I[i])) + 1
+                    xylist[k], reslist[k] = max_metropolis(F, F.I[i][idx], n_samples, jump_width, seedlist[k, :])
                 end
             end
             
@@ -153,12 +155,12 @@ function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, 
             MPI.Bcast!(res_new, 0, mpi_comm)
             pivot_count = mod(pivot_count, length(F.I[i])) + 1
             if res_new[] < F.cutoff
-                # break
-                if pivot_count == pivot_last
-                    break
-                else
-                    continue
-                end
+                break
+                # if pivot_count == pivot_last
+                #     break
+                # else
+                #     continue
+                # end
             end
             updateIJ(F, xy[])
             if mpi_rank == 0
@@ -175,7 +177,7 @@ end
 
 # MCMC sampler, searches function F and runs one Markov chain
 # Outputs largest residual magnitude and corresponding position
-function max_metropolis(F::ResFunc{T, N}, pivot::Vector{T}, n_samples::Int64, jump_width::Float64) where {T, N}
+function max_metropolis(F::ResFunc{T, N}, pivot::Vector{T}, n_samples::Int64, jump_width::Float64, seed::Vector{T}) where {T, N}
     order = F.ndims - F.pos + 1
     
     lb = [F.domain[i][1] for i in F.pos:F.ndims]
@@ -186,14 +188,18 @@ function max_metropolis(F::ResFunc{T, N}, pivot::Vector{T}, n_samples::Int64, ju
     min_nlr = Inf
     max_xy = zeros(F.ndims)
 
-    while true
-        for k in 1:order
-            chain[1, k] = rand() * (ub[k] - lb[k]) + lb[k]
+    if isnan(seed[1])
+        while true
+            for k in 1:order
+                chain[1, k] = rand() * (ub[k] - lb[k]) + lb[k]
+            end
+            fx = F(pivot..., chain[1, :]...)  # Call once
+            if isfinite(fx)
+                break
+            end
         end
-        fx = F(pivot..., chain[1, :]...)  # Call once
-        if isfinite(fx)
-            break
-        end
+    else
+        chain[1, :] = seed
     end
 
     for i in 2:n_samples
@@ -230,6 +236,7 @@ function max_metropolis(F::ResFunc{T, N}, pivot::Vector{T}, n_samples::Int64, ju
             chain[i, :] = chain[i - 1, :]
         end
     end
+    seed = chain[n_samples, :]
 
     return Tuple(max_xy), min_nlr
 end
