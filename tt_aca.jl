@@ -123,7 +123,7 @@ function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, 
                 # Run multiple Markov chains in parallel, approximate position of the largest current residual across all walkers
                 idx = mod(mpi_rank * elements_per_task + k - 1, length(F.I[i])) + 1
                 # idx = mod(pivot_count - 1, length(F.I[i])) + 1
-                local_xy[k], local_res[k] = max_metropolis(F, F.I[i][idx], n_samples, jump_width, seedlist[mpi_rank * elements_per_task + k, :])
+                local_xy[k], local_res[k], seedlist[mpi_rank * elements_per_task + k, :] = max_metropolis(F, F.I[i][idx], n_samples, jump_width, seedlist[mpi_rank * elements_per_task + k, :])
                 println(seedlist[mpi_rank * elements_per_task + k, :])
             end
             # Collect results from all processes
@@ -138,7 +138,7 @@ function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, 
                 for k in mpi_size*elements_per_task+1:n_chains_total
                     idx = mod(k - 1, length(F.I[i])) + 1
                     # idx = mod(pivot_count - 1, length(F.I[i])) + 1
-                    xylist[k], reslist[k] = max_metropolis(F, F.I[i][idx], n_samples, jump_width, seedlist[k, :])
+                    xylist[k], reslist[k], seedlist[k, :] = max_metropolis(F, F.I[i][idx], n_samples, jump_width, seedlist[k, :])
                 end
             end
             
@@ -236,9 +236,8 @@ function max_metropolis(F::ResFunc{T, N}, pivot::Vector{T}, n_samples::Int64, ju
             chain[i, :] = chain[i - 1, :]
         end
     end
-    seed = chain[n_samples, :]
 
-    return Tuple(max_xy), min_nlr
+    return Tuple(max_xy), min_nlr, chain[n_samples, :]
 end
 
 # # Main ACA routine
