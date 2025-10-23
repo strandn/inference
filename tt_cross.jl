@@ -450,6 +450,7 @@ function right_left_ttcross_step(input_tensor, k::Int64, rank::Vector{Int64}, ro
     C = k == tensor_order ? combiner(s) : combiner(l, s)
     Qmat = Matrix(C * Q, q, combinedind(C))
     J = maxvol(Matrix(transpose(Qmat)))
+    println(cond(Qmat[:, J]))
     Q_inv = inv(Qmat[:, J])
     Q_skeleton = Q * delta(q, lp) * ITensor(Q_inv, lp', lp)
     noprime!(Q_skeleton)
