@@ -369,7 +369,7 @@ function tt_repressilator()
 end
 
 d = 8
-maxr = 50
+maxr = 300
 tol = 1.0e-4
 maxiter = 10
 nbins = 50
