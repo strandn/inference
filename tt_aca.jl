@@ -110,7 +110,7 @@ function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, 
         pivot_count = pivot_last = mod(r - 1, length(F.I[i])) + 1
         seedlist = fill(NaN, n_chains_total, F.ndims - i + 1)
         if i > 1
-            for k in n_chains_total
+            for k in 1:n_chains_total
                 idx = mod(k - 1, length(F.I[i])) + 1
                 seedlist[k, :] = F.J[i][idx]
             end

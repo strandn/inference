@@ -108,7 +108,13 @@ function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, 
         res_new = 0.0
         r = length(F.I[i + 1]) + 1
         pivot_count = pivot_last = mod(r - 1, length(F.I[i])) + 1
-        seedlist = fill(NaN, n_chains_total, F.ndims - F.pos + 1)
+        seedlist = fill(NaN, n_chains_total, F.ndims - i + 1)
+        if i > 1
+            for k in 1:n_chains_total
+                idx = mod(k - 1, length(F.I[i])) + 1
+                seedlist[k, :] = F.J[i][idx]
+            end
+        end
         while true
             if r > rank[i]
                 break
