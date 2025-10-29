@@ -133,7 +133,9 @@ function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, 
                 local_xy[k], local_res[k], seedlist[mpi_rank * elements_per_task + k, :] = max_metropolis(F, F.I[i][idx], n_samples_adj, jump_width, seedlist[mpi_rank * elements_per_task + k, :])
                 # println(seedlist[mpi_rank * elements_per_task + k, :])
             end
-            display(seedlist)
+            if i == 1 && r == 1
+                display(seedlist)
+            end
             # Collect results from all processes
             xydata = MPI.Gather(local_xy, 0, mpi_comm)
             resdata = MPI.Gather(local_res, 0, mpi_comm)
