@@ -199,15 +199,10 @@ function max_metropolis(F::ResFunc{T, N}, pivot::Vector{T}, n_samples::Int64, ju
     max_xy = zeros(F.ndims)
 
     if isnan(seed[1])
-        while true
-            for k in 1:order
-                chain[1, k] = rand() * (ub[k] - lb[k]) + lb[k]
-            end
-            fx = F(pivot..., chain[1, :]...)  # Call once
-            if isfinite(fx)
-                break
-            end
+        for k in 1:order
+            chain[1, k] = rand() * (ub[k] - lb[k]) + lb[k]
         end
+        # fx = F(pivot..., chain[1, :]...)  # Call once
     else
         chain[1, :] = seed
     end
@@ -230,7 +225,9 @@ function max_metropolis(F::ResFunc{T, N}, pivot::Vector{T}, n_samples::Int64, ju
         arg_old = [pivot; [chain[i - 1, k] for k in 1:order]]
         arg_new = [pivot; [p_new[k] for k in 1:order]]
         acceptance_prob = 0.0
-        if isfinite(F.f(arg_new...))
+        if !isfinite(F.f(arg_old...))
+            acceptance_prob = 1.0
+        elseif isfinite(F.f(arg_new...))
             f_old = F(arg_old...)
             f_new = F(arg_new...)
             acceptance_prob = min(1, exp(f_old - f_new))
