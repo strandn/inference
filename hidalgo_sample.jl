@@ -303,7 +303,7 @@ function aca_hidalgo()
 end
 
 d = 9
-nbins = 100
+nbins = 500
 
 start_time = time()
 aca_hidalgo()
