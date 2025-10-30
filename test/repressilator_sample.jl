@@ -274,7 +274,7 @@ function aca_repressilator()
 end
 
 d = 8
-nbins = 100
+nbins = 500
 
 start_time = time()
 aca_repressilator()
