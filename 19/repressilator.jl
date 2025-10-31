@@ -73,7 +73,7 @@ function aca_repressilator()
         println("Starting TT-cross ACA...")
     end
 
-    IJ = continuous_aca(F, fill(maxr, d - 1), n_chains, n_samples, jump_width, mpi_comm)
+    IJ = continuous_aca(F, fill(maxr, d - 1), n_chains, n_samples, n_samples_init, jump_width, mpi_comm)
 
     if mpi_rank == 0
         open("repressilator_IJ.txt", "w") do file
@@ -89,9 +89,10 @@ mpi_rank = MPI.Comm_rank(mpi_comm)
 mpi_size = MPI.Comm_size(mpi_comm)
 
 d = 8
-maxr = 10
+maxr = 20
 n_chains = 20
-n_samples = 500
+n_samples = 100
+n_samples_init = 10^4
 jump_width = 0.01
 cutoff = 0.001
 

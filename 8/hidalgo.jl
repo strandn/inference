@@ -69,7 +69,7 @@ function aca_hidalgo()
         println("Starting TT-cross ACA...")
     end
 
-    IJ = continuous_aca(F, fill(maxr, d - 1), n_chains, n_samples, jump_width, mpi_comm)
+    IJ = continuous_aca(F, fill(maxr, d - 1), n_chains, n_samples, n_samples_init, jump_width, mpi_comm)
 
     if mpi_rank == 0
         open("hidalgo_IJ.txt", "w") do file
@@ -85,9 +85,10 @@ mpi_rank = MPI.Comm_rank(mpi_comm)
 mpi_size = MPI.Comm_size(mpi_comm)
 
 d = 9
-maxr = 10
-n_chains = 100
-n_samples = 1000
+maxr = 20
+n_chains = 50
+n_samples = 100
+n_samples_init = 10^5
 jump_width = 0.01
 cutoff = 0.001
 
