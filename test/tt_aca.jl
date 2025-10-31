@@ -125,7 +125,7 @@ function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, 
             remainder = rem(n_chains_total, mpi_size)
             local_xy = fill(Tuple(fill(0.0, order)), elements_per_task)
             local_res = fill(0.0, elements_per_task)
-            n_samples_adj = (i == 1 && r == 1 ? 10^4 : n_samples)
+            n_samples_adj = (i == 1 && r == 1 ? 10^5 : n_samples)
             for k in 1:elements_per_task
                 # Run multiple Markov chains in parallel, approximate position of the largest current residual across all walkers
                 idx = mod(mpi_rank * elements_per_task + k - 1, length(F.I[i])) + 1
@@ -226,6 +226,7 @@ function max_metropolis(F::ResFunc{T, N}, pivot::Vector{T}, n_samples::Int64, ju
         arg_new = [pivot; [p_new[k] for k in 1:order]]
         acceptance_prob = 0.0
         if !isfinite(F.f(arg_old...))
+            f_new = Inf
             acceptance_prob = 1.0
         elseif isfinite(F.f(arg_new...))
             f_old = F(arg_old...)
