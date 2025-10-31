@@ -82,7 +82,7 @@ end
 # Main ACA routine
 # Takes multidimensional function F, and sequentially finds pivots which roughly maximize a dynamical residual function, moving from one unfolding to the next
 # Pivots in each unfolding depend on pivots found for the previous unfolding
-function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, n_samples::Int64, jump_width::Float64, mpi_comm::MPI.Comm) where {T, N}
+function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, n_samples::Int64, n_samples_init::Int64, jump_width::Float64, mpi_comm::MPI.Comm) where {T, N}
     mpi_rank = MPI.Comm_rank(mpi_comm)
     mpi_size = MPI.Comm_size(mpi_comm)
     
@@ -125,7 +125,7 @@ function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, 
             remainder = rem(n_chains_total, mpi_size)
             local_xy = fill(Tuple(fill(0.0, order)), elements_per_task)
             local_res = fill(0.0, elements_per_task)
-            n_samples_adj = (i == 1 && r == 1 ? 10^4 : n_samples)
+            n_samples_adj = (i == 1 && r == 1 ? n_samples_init : n_samples)
             for k in 1:elements_per_task
                 # Run multiple Markov chains in parallel, approximate position of the largest current residual across all walkers
                 idx = mod(mpi_rank * elements_per_task + k - 1, length(F.I[i])) + 1
@@ -133,9 +133,9 @@ function continuous_aca(F::ResFunc{T, N}, rank::Vector{Int64}, n_chains::Int64, 
                 local_xy[k], local_res[k], seedlist[mpi_rank * elements_per_task + k, :] = max_metropolis(F, F.I[i][idx], n_samples_adj, jump_width, seedlist[mpi_rank * elements_per_task + k, :])
                 # println(seedlist[mpi_rank * elements_per_task + k, :])
             end
-            if i == 1 && r == 1
-                display(hcat(seedlist, [F.f(seedlist[idx, :]...) for idx in 1:n_chains_total]))
-            end
+            # if i == 1 && r == 1
+            #     display(hcat(seedlist, [F.f(seedlist[idx, :]...) for idx in 1:n_chains_total]))
+            # end
             # Collect results from all processes
             xydata = MPI.Gather(local_xy, 0, mpi_comm)
             resdata = MPI.Gather(local_res, 0, mpi_comm)
