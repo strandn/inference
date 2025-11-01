@@ -89,7 +89,7 @@ mpi_rank = MPI.Comm_rank(mpi_comm)
 mpi_size = MPI.Comm_size(mpi_comm)
 
 d = 8
-maxr = 10
+maxr = 20
 n_chains = 20
 n_samples = 100
 n_samples_init = 10^4
