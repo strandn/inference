@@ -461,7 +461,7 @@ function tt_hidalgo()
 end
 
 d = 9
-maxr = 60
+maxr = 20
 tol = 1.0e-4
 maxiter = 10
 nbins = 100
