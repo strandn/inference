@@ -101,7 +101,7 @@ function tt_hidalgo()
         borders = []
         for i in 1:d
             avg = mean(samples[idx, i])
-            sd = max(maximum(samples[idx, i]) - minimum(samples[idx, i]), 0.05 * (dom[i][2] - dom[i][1]))
+            sd = max((maximum(samples[idx, i]) - minimum(samples[idx, i])) / 2, 0.05 * (dom[i][2] - dom[i][1]))
             push!(borders, (avg - 1.0 * sd, avg + 1.0 * sd))
         end
         println("Cluster $cidx")
