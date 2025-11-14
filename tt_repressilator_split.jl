@@ -86,7 +86,8 @@ function tt_repressilator()
     samples = zeros(nsamples, d)
     samples = readdlm("repressilator_samples.txt")
     nclusters = 3
-    R = kmeans(samples', nclusters)
+    X = samples'
+    R = kmeans(X, nclusters)
 
     offset = minimum([neglogposterior(samples[i, :]...) for i in 1:nsamples])
     posterior(x...) = exp(offset - neglogposterior(x...))
@@ -101,8 +102,8 @@ function tt_repressilator()
         borders = []
         for i in 1:d
             avg = mean(samples[idx, i])
-            sd = max(std(samples[idx, i]), 0.01 * (dom[i][2] - dom[i][1]))
-            push!(borders, (avg - 5 * sd, avg + 5 * sd))
+            sd = max(maximum(samples[idx, i]) - minimum(samples[idx, i]), 0.05 * (dom[i][2] - dom[i][1]))
+            push!(borders, (avg - 1.0 * sd, avg + 1.0 * sd))
         end
         println("Cluster $cidx")
         println(borders)
@@ -110,15 +111,15 @@ function tt_repressilator()
         rangelist[cidx] = []
         push!(gridlist, Tuple([Float64[] for _ in 1:d]))
         for i in 1:d
-            first = searchsortedlast(grid_full[i], borders[1])
+            first = searchsortedlast(grid_full[i], borders[i][1])
             if first < 1
                 first = 1
             end
-            last = searchsortedfirst(grid_full[i], borders[2])
+            last = searchsortedfirst(grid_full[i], borders[i][2])
             if last > nbins
                 last = nbins
             end
-            gridlist[cidx][i] = grid_full[i][first:last]
+            append!(gridlist[cidx][i], grid_full[i][first:last])
             push!(rangelist[cidx], first:last)
         end
         println([length(g) for g in gridlist[cidx]])
@@ -128,22 +129,29 @@ function tt_repressilator()
 
         A = ODEArray(posterior, gridlist[cidx])
         
-        seedlist = zeros(Int64, nsamples, d)
+        seedlist = []
         for i in 1:nsamples
+            seed = zeros(Int64, d)
+            valid = true
             for j in 1:d
                 hi = searchsortedfirst(gridlist[cidx][j], samples[i, j])
                 if hi == 1 || hi == length(gridlist[cidx][j]) + 1
-                    continue
+                    valid = false
+                    break
                 else
                     lo = hi - 1
                     if abs(gridlist[cidx][j][lo] - samples[i, j]) < abs(gridlist[cidx][j][hi] - samples[i, j])
-                        seedlist[i, j] = lo
+                        seed[j] = lo
                     else
-                        seedlist[i, j] = hi
+                        seed[j] = hi
                     end
                 end
             end
+            if valid
+                push!(seedlist, seed)
+            end
         end
+        seedlist = Matrix{Int64}(hcat(seedlist...)')
 
         push!(weightslist, deepcopy(gridlist[cidx]))
         for i in 1:d
@@ -201,6 +209,15 @@ function tt_repressilator()
                 for j in 1:ITensors.dim(sites[pos+1])
                     j2 = rangelist[cidx][pos + 1][j]
                     marginals2D[i2, j2] += result[sites[pos]=>i, sites[pos+1]=>j]
+                end
+            end
+            open("tt_repressilator_marginal_$(pos)_cluster$(cidx).txt", "w") do file
+                for i in 1:ITensors.dim(sites[pos])
+                    i2 = rangelist[cidx][pos][i]
+                    for j in 1:ITensors.dim(sites[pos+1])
+                        j2 = rangelist[cidx][pos + 1][j]
+                        write(file, "$(grid_full[pos][i2]) $(grid_full[pos + 1][j2]) $(result[sites[pos]=>i, sites[pos+1]=>j])\n")
+                    end
                 end
             end
         end
@@ -276,6 +293,7 @@ function tt_repressilator()
                 Renvlist = Vector{Any}(undef, nclusters)
                 if count != d
                     for cidx in 1:nclusters
+                        sites = siteinds(psilist[cidx])
                         ind = ITensor(weightslist[cidx][d], sites[d])
                         Renvlist[cidx] = psilist[cidx][d] * ind
                         for i in d-1:-1:count+1
@@ -330,7 +348,7 @@ function tt_repressilator()
                         end
                         if include_cluster
                             cdfi_cluster = undef
-                            if a - 1 in rangelist[cidx][count]
+                            if a - 1 in rangelist[cidx][count] && a in rangelist[cidx][count]
                                 indvec = zeros(ITensors.dim(sites[count]))
                                 a_cluster = a - first(rangelist[cidx][count]) + 1
                                 indvec[1:a_cluster-1] .= weightslist[cidx][count][1:a_cluster-1]
@@ -340,6 +358,8 @@ function tt_repressilator()
                             elseif a > last(rangelist[cidx][count])
                                 ind = ITensor(weightslist[cidx][count], sites[count])
                                 cdfi_cluster = psilist[cidx][count] * ind
+                            else
+                                continue
                             end
                             for i in count-1:-1:1
                                 ind = ITensor(sites[i])
@@ -370,7 +390,7 @@ function tt_repressilator()
                         end
                         if include_cluster
                             cdfi_cluster = undef
-                            if target - 1 in rangelist[cidx][count]
+                            if target - 1 in rangelist[cidx][count] && target in rangelist[cidx][count]
                                 indvec = zeros(ITensors.dim(sites[count]))
                                 a_cluster = target - first(rangelist[cidx][count]) + 1
                                 indvec[1:a_cluster-1] .= weightslist[cidx][count][1:a_cluster-1]
@@ -380,6 +400,8 @@ function tt_repressilator()
                             elseif target > last(rangelist[cidx][count])
                                 ind = ITensor(weightslist[cidx][count], sites[count])
                                 cdfi_cluster = psilist[cidx][count] * ind
+                            else
+                                continue
                             end
                             for i in count-1:-1:1
                                 ind = ITensor(sites[i])

@@ -86,12 +86,9 @@ function tt_hidalgo()
     samples = readdlm("hidalgo_samples.txt")
     nclusters = 3
     X = samples'
-    # X = (X .- mean(X, dims=2)) ./ std(X, dims=2)
     R = kmeans(X, nclusters)
-    # R = kmeans(X, nclusters; init=:rand)
 
     offset = minimum([neglogposterior(samples[i, :]...) for i in 1:nsamples])
-    # offset = 756.5821387651788
     posterior(x...) = exp(offset - neglogposterior(x...))
 
     normtot = 0.0
@@ -104,11 +101,8 @@ function tt_hidalgo()
         borders = []
         for i in 1:d
             avg = mean(samples[idx, i])
-            # sd = max(std(samples[idx, i]), 0.01 * (dom[i][2] - dom[i][1]))
-            # push!(borders, (avg - 3 * sd, avg + 3 * sd))
             sd = max(maximum(samples[idx, i]) - minimum(samples[idx, i]), 0.05 * (dom[i][2] - dom[i][1]))
             push!(borders, (avg - 1.0 * sd, avg + 1.0 * sd))
-            # println("$avg $(std(samples[idx, i])) $(0.01 * (dom[i][2] - dom[i][1]))")
         end
         println("Cluster $cidx")
         println(borders)
@@ -168,9 +162,6 @@ function tt_hidalgo()
         end
 
         push!(psilist, tt_cross(A, maxr, tol, maxiter, seedlist))
-        # f = h5open("tt_cross_10_$cidx.h5", "r")
-        # push!(psilist, read(f, "factor", MPS))
-        # close(f)
         @show psilist[cidx]
 
         sites = siteinds(psilist[cidx])
