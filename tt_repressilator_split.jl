@@ -70,7 +70,7 @@ function tt_repressilator()
     X20_dom = (0.5, 3.5)
     X30_dom = (0.5, 3.5)
 
-    dom = (X10_dom, X20_dom, X30_dom, α1_dom, α2_dom, α3_dom, m_dom, η_dom)
+    dom = (α1_dom, α2_dom, α3_dom, m_dom, η_dom, X10_dom, X20_dom, X30_dom)
 
     grid_full = (
         collect(LinRange(α1_dom..., nbins + 1)),
