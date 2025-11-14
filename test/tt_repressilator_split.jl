@@ -70,7 +70,7 @@ function tt_repressilator()
     X20_dom = (0.5, 3.5)
     X30_dom = (0.5, 3.5)
 
-    dom = (X10_dom, X20_dom, X30_dom, α1_dom, α2_dom, α3_dom, m_dom, η_dom)
+    dom = (α1_dom, α2_dom, α3_dom, m_dom, η_dom, X10_dom, X20_dom, X30_dom)
 
     grid_full = (
         collect(LinRange(α1_dom..., nbins + 1)),
@@ -103,7 +103,7 @@ function tt_repressilator()
         for i in 1:d
             avg = mean(samples[idx, i])
             sd = max((maximum(samples[idx, i]) - minimum(samples[idx, i])) / 2, 0.05 * (dom[i][2] - dom[i][1]))
-            push!(borders, (avg - 1.1 * sd, avg + 1.1 * sd))
+            push!(borders, (avg - 1.4 * sd, avg + 1.4 * sd))
         end
         println("Cluster $cidx")
         println(borders)
