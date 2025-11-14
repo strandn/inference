@@ -289,26 +289,7 @@ function tt_cross(input_tensor, maxrank::Int64, tol::Float64, n_iter_max::Int64,
 
     for k_col_idx in tensor_order-1:-1:1
         col_idx[k_col_idx] = []
-        if isempty(seedlist)
-            idxlist = []
-            if k_col_idx == tensor_order - 1
-                for j in 1:tensor_shape[tensor_order]
-                    push!(idxlist, [j])
-                end
-            else
-                for j in 1:tensor_shape[k_col_idx + 1]
-                    for k in 1:rank[k_col_idx + 1]
-                        pivot = [j, col_idx[k_col_idx + 1][k]...]
-                        push!(idxlist, pivot)
-                    end
-                end
-            end
-            shuffle!(idxlist)
-            for i in 1:rank[k_col_idx]
-                pivot = idxlist[i]
-                push!(col_idx[k_col_idx], pivot)
-            end
-        else
+        if !isempty(seedlist)
             idx = 1
             while length(col_idx[k_col_idx]) < rank[k_col_idx] && idx <= size(seedlist, 1)
                 pivot = seedlist[idx, k_col_idx+1:tensor_order]
@@ -317,36 +298,31 @@ function tt_cross(input_tensor, maxrank::Int64, tol::Float64, n_iter_max::Int64,
                 end
                 idx += 1
             end
-            rank[k_col_idx] = length(col_idx[k_col_idx])
         end
-        # sortedlist = Vector(undef, length(seedlist))
-        # for i in eachindex(seedlist)
-        #     sortedlist[i] = []
-        #     if k_col_idx == tensor_order - 1
-        #         for j in 1:tensor_shape[tensor_order]
-        #             push!(sortedlist[i], (abs(j - seedlist[i][tensor_order]), [j]))
-        #         end
-        #     else
-        #         for j in 1:tensor_shape[k_col_idx + 1]
-        #             for k in 1:rank[k_col_idx + 1]
-        #                 pivot = [j, col_idx[k_col_idx + 1][k]...]
-        #                 push!(sortedlist[i], (norm(pivot - seedlist[i][k_col_idx+1:tensor_order]), pivot))
-        #             end
-        #         end
-        #     end
-        #     sort!(sortedlist[i])
-        # end
-        # countlist = fill(1, length(seedlist))
-        # idx = 1
-        # while length(col_idx[k_col_idx]) < rank[k_col_idx]
-        #     seed_idx = mod(idx - 1, length(seedlist)) + 1
-        #     pivot = sortedlist[seed_idx][countlist[seed_idx]][2]
-        #     if !(pivot in col_idx[k_col_idx])
-        #         push!(col_idx[k_col_idx], pivot)
-        #     end
-        #     countlist[seed_idx] += 1
-        #     idx += 1
-        # end
+        idxlist = []
+        if k_col_idx == tensor_order - 1
+            for j in 1:tensor_shape[tensor_order]
+                push!(idxlist, [j])
+            end
+        else
+            for j in 1:tensor_shape[k_col_idx + 1]
+                for k in 1:rank[k_col_idx + 1]
+                    pivot = [j, col_idx[k_col_idx + 1][k]...]
+                    push!(idxlist, pivot)
+                end
+            end
+        end
+        sort!(idxlist)
+        sort!(col_idx[k_col_idx])
+        idxlist = setdiff(idxlist, col_idx[k_col_idx])
+        shuffle!(idxlist)
+        idx = 1
+        while length(col_idx[k_col_idx]) < rank[k_col_idx] && idx <= length(idxlist)
+            pivot = idxlist[idx]
+            push!(col_idx[k_col_idx], pivot)
+            idx += 1
+        end
+        rank[k_col_idx] = length(col_idx[k_col_idx])
     end
     println(rank)
 
@@ -474,6 +450,7 @@ function right_left_ttcross_step(input_tensor, k::Int64, rank::Vector{Int64}, ro
     C = k == tensor_order ? combiner(s) : combiner(l, s)
     Qmat = Matrix(C * Q, q, combinedind(C))
     J = maxvol(Matrix(transpose(Qmat)))
+    println(cond(Qmat[:, J]))
     Q_inv = inv(Qmat[:, J])
     Q_skeleton = Q * delta(q, lp) * ITensor(Q_inv, lp', lp)
     noprime!(Q_skeleton)
