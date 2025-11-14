@@ -68,6 +68,8 @@ function tt_hidalgo()
     q2_dom = (0.0, 0.6)
     beta_dom = (1.0, 4.0)
 
+    dom = (mu1_dom, mu2_dom, mu3_dom, ll1_dom, ll2_dom, ll3_dom, q1_dom, q2_dom, beta_dom)
+
     grid_full = (
         collect(LinRange(mu1_dom..., nbins + 1)),
         collect(LinRange(mu2_dom..., nbins + 1)),
@@ -82,10 +84,14 @@ function tt_hidalgo()
 
     samples = zeros(nsamples, d)
     samples = readdlm("hidalgo_samples.txt")
-    nclusters = 6
-    R = kmeans(samples', nclusters)
+    nclusters = 3
+    X = samples'
+    # X = (X .- mean(X, dims=2)) ./ std(X, dims=2)
+    R = kmeans(X, nclusters)
+    # R = kmeans(X, nclusters; init=:rand)
 
     offset = minimum([neglogposterior(samples[i, :]...) for i in 1:nsamples])
+    # offset = 756.5821387651788
     posterior(x...) = exp(offset - neglogposterior(x...))
 
     normtot = 0.0
@@ -98,8 +104,9 @@ function tt_hidalgo()
         borders = []
         for i in 1:d
             avg = mean(samples[idx, i])
-            sd = max(std(samples[idx, i]), 0.01 * (dom_full[i][2] - dom_full[i][1]))
-            push!(borders, (avg - 2 * sd, avg + 2 * sd))
+            sd = max(std(samples[idx, i]), 0.01 * (dom[i][2] - dom[i][1]))
+            push!(borders, (avg - 3 * sd, avg + 3 * sd))
+            println("$avg $(std(samples[idx, i])) $(0.01 * (dom[i][2] - dom[i][1]))")
         end
         println("Cluster $cidx")
         println(borders)
@@ -107,15 +114,15 @@ function tt_hidalgo()
         rangelist[cidx] = []
         push!(gridlist, Tuple([Float64[] for _ in 1:d]))
         for i in 1:d
-            first = searchsortedlast(grid_full[i], borders[1])
+            first = searchsortedlast(grid_full[i], borders[i][1])
             if first < 1
                 first = 1
             end
-            last = searchsortedfirst(grid_full[i], borders[2])
+            last = searchsortedfirst(grid_full[i], borders[i][2])
             if last > nbins
                 last = nbins
             end
-            gridlist[cidx][i] = grid_full[i][first:last]
+            append!(gridlist[cidx][i], grid_full[i][first:last])
             push!(rangelist[cidx], first:last)
         end
         println([length(g) for g in gridlist[cidx]])
@@ -125,22 +132,29 @@ function tt_hidalgo()
 
         A = ODEArray(posterior, gridlist[cidx])
         
-        seedlist = zeros(Int64, nsamples, d)
+        seedlist = []
         for i in 1:nsamples
+            seed = zeros(Int64, d)
+            valid = true
             for j in 1:d
                 hi = searchsortedfirst(gridlist[cidx][j], samples[i, j])
                 if hi == 1 || hi == length(gridlist[cidx][j]) + 1
-                    continue
+                    valid = false
+                    break
                 else
                     lo = hi - 1
                     if abs(gridlist[cidx][j][lo] - samples[i, j]) < abs(gridlist[cidx][j][hi] - samples[i, j])
-                        seedlist[i, j] = lo
+                        seed[j] = lo
                     else
-                        seedlist[i, j] = hi
+                        seed[j] = hi
                     end
                 end
             end
+            if valid
+                push!(seedlist, seed)
+            end
         end
+        seedlist = Matrix{Int64}(hcat(seedlist...)')
 
         push!(weightslist, deepcopy(gridlist[cidx]))
         for i in 1:d
@@ -152,6 +166,9 @@ function tt_hidalgo()
         end
 
         push!(psilist, tt_cross(A, maxr, tol, maxiter, seedlist))
+        # f = h5open("tt_cross_10_$cidx.h5", "r")
+        # push!(psilist, read(f, "factor", MPS))
+        # close(f)
         @show psilist[cidx]
 
         sites = siteinds(psilist[cidx])
@@ -198,6 +215,15 @@ function tt_hidalgo()
                 for j in 1:ITensors.dim(sites[pos+1])
                     j2 = rangelist[cidx][pos + 1][j]
                     marginals2D[i2, j2] += result[sites[pos]=>i, sites[pos+1]=>j]
+                end
+            end
+            open("tt_hidalgo_marginal_$(pos)_cluster$(cidx).txt", "w") do file
+                for i in 1:ITensors.dim(sites[pos])
+                    i2 = rangelist[cidx][pos][i]
+                    for j in 1:ITensors.dim(sites[pos+1])
+                        j2 = rangelist[cidx][pos + 1][j]
+                        write(file, "$(grid_full[pos][i2]) $(grid_full[pos + 1][j2]) $(result[sites[pos]=>i, sites[pos+1]=>j])\n")
+                    end
                 end
             end
         end
@@ -273,6 +299,7 @@ function tt_hidalgo()
                 Renvlist = Vector{Any}(undef, nclusters)
                 if count != d
                     for cidx in 1:nclusters
+                        sites = siteinds(psilist[cidx])
                         ind = ITensor(weightslist[cidx][d], sites[d])
                         Renvlist[cidx] = psilist[cidx][d] * ind
                         for i in d-1:-1:count+1
@@ -327,7 +354,7 @@ function tt_hidalgo()
                         end
                         if include_cluster
                             cdfi_cluster = undef
-                            if a - 1 in rangelist[cidx][count]
+                            if a - 1 in rangelist[cidx][count] && a in rangelist[cidx][count]
                                 indvec = zeros(ITensors.dim(sites[count]))
                                 a_cluster = a - first(rangelist[cidx][count]) + 1
                                 indvec[1:a_cluster-1] .= weightslist[cidx][count][1:a_cluster-1]
@@ -337,6 +364,8 @@ function tt_hidalgo()
                             elseif a > last(rangelist[cidx][count])
                                 ind = ITensor(weightslist[cidx][count], sites[count])
                                 cdfi_cluster = psilist[cidx][count] * ind
+                            else
+                                continue
                             end
                             for i in count-1:-1:1
                                 ind = ITensor(sites[i])
@@ -367,7 +396,7 @@ function tt_hidalgo()
                         end
                         if include_cluster
                             cdfi_cluster = undef
-                            if target - 1 in rangelist[cidx][count]
+                            if target - 1 in rangelist[cidx][count] && target in rangelist[cidx][count]
                                 indvec = zeros(ITensors.dim(sites[count]))
                                 a_cluster = target - first(rangelist[cidx][count]) + 1
                                 indvec[1:a_cluster-1] .= weightslist[cidx][count][1:a_cluster-1]
@@ -377,6 +406,8 @@ function tt_hidalgo()
                             elseif target > last(rangelist[cidx][count])
                                 ind = ITensor(weightslist[cidx][count], sites[count])
                                 cdfi_cluster = psilist[cidx][count] * ind
+                            else
+                                continue
                             end
                             for i in count-1:-1:1
                                 ind = ITensor(sites[i])
@@ -436,8 +467,9 @@ function tt_hidalgo()
     end
 end
 
-d = 8
-maxr = 60
+d = 9
+# maxr = 60
+maxr = 20
 tol = 1.0e-4
 maxiter = 10
 nbins = 100
