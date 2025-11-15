@@ -102,8 +102,8 @@ function tt_repressilator()
         borders = []
         for i in 1:d
             avg = mean(samples[idx, i])
-            sd = max((maximum(samples[idx, i]) - minimum(samples[idx, i])) / 2, 0.05 * (dom[i][2] - dom[i][1]))
-            push!(borders, (avg - 3.5 * sd, avg + 3.5 * sd))
+            sd = max(std(samples[idx, i]), 0.02 * (dom[i][2] - dom[i][1]))
+            push!(borders, (avg - 3 * sd, avg + 3 * sd))
         end
         println("Cluster $cidx")
         println(borders)
@@ -462,7 +462,7 @@ function tt_repressilator()
 end
 
 d = 8
-maxr = 50
+maxr = 200
 tol = 1.0e-4
 maxiter = 10
 nbins = 50
