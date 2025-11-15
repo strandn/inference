@@ -96,13 +96,14 @@ function tt_hidalgo()
     rangelist = Vector{Any}(undef, nclusters)
     gridlist = []
     weightslist = []
+    factors = [4, 4, 4, 6, 6, 6, 5, 5, 5]
     for cidx in 1:nclusters
         idx = findall(x -> x == cidx, assignments(R))
         borders = []
         for i in 1:d
             avg = mean(samples[idx, i])
             sd = max(std(samples[idx, i]), 0.02 * (dom[i][2] - dom[i][1]))
-            push!(borders, (avg - 3 * sd, avg + 3 * sd))
+            push!(borders, (avg - factors[i] * sd, avg + factors[i] * sd))
         end
         println("Cluster $cidx")
         println(borders)
