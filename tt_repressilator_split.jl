@@ -97,7 +97,7 @@ function tt_repressilator()
     rangelist = Vector{Any}(undef, nclusters)
     gridlist = []
     weightslist = []
-    factors = [4, 4, 4, 8, 11, 10, 10, 10]
+    factors = [3, 3, 3, 7, 10, 9, 9, 9]
     for cidx in 1:nclusters
         idx = findall(x -> x == cidx, assignments(R))
         borders = []
@@ -463,7 +463,7 @@ function tt_repressilator()
 end
 
 d = 8
-maxr = 50
+maxr = 200
 tol = 1.0e-4
 maxiter = 10
 nbins = 50

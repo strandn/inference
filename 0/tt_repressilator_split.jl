@@ -1,89 +1,90 @@
+using DifferentialEquations
 using StatsBase
 using Clustering
 using DelimitedFiles
-using Distributions
 
 include("tt_cross.jl")
 
-function V(r, data)
-    K = 3
-    mu = r[1:3]
-    lambda = exp.(r[4:6])
-    q = [r[7:8]; 1.0 - r[7] - r[8]]
-    beta = r[9]
-
-    # ---- Hyperparameters ----
-    M = mean(data)
-    R = maximum(data) - minimum(data)
-    κ = 4 / R^2
-    α = 2.0
-    g = 0.2
-    h = 100 * g / (α * R^2)
-
-    # ---- Priors ----
-    # Means
-    logprior_mu = sum(logpdf(Normal(M, sqrt(1/κ)), μk) for μk in mu)
-
-    # Precisions (Gamma(α, β) with shape α, rate β)
-    logprior_lambda = sum(logpdf(Gamma(α, beta), λk) for λk in lambda)
-
-    # Hyperprior on β
-    logprior_beta = logpdf(Gamma(g, h), beta)
-
-    # Mixture weights (Dirichlet(1,...,1))
-    # log Dirichlet(1,...,1) = 0 if q in simplex, -Inf otherwise
-    logprior_q = (all(q .>= 0) && isapprox(sum(q), 1.0; atol=1e-8)) ? 0.0 : -Inf
-
-    logprior = logprior_mu + logprior_lambda + logprior_beta + logprior_q
-
-    # ---- Likelihood ----
-    loglik = 0.0
-    for yi in data
-        # each mixture component density
-        comps = [q[k] * pdf(Normal(mu[k], 1 / sqrt(lambda[k])), yi) for k in 1:K]
-        pyi = sum(comps)
-        if pyi <= 0
-            return Inf  # guard against underflow/invalid parameters
-        end
-        loglik += log(pyi)
-    end
-
-    # ---- Posterior ----
-    logpost = logprior + loglik
-    return -logpost  # negative log posterior
+function repressilator!(du, u, p, t)
+    X1, X2, X3 = u
+    α1, α2, α3, m, η = p
+    du[1] = α1 / (1 + X2 ^ m) - η * X1
+    du[2] = α2 / (1 + X3 ^ m) - η * X2
+    du[3] = α3 / (1 + X1 ^ m) - η * X3
 end
 
-function tt_hidalgo()
-    data = parse.(Float64, filter(!isempty, readlines("hidalgo_stamp_thicknesses.csv")))
-    data *= 100
-    neglogposterior(mu1, mu2, mu3, ll1, ll2, ll3, q1, q2, beta) = V([mu1, mu2, mu3, ll1, ll2, ll3, q1, q2, beta], data)
+function V(r, tspan, nsteps, data, mu, sigma)
+    dt = (tspan[2] - tspan[1]) / nsteps
+    α1 = r[1]
+    α2 = r[2]
+    α3 = r[3]
+    m = r[4]
+    η = r[5]
+    X10 = r[6]
+    X20 = r[7]
+    X30 = r[8]
+    prob = ODEProblem(repressilator!, [X10, X20, X30], tspan, [α1, α2, α3, m, η])
+    obs = undef
+    try
+        sol = solve(prob, Tsit5(), saveat=dt)
+        if sol.retcode == ReturnCode.Success
+            obs = sol[1, :] + sol[2, :] + sol[3, :]
+        else
+            throw(ErrorException("ODE solver failed"))
+        end
+    catch e
+        obs = fill(Inf, nsteps + 1)
+    end
 
-    mu1_dom = (6.0, 12.0)
-    mu2_dom = (6.0, 12.0)
-    mu3_dom = (6.0, 12.0)
-    ll1_dom = (-2.0, 5.0)
-    ll2_dom = (-2.0, 5.0)
-    ll3_dom = (-2.0, 5.0)
-    q1_dom = (0.0, 0.6)
-    q2_dom = (0.0, 0.6)
-    beta_dom = (1.0, 4.0)
+    s2 = 0.25
+    diff = [α1, α2, α3, m, η, X10, X20, X30] - mu
+    result = 1 / 2 * sum((diff .^ 2) ./ sigma)
+    for i in 1:nsteps+1
+        result += 1 / 2 * log(2 * pi * s2) + (data[i] - obs[i]) ^ 2 / (2 * s2)
+    end
+    return result
+end
 
-    dom = (mu1_dom, mu2_dom, mu3_dom, ll1_dom, ll2_dom, ll3_dom, q1_dom, q2_dom, beta_dom)
+function tt_repressilator()
+    tspan = (0.0, 30.0)
+    nsteps = 50
+
+    data = []
+    open("repressilator_data.txt", "r") do file
+        for line in eachline(file)
+            cols = split(line)
+            push!(data, parse(Float64, cols[6]))
+        end
+    end
+
+    mu = [15.0, 15.0, 15.0, 5.0, 5.0, 2.0, 2.0, 2.0]
+    sigma = [25.0, 25.0, 25.0, 25.0, 25.0, 4.0, 4.0, 4.0]
+    neglogposterior(α1, α2, α3, m, η, X10, X20, X30) = V([α1, α2, α3, m, η, X10, X20, X30], tspan, nsteps, data, mu, sigma)
+
+    α1_dom = (0.5, 25.0)
+    α2_dom = (0.5, 25.0)
+    α3_dom = (0.5, 25.0)
+    m_dom = (3.0, 5.0)
+    η_dom = (0.95, 1.05)
+    X10_dom = (0.5, 3.5)
+    X20_dom = (0.5, 3.5)
+    X30_dom = (0.5, 3.5)
+
+    dom = (α1_dom, α2_dom, α3_dom, m_dom, η_dom, X10_dom, X20_dom, X30_dom)
 
     grid_full = (
-        collect(LinRange(mu1_dom..., nbins + 1)),
-        collect(LinRange(mu2_dom..., nbins + 1)),
-        collect(LinRange(mu3_dom..., nbins + 1)),
-        collect(LinRange(ll1_dom..., nbins + 1)),
-        collect(LinRange(ll2_dom..., nbins + 1)),
-        collect(LinRange(ll3_dom..., nbins + 1)),
-        collect(LinRange(q1_dom..., nbins + 1)),
-        collect(LinRange(q2_dom..., nbins + 1)),
-        collect(LinRange(beta_dom..., nbins + 1))
+        collect(LinRange(α1_dom..., nbins + 1)),
+        collect(LinRange(α2_dom..., nbins + 1)),
+        collect(LinRange(α3_dom..., nbins + 1)),
+        collect(LinRange(m_dom..., nbins + 1)),
+        collect(LinRange(η_dom..., nbins + 1)),
+        collect(LinRange(X10_dom..., nbins + 1)),
+        collect(LinRange(X20_dom..., nbins + 1)),
+        collect(LinRange(X30_dom..., nbins + 1))
     )
 
     samples = zeros(nsamples, d)
-    samples = readdlm("hidalgo_samples.txt")
+    samples = readdlm("repressilator_samples.txt")
     nclusters = 3
     X = samples'
     R = kmeans(X, nclusters)
@@ -96,7 +97,7 @@ function tt_hidalgo()
     rangelist = Vector{Any}(undef, nclusters)
     gridlist = []
     weightslist = []
-    factors = [3, 3, 3, 5, 5, 5, 4, 4, 4]
+    factors = [3, 3, 3, 7, 10, 9, 9, 9]
     for cidx in 1:nclusters
         idx = findall(x -> x == cidx, assignments(R))
         borders = []
@@ -212,7 +213,7 @@ function tt_hidalgo()
                 end
             end
         end
-        open("tt_hidalgo_marginal_$(pos)_$(id).txt", "w") do file
+        open("tt_repressilator_marginal_$(pos)_$(id).txt", "w") do file
             for i in 1:nbins+1
                 for j in 1:nbins+1
                     write(file, "$(grid_full[pos][i]) $(grid_full[pos + 1][j]) $(marginals2D[i, j])\n")
@@ -274,7 +275,7 @@ function tt_hidalgo()
     display(varlist)
     flush(stdout)
 
-    open("tt_hidalgo_samples_$(id).txt", "w") do file
+    open("tt_repressilator_samples_$(id).txt", "w") do file
         for sampleid in 1:1000
             println("Collecting sample $sampleid...")
             sample = Vector{Float64}(undef, d)
@@ -447,12 +448,11 @@ function tt_hidalgo()
                 end
             end
 
-            write(file, "$(sample[1]) $(sample[2]) $(sample[3]) $(sample[4]) $(sample[5]) $(sample[6]) $(sample[7]) $(sample[8]) $(sample[9])\n")
+            write(file, "$(sample[1]) $(sample[2]) $(sample[3]) $(sample[4]) $(sample[5]) $(sample[6]) $(sample[7]) $(sample[8])\n")
         end
     end
 end
 
-d = 9
 maxr = parse(Int64, ARGS[3])
 tol = 1.0e-4
 maxiter = 10
@@ -461,7 +461,7 @@ nsamples = 1000
 id = parse(Int64, ARGS[1])
 
 start_time = time()
-tt_hidalgo()
+tt_repressilator()
 end_time = time()
 elapsed_time = end_time - start_time
 println("Elapsed time: $elapsed_time seconds")
