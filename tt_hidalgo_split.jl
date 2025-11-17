@@ -96,7 +96,7 @@ function tt_hidalgo()
     rangelist = Vector{Any}(undef, nclusters)
     gridlist = []
     weightslist = []
-    factors = [3, 3, 3, 5, 5, 5, 4, 4, 4]
+    factors = [3, 3, 3, 5, 5, 5, 5, 5, 4]
     for cidx in 1:nclusters
         idx = findall(x -> x == cidx, assignments(R))
         borders = []
