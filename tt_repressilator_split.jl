@@ -86,7 +86,8 @@ function tt_repressilator()
     samples = zeros(nsamples, d)
     samples = readdlm("repressilator_samples.txt")
     nclusters = 3
-    X = samples'
+    # X = samples'
+    X = samples[:, 1]'
     R = kmeans(X, nclusters)
 
     offset = minimum([neglogposterior(samples[i, :]...) for i in 1:nsamples])
@@ -463,9 +464,9 @@ function tt_repressilator()
 end
 
 d = 8
-maxr = 200
+maxr = 20
 tol = 1.0e-4
-maxiter = 10
+maxiter = 1
 nbins = 50
 nsamples = 1000
 
